@@ -1,4 +1,6 @@
-// Simple players API function
+// Players API function with Neon DB integration
+import { getPlayers, savePlayers, addPlayer, updatePlayer, deletePlayer, validateSession } from './database.js';
+
 export const handler = async (event, context) => {
   try {
     console.log('Players API called:', event.httpMethod, event.path);
@@ -9,52 +11,51 @@ export const handler = async (event, context) => {
         statusCode: 200,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type, x-session-id',
-          'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
+          'Access-Control-Allow-Headers': 'Content-Type, X-Session-Id',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
         }
       };
     }
     
     // Get session ID for auth check
-    const sessionId = event.headers['x-session-id'] || 
-                     event.queryStringParameters?.sessionId;
+    const sessionId = event.headers['x-session-id'] || event.headers['X-Session-Id'];
     
-    // Simple auth check - just verify session exists and has reasonable length
-    if (!sessionId || sessionId.length < 10) {
-      return {
-        statusCode: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Authentication required'
-        })
-      };
+    // Validate session for admin operations
+    if (event.httpMethod !== 'GET') {
+      if (!sessionId) {
+        return {
+          statusCode: 401,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Authentication required'
+          })
+        };
+      }
+      
+      const isValidSession = await validateSession(sessionId);
+      if (!isValidSession) {
+        return {
+          statusCode: 401,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Invalid or expired session'
+          })
+        };
+      }
     }
     
     // Handle different HTTP methods
     if (event.httpMethod === 'GET') {
-      // Return mock player data for now
-      const mockPlayers = [
-        {
-          id: "player_1",
-          name: "Test Player 1",
-          dota2id: "123456789",
-          peakmmr: 3500,
-          registrationDate: "2025-01-18T10:00:00.000Z",
-          ipAddress: "192.168.1.1"
-        },
-        {
-          id: "player_2", 
-          name: "Test Player 2",
-          dota2id: "987654321",
-          peakmmr: 4200,
-          registrationDate: "2025-01-18T11:00:00.000Z",
-          ipAddress: "192.168.1.2"
-        }
-      ];
+      // Get all players from database
+      const players = await getPlayers();
       
       return {
         statusCode: 200,
@@ -64,13 +65,13 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          players: mockPlayers,
-          count: mockPlayers.length
+          players: players,
+          count: players.length
         })
       };
       
     } else if (event.httpMethod === 'POST') {
-      // Handle adding/updating players
+      // Handle adding new player or updating existing
       let requestBody = {};
       try {
         requestBody = JSON.parse(event.body || '{}');
@@ -83,25 +84,135 @@ export const handler = async (event, context) => {
           },
           body: JSON.stringify({
             success: false,
-            message: 'Invalid JSON in request body'
+            error: 'Invalid JSON in request body'
           })
         };
       }
       
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'Player operation completed',
-          data: requestBody
-        })
-      };
+      const { action, player, players } = requestBody;
+      
+      if (action === 'add') {
+        // Add single player
+        if (!player || !player.name || !player.dota2id) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'Player name and Dota2ID are required'
+            })
+          };
+        }
+        
+        await addPlayer(player);
+        const updatedPlayers = await getPlayers();
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Player added successfully',
+            players: updatedPlayers
+          })
+        };
+        
+      } else if (action === 'edit') {
+        // Edit existing player
+        if (!player || !player.id) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              error: 'Player ID is required for editing'
+            })
+          };
+        }
+        
+        await updatePlayer(player.id, {
+          name: player.name,
+          dota2id: player.dota2id,
+          peakmmr: player.peakmmr
+        });
+        
+        const updatedPlayers = await getPlayers();
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Player updated successfully',
+            players: updatedPlayers
+          })
+        };
+        
+      } else if (action === 'save' && players) {
+        // Save multiple players (bulk operation)
+        await savePlayers(players);
+        const updatedPlayers = await getPlayers();
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Players saved successfully',
+            players: updatedPlayers
+          })
+        };
+        
+      } else {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Invalid action or missing data'
+          })
+        };
+      }
       
     } else if (event.httpMethod === 'DELETE') {
+      // Handle player deletion
+      const playerId = event.queryStringParameters?.id;
+      
+      if (!playerId) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Player ID is required for deletion'
+          })
+        };
+      }
+      
+      await deletePlayer(playerId);
+      const updatedPlayers = await getPlayers();
+      
       return {
         statusCode: 200,
         headers: {
@@ -110,7 +221,8 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          message: 'Player deleted successfully'
+          message: 'Player deleted successfully',
+          players: updatedPlayers
         })
       };
       
@@ -123,7 +235,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          message: 'Method not allowed'
+          error: 'Method not allowed'
         })
       };
     }
@@ -138,7 +250,7 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        message: 'Internal server error: ' + error.message
+        error: 'Internal server error: ' + error.message
       })
     };
   }

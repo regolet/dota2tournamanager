@@ -318,8 +318,8 @@ async function loadPlayers(forceRefresh = false) {
                 </tr>
             `;
             
-            // Load players from API endpoint that uses SQLite
-            const response = await fetch('../api/get-players');
+            // Load players from API endpoint that uses Neon DB
+            const response = await fetch('/admin/api/players');
             
             if (!response.ok) {
                 // If error, assume no players yet or issue with the database
@@ -648,8 +648,8 @@ async function savePlayerChanges() {
         // Update player in the array
         window.playerData[playerIndex] = updatedPlayer;
         
-        // Save to server using SQLite-backed API endpoint
-        const response = await fetch('/admin/save-players', {
+        // Save to server using Neon DB API endpoint
+        const response = await fetch('/admin/api/players', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -720,14 +720,13 @@ async function deletePlayer(player, index) {
             playerId: player.id
         };
         
-        // Send request to server using API endpoint
-        const response = await fetch('../admin/save-players', {
-            method: 'POST',
+        // Send DELETE request to server using correct API endpoint
+        const response = await fetch(`/admin/api/players?id=${player.id}`, {
+            method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Session-Id': localStorage.getItem('adminSessionId')
-            },
-            body: JSON.stringify(requestData)
+            }
         });
         
         // Check response
@@ -845,7 +844,7 @@ async function saveNewPlayer() {
     
     try {
         // Add player using API endpoint
-        const response = await fetch('../admin/save-players', {
+        const response = await fetch('/admin/api/players', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

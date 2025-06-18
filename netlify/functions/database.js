@@ -189,34 +189,36 @@ export async function updatePlayer(playerId, updates) {
     await initializeDatabase();
     console.log('updatePlayer called for:', playerId, 'with updates:', updates);
     
-    const setClause = [];
-    const values = [];
+    // Build update query dynamically based on provided updates
+    const updateFields = [];
     
     if (updates.name) {
-      setClause.push(`name = $${setClause.length + 1}`);
-      values.push(updates.name);
+      updateFields.push(sql`name = ${updates.name}`);
     }
     if (updates.dota2id) {
-      setClause.push(`dota2id = $${setClause.length + 1}`);
-      values.push(updates.dota2id);
+      updateFields.push(sql`dota2id = ${updates.dota2id}`);
     }
     if (updates.peakmmr !== undefined) {
-      setClause.push(`peakmmr = $${setClause.length + 1}`);
-      values.push(updates.peakmmr);
+      updateFields.push(sql`peakmmr = ${updates.peakmmr}`);
     }
     
-    if (setClause.length === 0) {
+    if (updateFields.length === 0) {
       throw new Error('No valid fields to update');
     }
     
-    setClause.push(`updated_at = NOW()`);
-    values.push(playerId);
+    // Add updated_at timestamp
+    updateFields.push(sql`updated_at = NOW()`);
     
-    await sql`
+    // Execute update query
+    const result = await sql`
       UPDATE players 
-      SET ${sql.raw(setClause.join(', '))}
+      SET ${sql.join(updateFields, sql`, `)}
       WHERE id = ${playerId}
     `;
+    
+    if (result.count === 0) {
+      throw new Error('Player not found');
+    }
     
     console.log('Player updated in database');
     return await getPlayers();
