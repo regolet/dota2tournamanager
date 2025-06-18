@@ -1,3 +1,4 @@
+// Updated for Neon DB API endpoints - v2.0.1
 document.addEventListener('DOMContentLoaded', function() {
     const playerForm = document.getElementById('playerForm');
     const messageDiv = document.getElementById('message');
