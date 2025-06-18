@@ -9,6 +9,11 @@
 
 # Redirect all requests to the serverless function
 [[redirects]]
+  from = "/admin/api/login"
+  to = "/.netlify/functions/login"
+  status = 200
+
+[[redirects]]
   from = "/admin/api/*"
   to = "/.netlify/functions/server"
   status = 200
