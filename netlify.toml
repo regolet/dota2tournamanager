@@ -40,7 +40,7 @@
 
 [[redirects]]
   from = "/api/get-players"
-  to = "/.netlify/functions/api-players"
+  to = "/.netlify/functions/get-players"
   status = 200
 
 [[redirects]]
