@@ -40,7 +40,7 @@ export const handler = async (event, context) => {
     const formattedPlayers = players.map(player => ({
       id: player.id,
       name: player.name,
-      mmr: player.peakmmr || 0,
+      peakmmr: player.peakmmr || 0,  // Use peakmmr to match team balancer expectations
       dota2id: player.dota2id
     }));
     

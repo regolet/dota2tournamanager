@@ -1,5 +1,5 @@
-// Masterlist function using persistent database storage
-import { masterlistDb } from './database.js';
+// Masterlist function using Neon DB
+import { getMasterlist, addMasterlistPlayer, updateMasterlistPlayer, deleteMasterlistPlayer } from './database.js';
 
 export const handler = async (event, context) => {
   try {
@@ -42,7 +42,7 @@ export const handler = async (event, context) => {
     // Handle different HTTP methods
     if (event.httpMethod === 'GET') {
       // Get masterlist data from database
-      const masterlistPlayers = await masterlistDb.getAllPlayers();
+      const masterlistPlayers = await getMasterlist();
       
       // For public access, return basic info
       // For authenticated admin access, return full details
@@ -94,28 +94,45 @@ export const handler = async (event, context) => {
     } else if (event.httpMethod === 'POST') {
       // Add new masterlist player
       const requestBody = JSON.parse(event.body || '{}');
-      const result = await masterlistDb.addPlayer(requestBody);
       
-      return {
-        statusCode: result.success ? 200 : 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: result.success,
-          message: result.success ? 'Player added to masterlist successfully' : result.error,
-          player: result.player || null,
-          timestamp: new Date().toISOString()
-        })
-      };
+      try {
+        await addMasterlistPlayer(requestBody);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Player added to masterlist successfully',
+            timestamp: new Date().toISOString()
+          })
+        };
+      } catch (error) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: error.message,
+            timestamp: new Date().toISOString()
+          })
+        };
+      }
       
     } else if (event.httpMethod === 'PUT') {
       // Update existing masterlist player
-      const playerId = parseInt(event.pathParameters?.id);
+      // Extract player ID from URL path
+      const pathParts = event.path.split('/');
+      const playerId = parseInt(pathParts[pathParts.length - 1]);
       const requestBody = JSON.parse(event.body || '{}');
       
-      if (!playerId) {
+      if (!playerId || isNaN(playerId)) {
         return {
           statusCode: 400,
           headers: {
@@ -129,21 +146,35 @@ export const handler = async (event, context) => {
         };
       }
       
-      const result = await masterlistDb.updatePlayer(playerId, requestBody);
-      
-      return {
-        statusCode: result.success ? 200 : 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: result.success,
-          message: result.success ? 'Masterlist player updated successfully' : result.error,
-          player: result.player || null,
-          timestamp: new Date().toISOString()
-        })
-      };
+      try {
+        await updateMasterlistPlayer(playerId, requestBody);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Masterlist player updated successfully',
+            timestamp: new Date().toISOString()
+          })
+        };
+      } catch (error) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: error.message,
+            timestamp: new Date().toISOString()
+          })
+        };
+      }
       
     } else if (event.httpMethod === 'DELETE') {
       // Delete masterlist player
@@ -164,21 +195,35 @@ export const handler = async (event, context) => {
         };
       }
       
-      const result = await masterlistDb.deletePlayer(playerId);
-      
-      return {
-        statusCode: result.success ? 200 : 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: result.success,
-          message: result.success ? 'Masterlist player deleted successfully' : result.error,
-          player: result.player || null,
-          timestamp: new Date().toISOString()
-        })
-      };
+      try {
+        await deleteMasterlistPlayer(playerId);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Masterlist player deleted successfully',
+            timestamp: new Date().toISOString()
+          })
+        };
+      } catch (error) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: error.message,
+            timestamp: new Date().toISOString()
+          })
+        };
+      }
       
     } else {
       // Method not allowed
