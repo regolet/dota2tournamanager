@@ -60,20 +60,7 @@ async function initializeDatabase() {
       )
     `;
 
-    // Insert default masterlist data if table is empty
-    const masterlistCount = await sql`SELECT COUNT(*) as count FROM masterlist`;
-    if (masterlistCount[0].count == 0) {
-      console.log('Inserting default masterlist data...');
-      await sql`
-        INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes) VALUES
-        ('Miracle-', '105248644', 8500, 'OG', 'Multiple Major Winner, Former TI Winner', 'Exceptional carry player known for mechanical skill'),
-        ('Arteezy', '86745912', 8200, 'Team Secret', 'Multiple Major Winner, Top NA Player', 'Iconic carry player with exceptional farming efficiency'),
-        ('SumaiL', '111620041', 8000, 'OG', 'TI5 Winner, Youngest TI Winner', 'Aggressive mid laner with incredible game sense'),
-        ('Dendi', '70388657', 7800, 'Na''Vi', 'TI1 Winner, Legendary Mid Player', 'Icon of Dota 2, known for Pudge plays'),
-        ('Puppey', '87276347', 7500, 'Team Secret', 'TI1 Winner, Legendary Captain', 'Most experienced captain in professional Dota'),
-        ('N0tail', '19672354', 7300, 'OG', 'Back-to-back TI Winner (TI8, TI9)', 'Inspirational leader and versatile player')
-      `;
-    }
+    // No default masterlist data - start with empty masterlist for true realtime database
 
     // Insert default registration settings if table is empty
     const settingsCount = await sql`SELECT COUNT(*) as count FROM registration_settings`;
@@ -85,15 +72,7 @@ async function initializeDatabase() {
       `;
     }
 
-    // Insert sample player data if table is empty
-    const playersCount = await sql`SELECT COUNT(*) as count FROM players`;
-    if (playersCount[0].count == 0) {
-      console.log('Inserting sample player data...');
-      await sql`
-        INSERT INTO players (id, name, dota2id, peakmmr, ip_address) 
-        VALUES ('player_1750218791586_198', 'asdasd', '123456789', 3000, '::1')
-      `;
-    }
+    // No default player data - start with empty players table for true realtime database
 
     console.log('Database schema initialized successfully');
   } catch (error) {
