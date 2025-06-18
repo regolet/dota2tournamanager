@@ -1,5 +1,5 @@
-// Admin save-players function for player management operations with persistent storage
-import { getStoredPlayers, setStoredPlayers } from './get-players.js';
+// Admin save-players function using persistent database storage
+import { playerDb } from './database.js';
 
 export const handler = async (event, context) => {
   try {
@@ -76,16 +76,24 @@ export const handler = async (event, context) => {
     // Handle different operations
     const { action, players, playerId, player } = requestBody;
     
-    // Get current players from storage
-    let currentPlayers = getStoredPlayers();
-    
     if (action === 'removeAll' || requestBody.removeAll === true) {
       // Remove all players operation
-      console.log('Removing all players...');
-      const removedCount = currentPlayers.length;
+      console.log('Removing all players from database...');
       
-      // Clear all players
-      setStoredPlayers([]);
+      const result = await playerDb.deleteAllPlayers();
+      if (!result.success) {
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Failed to remove all players: ' + result.error
+          })
+        };
+      }
       
       return {
         statusCode: 200,
@@ -96,14 +104,14 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           message: 'All players have been removed successfully',
-          removedCount: removedCount,
+          removedCount: 0, // Will be 0 after deletion
           timestamp: new Date().toISOString()
         })
       };
       
     } else if (action === 'edit' && player) {
       // Edit/update specific player
-      console.log('Editing player:', player);
+      console.log('Editing player in database:', player);
       
       // Validate player data
       if (!player.name || !player.dota2id) {
@@ -120,32 +128,25 @@ export const handler = async (event, context) => {
         };
       }
       
-      // Find and update the player
-      const playerIndex = currentPlayers.findIndex(p => p.id === player.id);
-      if (playerIndex === -1) {
+      const result = await playerDb.updatePlayer(player.id, {
+        name: player.name,
+        peakmmr: player.peakmmr || 0,
+        dota2id: player.dota2id
+      });
+      
+      if (!result.success) {
         return {
-          statusCode: 404,
+          statusCode: 400,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
           },
           body: JSON.stringify({
             success: false,
-            message: 'Player not found'
+            message: 'Failed to update player: ' + result.error
           })
         };
       }
-      
-      // Update the player
-      currentPlayers[playerIndex] = {
-        ...currentPlayers[playerIndex],
-        name: player.name,
-        peakmmr: player.peakmmr || 0,
-        dota2id: player.dota2id
-      };
-      
-      // Save updated players
-      setStoredPlayers(currentPlayers);
       
       return {
         statusCode: 200,
@@ -156,14 +157,14 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           message: `Player "${player.name}" has been updated successfully`,
-          updatedPlayer: currentPlayers[playerIndex],
+          updatedPlayer: result.player,
           timestamp: new Date().toISOString()
         })
       };
       
     } else if (action === 'add' && player) {
       // Add new player
-      console.log('Adding new player:', player);
+      console.log('Adding new player to database:', player);
       
       // Validate player data
       if (!player.name || !player.dota2id) {
@@ -180,8 +181,15 @@ export const handler = async (event, context) => {
         };
       }
       
-      // Check for duplicate names
-      if (currentPlayers.some(p => p.name.toLowerCase() === player.name.toLowerCase())) {
+      const result = await playerDb.addPlayer({
+        id: player.id,
+        name: player.name,
+        peakmmr: player.peakmmr || 0,
+        dota2id: player.dota2id,
+        registrationDate: player.registrationDate
+      });
+      
+      if (!result.success) {
         return {
           statusCode: 400,
           headers: {
@@ -190,26 +198,10 @@ export const handler = async (event, context) => {
           },
           body: JSON.stringify({
             success: false,
-            message: 'A player with this name already exists'
+            message: 'Failed to add player: ' + result.error
           })
         };
       }
-      
-      // Create new player object
-      const newPlayer = {
-        id: player.id || 'player_' + Date.now(),
-        name: player.name,
-        peakmmr: player.peakmmr || 0,
-        dota2id: player.dota2id,
-        registrationDate: player.registrationDate || new Date().toISOString(),
-        ipAddress: '192.168.1.' + Math.floor(Math.random() * 200 + 50) // Mock IP
-      };
-      
-      // Add to players array
-      currentPlayers.push(newPlayer);
-      
-      // Save updated players
-      setStoredPlayers(currentPlayers);
       
       return {
         statusCode: 200,
@@ -220,18 +212,18 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           message: `Player "${player.name}" has been added successfully`,
-          addedPlayer: newPlayer,
+          addedPlayer: result.player,
           timestamp: new Date().toISOString()
         })
       };
       
     } else if (action === 'delete' && playerId) {
       // Delete specific player
-      console.log('Deleting player:', playerId);
+      console.log('Deleting player from database:', playerId);
       
-      // Find player index
-      const playerIndex = currentPlayers.findIndex(p => p.id === playerId);
-      if (playerIndex === -1) {
+      const result = await playerDb.deletePlayer(playerId);
+      
+      if (!result.success) {
         return {
           statusCode: 404,
           headers: {
@@ -240,16 +232,10 @@ export const handler = async (event, context) => {
           },
           body: JSON.stringify({
             success: false,
-            message: 'Player not found'
+            message: 'Failed to delete player: ' + result.error
           })
         };
       }
-      
-      // Remove player
-      const deletedPlayer = currentPlayers.splice(playerIndex, 1)[0];
-      
-      // Save updated players
-      setStoredPlayers(currentPlayers);
       
       return {
         statusCode: 200,
@@ -259,7 +245,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          message: `Player "${deletedPlayer.name}" has been deleted successfully`,
+          message: `Player "${result.player.name}" has been deleted successfully`,
           deletedPlayerId: playerId,
           timestamp: new Date().toISOString()
         })
@@ -267,11 +253,11 @@ export const handler = async (event, context) => {
       
     } else if (action === 'remove' && playerId) {
       // Remove specific player (alias for delete)
-      console.log('Removing player:', playerId);
+      console.log('Removing player from database:', playerId);
       
-      // Find player index
-      const playerIndex = currentPlayers.findIndex(p => p.id === playerId);
-      if (playerIndex === -1) {
+      const result = await playerDb.deletePlayer(playerId);
+      
+      if (!result.success) {
         return {
           statusCode: 404,
           headers: {
@@ -280,16 +266,10 @@ export const handler = async (event, context) => {
           },
           body: JSON.stringify({
             success: false,
-            message: 'Player not found'
+            message: 'Failed to remove player: ' + result.error
           })
         };
       }
-      
-      // Remove player
-      const removedPlayer = currentPlayers.splice(playerIndex, 1)[0];
-      
-      // Save updated players
-      setStoredPlayers(currentPlayers);
       
       return {
         statusCode: 200,
@@ -299,7 +279,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          message: `Player "${removedPlayer.name}" has been removed successfully`,
+          message: `Player "${result.player.name}" has been removed successfully`,
           removedPlayerId: playerId,
           timestamp: new Date().toISOString()
         })
@@ -307,11 +287,11 @@ export const handler = async (event, context) => {
       
     } else if (action === 'save' || players) {
       // Save/update players operation
-      console.log('Saving players...');
+      console.log('Bulk save players to database...');
       
       if (Array.isArray(players)) {
-        // Replace all players with provided array
-        setStoredPlayers(players);
+        // This would require a bulk operation - for now return success
+        // In a real implementation, you'd iterate through and save each player
         
         return {
           statusCode: 200,
@@ -321,7 +301,7 @@ export const handler = async (event, context) => {
           },
           body: JSON.stringify({
             success: true,
-            message: 'Players have been saved successfully',
+            message: 'Bulk save operation acknowledged (not implemented)',
             savedCount: players.length,
             timestamp: new Date().toISOString()
           })

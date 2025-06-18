@@ -1,9 +1,10 @@
-// Enhanced masterlist API function
+// Masterlist function using persistent database storage
+import { masterlistDb } from './database.js';
+
 export const handler = async (event, context) => {
   try {
     console.log('Masterlist API called:', event.httpMethod, event.path);
     console.log('Headers:', event.headers);
-    console.log('Query params:', event.queryStringParameters);
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -12,140 +13,13 @@ export const handler = async (event, context) => {
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type, x-session-id',
-          'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
         }
       };
     }
     
-    // Check if this is an admin API call (requires auth) vs public API call
-    const isAdminCall = event.path?.includes('/admin/api/') || 
-                       event.rawPath?.includes('/admin/api/');
-    
-    // Get session ID for auth check (only for admin calls)
-    const sessionId = event.headers['x-session-id'] || 
-                     event.queryStringParameters?.sessionId;
-    
-    // Auth check only for admin calls
-    if (isAdminCall && (!sessionId || sessionId.length < 10)) {
-      return {
-        statusCode: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Authentication required'
-        })
-      };
-    }
-    
-    // Handle different HTTP methods
-    if (event.httpMethod === 'GET') {
-      // Return comprehensive masterlist data
-      const mockMasterlist = [
-        {
-          id: 1,
-          name: "Miracle-",
-          dota2id: "105248644",
-          mmr: 8500,
-          created_at: "2025-01-18T10:00:00.000Z",
-          updated_at: "2025-01-18T10:00:00.000Z",
-          notes: "Professional player - OG"
-        },
-        {
-          id: 2,
-          name: "Arteezy", 
-          dota2id: "86745912",
-          mmr: 8200,
-          created_at: "2025-01-18T11:00:00.000Z",
-          updated_at: "2025-01-18T11:00:00.000Z",
-          notes: "Professional player - Team Secret"
-        },
-        {
-          id: 3,
-          name: "SumaiL",
-          dota2id: "111620041",
-          mmr: 8000,
-          created_at: "2025-01-18T12:00:00.000Z",
-          updated_at: "2025-01-18T12:00:00.000Z",
-          notes: "Former TI winner"
-        },
-        {
-          id: 4,
-          name: "Dendi",
-          dota2id: "70388657",
-          mmr: 7800,
-          created_at: "2025-01-18T13:00:00.000Z",
-          updated_at: "2025-01-18T13:00:00.000Z",
-          notes: "Legendary mid player - Na'Vi"
-        },
-        {
-          id: 5,
-          name: "Puppey",
-          dota2id: "87276347",
-          mmr: 7500,
-          created_at: "2025-01-18T14:00:00.000Z",
-          updated_at: "2025-01-18T14:00:00.000Z",
-          notes: "Team Secret captain"
-        },
-        {
-          id: 6,
-          name: "N0tail",
-          dota2id: "94155156",
-          mmr: 7300,
-          created_at: "2025-01-18T15:00:00.000Z",
-          updated_at: "2025-01-18T15:00:00.000Z",
-          notes: "OG captain - 2x TI winner"
-        }
-      ];
-      
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          masterlist: mockMasterlist,
-          count: mockMasterlist.length
-        })
-      };
-      
-    } else if (event.httpMethod === 'POST') {
-      // Handle adding/updating masterlist players
-      let requestBody = {};
-      try {
-        requestBody = JSON.parse(event.body || '{}');
-      } catch (parseError) {
-        return {
-          statusCode: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: false,
-            message: 'Invalid JSON in request body'
-          })
-        };
-      }
-      
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'Masterlist operation completed',
-          data: requestBody
-        })
-      };
-      
-    } else {
+    // Only handle GET requests for this endpoint
+    if (event.httpMethod !== 'GET') {
       return {
         statusCode: 405,
         headers: {
@@ -159,6 +33,62 @@ export const handler = async (event, context) => {
       };
     }
     
+    // Get session ID for auth check (optional for masterlist)
+    const sessionId = event.headers['x-session-id'] || 
+                     event.queryStringParameters?.sessionId;
+    
+    const isAuthenticated = sessionId && sessionId.length >= 10;
+    
+    // Get masterlist data from database
+    const masterlistPlayers = await masterlistDb.getAllPlayers();
+    
+    // For public access, return basic info
+    // For authenticated admin access, return full details
+    const responseData = masterlistPlayers.map(player => {
+      if (isAuthenticated) {
+        // Admin view - full details
+        return {
+          id: player.id,
+          name: player.name,
+          dota2id: player.dota2id,
+          mmr: player.mmr,
+          team: player.team || '',
+          achievements: player.achievements || '',
+          notes: player.notes || '',
+          created_at: player.created_at,
+          updated_at: player.updated_at
+        };
+      } else {
+        // Public view - limited details
+        return {
+          id: player.id,
+          name: player.name,
+          mmr: player.mmr,
+          team: player.team || '',
+          achievements: player.achievements || ''
+        };
+      }
+    });
+    
+    console.log(`Returning ${responseData.length} masterlist players from database (auth: ${isAuthenticated})`);
+    
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({
+        success: true,
+        players: responseData,
+        count: responseData.length,
+        message: `Masterlist retrieved successfully from database (${isAuthenticated ? 'admin' : 'public'} view)`,
+        isAuthenticated: isAuthenticated,
+        timestamp: new Date().toISOString()
+      })
+    };
+    
   } catch (error) {
     console.error('Masterlist API error:', error);
     return {
@@ -169,7 +99,9 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        message: 'Internal server error: ' + error.message
+        message: 'Internal server error: ' + error.message,
+        error: error.toString(),
+        timestamp: new Date().toISOString()
       })
     };
   }
