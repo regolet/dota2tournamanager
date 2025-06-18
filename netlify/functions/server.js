@@ -6,13 +6,19 @@ import bodyParser from 'body-parser';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 
-// Import our database modules - adjust path to go up two levels
-import { authDb, playerDb, masterlistDb } from '../../db.js';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Add basic error handling
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Middleware
 app.use(bodyParser.json());
@@ -22,23 +28,12 @@ app.use(cors({
   credentials: true
 }));
 
-// Session storage (in-memory for serverless - not ideal for production)
+// Session storage (in-memory for serverless)
 let sessions = {};
 
-// Helper function to save sessions (no-op in serverless environment)
-function saveSessions() {
-  // In serverless environment, sessions will be lost between invocations
-  // Consider using external storage like Redis or database for production
-}
-
-// Initialize admin user if none exists
-const DEFAULT_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123';
-try {
-  const initResult = authDb.createDefaultAdmin(DEFAULT_PASSWORD);
-  console.log('Admin initialization:', initResult.message);
-} catch (error) {
-  console.error('Error initializing admin:', error);
-}
+// Simple database simulation (in-memory)
+let adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123';
+let players = [];
 
 // Admin login endpoint
 app.post('/admin/api/login', (req, res) => {
@@ -53,11 +48,8 @@ app.post('/admin/api/login', (req, res) => {
       });
     }
     
-    // Verify admin credentials
-    const verifyResult = authDb.verifyAdmin(password);
-    console.log('Verification result:', verifyResult);
-    
-    if (!verifyResult.success) {
+    // Simple password verification
+    if (password !== adminPassword) {
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid credentials' 
@@ -67,7 +59,7 @@ app.post('/admin/api/login', (req, res) => {
     // Create session
     const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     sessions[sessionId] = {
-      user: verifyResult.user,
+      user: { username: 'admin', role: 'admin' },
       createdAt: new Date().toISOString(),
       persistent: rememberMe === true
     };
@@ -120,44 +112,59 @@ app.post('/admin/api/auto-login', (req, res) => {
 
 // Session check endpoint
 app.get('/admin/api/check-session', (req, res) => {
-  const sessionId = req.headers['x-session-id'] || req.query.sessionId;
-  
-  if (sessionId && sessions[sessionId]) {
-    res.json({
-      success: true,
-      message: 'Session is valid'
-    });
-  } else {
-    res.status(401).json({
+  try {
+    const sessionId = req.headers['x-session-id'] || req.query.sessionId;
+    
+    if (sessionId && sessions[sessionId]) {
+      res.json({
+        success: true,
+        message: 'Session is valid'
+      });
+    } else {
+      res.status(401).json({
+        success: false,
+        message: 'Session is invalid or expired'
+      });
+    }
+  } catch (error) {
+    console.error('Error in check-session:', error);
+    res.status(500).json({
       success: false,
-      message: 'Session is invalid or expired'
+      message: 'Error checking session: ' + error.message
     });
   }
 });
 
 // Logout endpoint
 app.post('/admin/api/logout', (req, res) => {
-  const sessionId = req.headers['x-session-id'] || req.query.sessionId;
-  
-  if (sessionId && sessions[sessionId]) {
-    delete sessions[sessionId];
+  try {
+    const sessionId = req.headers['x-session-id'] || req.query.sessionId;
+    
+    if (sessionId && sessions[sessionId]) {
+      delete sessions[sessionId];
+    }
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Error in logout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error during logout: ' + error.message
+    });
   }
-  
-  res.json({
-    success: true,
-    message: 'Logged out successfully'
-  });
 });
 
 // Players API endpoints
 app.get('/admin/api/players', (req, res) => {
-  const sessionId = req.headers['x-session-id'] || req.query.sessionId;
-  if (!sessionId || !sessions[sessionId]) {
-    return res.status(401).json({ success: false, message: 'Authentication required' });
-  }
-
   try {
-    const players = playerDb.getAllPlayers();
+    const sessionId = req.headers['x-session-id'] || req.query.sessionId;
+    if (!sessionId || !sessions[sessionId]) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
     res.json({
       success: true,
       players: players
@@ -183,7 +190,8 @@ app.post('/api/add-player', (req, res) => {
       });
     }
     
-    const existingPlayer = playerDb.getPlayerByDota2Id(newPlayer.dota2id);
+    // Check for existing player
+    const existingPlayer = players.find(p => p.dota2id === newPlayer.dota2id);
     if (existingPlayer) {
       return res.status(400).json({
         success: false,
@@ -191,20 +199,22 @@ app.post('/api/add-player', (req, res) => {
       });
     }
     
-    if (!newPlayer.registrationDate) {
-      newPlayer.registrationDate = new Date().toISOString();
-    }
+    // Add player to in-memory storage
+    const player = {
+      id: `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      name: newPlayer.name,
+      dota2id: newPlayer.dota2id,
+      peakmmr: newPlayer.peakmmr || 0,
+      registrationDate: new Date().toISOString(),
+      ipAddress: req.ip || 'unknown'
+    };
     
-    if (req.ip) {
-      newPlayer.ipAddress = req.ip;
-    }
-    
-    const result = playerDb.addPlayer(newPlayer);
+    players.push(player);
     
     res.json({
       success: true,
       message: 'Player registered successfully!',
-      player: newPlayer
+      player: player
     });
     
   } catch (error) {
@@ -225,47 +235,79 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve static files for admin pages (basic file serving)
+// Basic file serving with error handling
 app.get('/admin/:file(*)', (req, res) => {
-  const fileName = req.params.file || 'index.html';
-  const filePath = path.join(__dirname, '../../admin', fileName);
-  
-  if (fs.existsSync(filePath)) {
-    const ext = path.extname(fileName).toLowerCase();
-    const contentType = {
-      '.html': 'text/html',
-      '.js': 'application/javascript',
-      '.css': 'text/css',
-      '.json': 'application/json'
-    }[ext] || 'text/plain';
+  try {
+    const fileName = req.params.file || 'index.html';
+    const filePath = path.join(__dirname, '../../admin', fileName);
     
-    res.setHeader('Content-Type', contentType);
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send('File not found');
+    if (fs.existsSync(filePath)) {
+      const ext = path.extname(fileName).toLowerCase();
+      const contentType = {
+        '.html': 'text/html',
+        '.js': 'application/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json'
+      }[ext] || 'text/plain';
+      
+      res.setHeader('Content-Type', contentType);
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('File not found');
+    }
+  } catch (error) {
+    console.error('Error serving file:', error);
+    res.status(500).send('Error serving file');
   }
 });
 
 // Default route
 app.get('/', (req, res) => {
-  const filePath = path.join(__dirname, '../../index.html');
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.send('Tournament Management System - Netlify Functions');
+  try {
+    const filePath = path.join(__dirname, '../../index.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.send('Tournament Management System - Netlify Functions');
+    }
+  } catch (error) {
+    console.error('Error serving index:', error);
+    res.send('Tournament Management System - Netlify Functions (Error serving static file)');
   }
 });
 
 // Catch all other routes
 app.get('*', (req, res) => {
-  // Try to serve the file from the root directory
-  const filePath = path.join(__dirname, '../..', req.path);
-  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-    res.sendFile(filePath);
-  } else {
+  try {
+    const filePath = path.join(__dirname, '../..', req.path);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).json({ error: 'Not found', path: req.path });
+    }
+  } catch (error) {
+    console.error('Error in catch-all route:', error);
     res.status(404).json({ error: 'Not found', path: req.path });
   }
 });
 
-// Export the serverless function
-export const handler = serverlessExpress({ app }); 
+// Export the serverless function with error handling
+export const handler = async (event, context) => {
+  try {
+    console.log('Function invoked:', event.httpMethod, event.path);
+    const serverlessHandler = serverlessExpress({ app });
+    return await serverlessHandler(event, context);
+  } catch (error) {
+    console.error('Handler error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        error: 'Internal server error',
+        message: error.message
+      })
+    };
+  }
+}; 
