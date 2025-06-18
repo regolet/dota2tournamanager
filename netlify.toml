@@ -49,6 +49,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/debug-files"
+  to = "/.netlify/functions/debug-files"
+  status = 200
+
+[[redirects]]
   from = "/admin/api/*"
   to = "/.netlify/functions/server"
   status = 200
