@@ -189,32 +189,27 @@ export async function updatePlayer(playerId, updates) {
     await initializeDatabase();
     console.log('updatePlayer called for:', playerId, 'with updates:', updates);
     
-    // Build update query dynamically based on provided updates
-    const updateFields = [];
+    // Simple approach: update all fields at once
+    const name = updates.name || '';
+    const dota2id = updates.dota2id || '';
+    const peakmmr = updates.peakmmr || 0;
     
-    if (updates.name) {
-      updateFields.push(sql`name = ${updates.name}`);
-    }
-    if (updates.dota2id) {
-      updateFields.push(sql`dota2id = ${updates.dota2id}`);
-    }
-    if (updates.peakmmr !== undefined) {
-      updateFields.push(sql`peakmmr = ${updates.peakmmr}`);
-    }
-    
-    if (updateFields.length === 0) {
+    if (!name && !dota2id && peakmmr === 0) {
       throw new Error('No valid fields to update');
     }
     
-    // Add updated_at timestamp
-    updateFields.push(sql`updated_at = NOW()`);
-    
-    // Execute update query
+    // Execute update query with all fields
     const result = await sql`
       UPDATE players 
-      SET ${sql.join(updateFields, sql`, `)}
+      SET 
+        name = ${name},
+        dota2id = ${dota2id},
+        peakmmr = ${peakmmr},
+        updated_at = NOW()
       WHERE id = ${playerId}
     `;
+    
+    console.log('Update result:', result);
     
     if (result.count === 0) {
       throw new Error('Player not found');
