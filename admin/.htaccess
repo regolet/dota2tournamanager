@@ -1,0 +1,13 @@
+# Ensure PHP files are processed correctly
+AddType application/x-httpd-php .php
+
+# Prevent directory listing
+Options -Indexes
+
+# Default index file
+DirectoryIndex index.php index.html
+
+# Force SSL (uncomment if using HTTPS)
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L] 

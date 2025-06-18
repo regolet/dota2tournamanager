@@ -1,0 +1,215 @@
+<!-- masterlist.html -->
+<section id="masterlist" class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">
+            <i class="bi bi-shield-check me-2"></i>Player Masterlist
+            <small class="text-muted">(Verified MMR Database)</small>
+        </h2>
+        <div class="btn-group">
+            <button id="add-masterlist-player-btn" class="btn btn-primary">
+                <i class="bi bi-person-plus me-1"></i>Add Player
+            </button>
+            <button id="refresh-masterlist-btn" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">
+                        <i class="bi bi-people-fill"></i>
+                    </h5>
+                    <h3 id="total-masterlist-players" class="mb-0">0</h3>
+                    <small class="text-muted">Total Players</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">
+                        <i class="bi bi-graph-up"></i>
+                    </h5>
+                    <h3 id="avg-masterlist-mmr" class="mb-0">0</h3>
+                    <small class="text-muted">Average MMR</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">
+                        <i class="bi bi-trophy-fill"></i>
+                    </h5>
+                    <h3 id="max-masterlist-mmr" class="mb-0">0</h3>
+                    <small class="text-muted" id="top-player-name">Top Player</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        <i class="bi bi-graph-down"></i>
+                    </h5>
+                    <h3 id="min-masterlist-mmr" class="mb-0">0</h3>
+                    <small class="text-muted">Minimum MMR</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="masterlist-search" class="form-label">Search Players</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="masterlist-search" 
+                               placeholder="Search by name, Dota2 ID, or MMR...">
+                        <button class="btn btn-outline-secondary" type="button" id="clear-search-btn">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="text-muted">
+                        <small>
+                            <i class="bi bi-info-circle me-1"></i>
+                            This is the verified MMR database used to prevent fake MMR during registration
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Players Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-table me-2"></i>Masterlist Players
+                <span id="masterlist-player-count" class="badge bg-secondary ms-2">0</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="masterlist-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="5%">#</th>
+                            <th width="25%">Player Name</th>
+                            <th width="20%">Dota2 ID</th>
+                            <th width="15%">Verified MMR</th>
+                            <th width="20%">Last Updated</th>
+                            <th width="10%">Notes</th>
+                            <th width="5%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterlist-table-body">
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="bi bi-hourglass-split me-2"></i>Loading masterlist...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add/Edit Player Modal -->
+<div class="modal fade" id="masterlist-player-modal" tabindex="-1" aria-labelledby="masterlistPlayerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="masterlistPlayerModalLabel">
+                    <i class="bi bi-person-plus me-2"></i>Add Player to Masterlist
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="masterlist-player-form">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="masterlist-player-name" class="form-label">Player Name</label>
+                        <input type="text" class="form-control" id="masterlist-player-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="masterlist-player-dota2id" class="form-label">Dota2 ID</label>
+                        <input type="text" class="form-control" id="masterlist-player-dota2id" required>
+                        <div class="form-text">Unique identifier for the player</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="masterlist-player-mmr" class="form-label">Verified MMR</label>
+                        <input type="number" class="form-control" id="masterlist-player-mmr" min="0" max="20000" required>
+                        <div class="form-text">This is the verified/official MMR for this player</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="masterlist-player-notes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="masterlist-player-notes" rows="3" 
+                                  placeholder="Additional notes about this player..."></textarea>
+                    </div>
+                    <div id="masterlist-modal-alert" class="alert" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="save-masterlist-player-btn">
+                        <i class="bi bi-check-lg me-1"></i>Save Player
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal fade" id="confirm-delete-masterlist-modal" tabindex="-1" aria-labelledby="confirmDeleteMasterlistModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteMasterlistModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove <strong id="delete-player-name"></strong> from the masterlist?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This will remove their verified MMR status. Future registrations with this Dota2 ID will use submitted MMR instead of verified MMR.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-masterlist-btn">
+                    <i class="bi bi-trash me-1"></i>Delete Player
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize masterlist when this content is loaded
+    if (typeof initMasterlist === 'function') {
+        initMasterlist();
+    } else {
+        // Wait for script to load
+        setTimeout(() => {
+            if (typeof initMasterlist === 'function') {
+                initMasterlist();
+            }
+        }, 100);
+    }
+});
+</script> 
