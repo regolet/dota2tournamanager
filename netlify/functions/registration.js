@@ -41,20 +41,16 @@ export const handler = async (event, context) => {
     }
     
     if (event.httpMethod === 'GET') {
-      // Get current registration settings from database
-      const registrationSettings = await getRegistrationSettings();
+      console.log('Processing GET request for registration settings...');
       
-      console.log('Retrieved registration settings from database:', registrationSettings);
-      
-      // Return in the format expected by frontend
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache'
-        },
-        body: JSON.stringify({
+      try {
+        // Get current registration settings from database
+        console.log('Calling getRegistrationSettings...');
+        const registrationSettings = await getRegistrationSettings();
+        console.log('Retrieved registration settings from database:', registrationSettings);
+        
+        // Return in the format expected by frontend
+        const response = {
           success: true,
           registration: {
             isOpen: registrationSettings.isOpen,
@@ -68,8 +64,37 @@ export const handler = async (event, context) => {
             lastUpdated: new Date().toISOString()
           },
           message: 'Registration settings retrieved successfully'
-        })
-      };
+        };
+        
+        console.log('Returning response:', response);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify(response)
+        };
+      } catch (dbError) {
+        console.error('Database error in GET request:', dbError);
+        console.error('Error stack:', dbError.stack);
+        
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Database error: ' + dbError.message,
+            error: dbError.toString(),
+            timestamp: new Date().toISOString()
+          })
+        };
+      }
       
     } else if (event.httpMethod === 'POST' || event.httpMethod === 'PUT') {
       // Handle creating/updating registration settings
@@ -310,6 +335,7 @@ export const handler = async (event, context) => {
     
   } catch (error) {
     console.error('Registration API error:', error);
+    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers: {
