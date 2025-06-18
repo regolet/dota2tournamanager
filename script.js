@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 // Use the data directly or extract the registration object if needed
-                const registration = data.settings || data;
+                const registration = data.registration || data.settings || data;
                 updateRegistrationUI(registration);
             })
             .catch(error => {
