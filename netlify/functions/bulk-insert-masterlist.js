@@ -48,22 +48,7 @@ export const handler = async (event, context) => {
       };
     }
     
-    const { players } = requestBody;
-    
-    // Validate players array
-    if (!Array.isArray(players) || players.length === 0) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Players array is required and must not be empty'
-        })
-      };
-    }
+    // This function uses predefined players - no need to validate input players
     
     // Predefined player list to insert
     const playersToInsert = [
