@@ -2,6 +2,8 @@
 export const handler = async (event, context) => {
   try {
     console.log('Public Players API called:', event.httpMethod, event.path);
+    console.log('Raw path:', event.rawPath);
+    console.log('Query parameters:', event.queryStringParameters);
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -17,7 +19,7 @@ export const handler = async (event, context) => {
     
     // Handle different HTTP methods
     if (event.httpMethod === 'GET') {
-      // Return mock player data for team balancer
+      // Return mock player data for team balancer and player list
       const mockPlayers = [
         {
           id: "player_1",
@@ -82,8 +84,26 @@ export const handler = async (event, context) => {
           peakmmr: 4800,
           registrationDate: "2025-01-18T17:00:00.000Z",
           ipAddress: "192.168.1.8"
+        },
+        {
+          id: "player_9",
+          name: "Ivan Petrov",
+          dota2id: "555666777",
+          peakmmr: 4100,
+          registrationDate: "2025-01-18T18:00:00.000Z",
+          ipAddress: "192.168.1.9"
+        },
+        {
+          id: "player_10",
+          name: "Julia Martinez",
+          dota2id: "888999000",
+          peakmmr: 3600,
+          registrationDate: "2025-01-18T19:00:00.000Z",
+          ipAddress: "192.168.1.10"
         }
       ];
+      
+      console.log(`Returning ${mockPlayers.length} players`);
       
       return {
         statusCode: 200,
@@ -94,7 +114,8 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           players: mockPlayers,
-          count: mockPlayers.length
+          count: mockPlayers.length,
+          message: 'Players retrieved successfully'
         })
       };
       
@@ -180,7 +201,8 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        message: 'Internal server error: ' + error.message
+        message: 'Internal server error: ' + error.message,
+        error: error.toString()
       })
     };
   }
