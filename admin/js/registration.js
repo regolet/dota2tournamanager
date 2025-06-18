@@ -694,8 +694,8 @@ async function handleCloseRegistration(autoClose = false) {
             autoClose
         };
         
-        // Send request to the close API endpoint
-        const response = await fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.close}`, {
+        // Send request to the close API endpoint with authentication
+        const response = await fetchWithAuth(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.close}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -807,8 +807,8 @@ async function createRegistration() {
     }
     
     try {
-        // Send request to the API endpoint
-        const response = await fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.save}`, {
+        // Send request to the API endpoint with authentication
+        const response = await fetchWithAuth(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.save}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -872,8 +872,8 @@ async function closeRegistration() {
             closedAt: new Date().toISOString()
         };
         
-        // Send request to the close API endpoint
-        const response = await fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.close}`, {
+        // Send request to the close API endpoint with authentication
+        const response = await fetchWithAuth(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.close}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

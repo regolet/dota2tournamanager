@@ -70,8 +70,8 @@ async function initializeDatabase() {
     if (settingsCount[0].count == 0) {
       console.log('Inserting default registration settings...');
       await sql`
-        INSERT INTO registration_settings (is_open, tournament_name, tournament_date, max_players) 
-        VALUES (true, 'Dota 2 Tournament', CURRENT_DATE, 50)
+        INSERT INTO registration_settings (is_open, tournament_name, tournament_date, max_players, expiry, closed_at, auto_close) 
+        VALUES (false, 'Dota 2 Tournament', CURRENT_DATE, 50, null, null, false)
       `;
     }
 
