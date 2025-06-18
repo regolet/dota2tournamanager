@@ -724,7 +724,8 @@ async function deletePlayer(player, index) {
         const response = await fetch('../admin/save-players', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Session-Id': localStorage.getItem('adminSessionId')
             },
             body: JSON.stringify(requestData)
         });
@@ -847,7 +848,8 @@ async function saveNewPlayer() {
         const response = await fetch('../admin/save-players', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Session-Id': localStorage.getItem('adminSessionId')
             },
             body: JSON.stringify({
                 action: 'add',
