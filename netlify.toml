@@ -29,6 +29,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/masterlist/*"
+  to = "/.netlify/functions/masterlist"
+  status = 200
+
+[[redirects]]
   from = "/api/masterlist"
   to = "/.netlify/functions/masterlist"
   status = 200
