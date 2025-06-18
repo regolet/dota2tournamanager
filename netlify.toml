@@ -49,6 +49,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/registration/*"
+  to = "/.netlify/functions/registration"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/server"
   status = 200
