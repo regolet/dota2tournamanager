@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             return null;
         } catch (error) {
-            console.error('Error checking for duplicate player:', error);
+            // Silently handle duplicate check errors
             throw error;
         }
     }
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
             checkPlayerCount();
             
         } catch (error) {
-            console.error('Error saving player:', error);
+            // Show user-friendly error message without console logging
             showMessage('Registration failed: ' + error.message, 'error');
         }
     });
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             return count;
         } catch (error) {
-            console.error('Error checking player count:', error);
+            // Silently handle player count errors
             return 0;
         }
     }
@@ -188,7 +188,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateRegistrationUI(registration);
             })
             .catch(error => {
-                console.error('Error fetching registration status from API:', error);
                 // If error, default to registration not open
                 showRegistrationNotOpen();
             });
