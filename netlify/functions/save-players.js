@@ -1,4 +1,6 @@
-// Admin save-players function for player management operations
+// Admin save-players function for player management operations with persistent storage
+import { getStoredPlayers, setStoredPlayers } from './get-players.js';
+
 export const handler = async (event, context) => {
   try {
     console.log('Save Players API called:', event.httpMethod, event.path);
@@ -74,9 +76,16 @@ export const handler = async (event, context) => {
     // Handle different operations
     const { action, players, playerId, player } = requestBody;
     
+    // Get current players from storage
+    let currentPlayers = getStoredPlayers();
+    
     if (action === 'removeAll' || requestBody.removeAll === true) {
       // Remove all players operation
       console.log('Removing all players...');
+      const removedCount = currentPlayers.length;
+      
+      // Clear all players
+      setStoredPlayers([]);
       
       return {
         statusCode: 200,
@@ -87,7 +96,7 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           message: 'All players have been removed successfully',
-          removedCount: 12, // Mock count
+          removedCount: removedCount,
           timestamp: new Date().toISOString()
         })
       };
@@ -111,6 +120,33 @@ export const handler = async (event, context) => {
         };
       }
       
+      // Find and update the player
+      const playerIndex = currentPlayers.findIndex(p => p.id === player.id);
+      if (playerIndex === -1) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Player not found'
+          })
+        };
+      }
+      
+      // Update the player
+      currentPlayers[playerIndex] = {
+        ...currentPlayers[playerIndex],
+        name: player.name,
+        peakmmr: player.peakmmr || 0,
+        dota2id: player.dota2id
+      };
+      
+      // Save updated players
+      setStoredPlayers(currentPlayers);
+      
       return {
         statusCode: 200,
         headers: {
@@ -120,13 +156,7 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           message: `Player "${player.name}" has been updated successfully`,
-          updatedPlayer: {
-            id: player.id || 'player_' + Date.now(),
-            name: player.name,
-            peakmmr: player.peakmmr || 0,
-            dota2id: player.dota2id,
-            registrationDate: player.registrationDate || new Date().toISOString()
-          },
+          updatedPlayer: currentPlayers[playerIndex],
           timestamp: new Date().toISOString()
         })
       };
@@ -150,6 +180,37 @@ export const handler = async (event, context) => {
         };
       }
       
+      // Check for duplicate names
+      if (currentPlayers.some(p => p.name.toLowerCase() === player.name.toLowerCase())) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'A player with this name already exists'
+          })
+        };
+      }
+      
+      // Create new player object
+      const newPlayer = {
+        id: player.id || 'player_' + Date.now(),
+        name: player.name,
+        peakmmr: player.peakmmr || 0,
+        dota2id: player.dota2id,
+        registrationDate: player.registrationDate || new Date().toISOString(),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 200 + 50) // Mock IP
+      };
+      
+      // Add to players array
+      currentPlayers.push(newPlayer);
+      
+      // Save updated players
+      setStoredPlayers(currentPlayers);
+      
       return {
         statusCode: 200,
         headers: {
@@ -159,14 +220,7 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           message: `Player "${player.name}" has been added successfully`,
-          addedPlayer: {
-            id: player.id || 'player_' + Date.now(),
-            name: player.name,
-            peakmmr: player.peakmmr || 0,
-            dota2id: player.dota2id,
-            registrationDate: player.registrationDate || new Date().toISOString(),
-            ipAddress: '192.168.1.' + Math.floor(Math.random() * 200 + 50) // Mock IP
-          },
+          addedPlayer: newPlayer,
           timestamp: new Date().toISOString()
         })
       };
@@ -175,6 +229,28 @@ export const handler = async (event, context) => {
       // Delete specific player
       console.log('Deleting player:', playerId);
       
+      // Find player index
+      const playerIndex = currentPlayers.findIndex(p => p.id === playerId);
+      if (playerIndex === -1) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Player not found'
+          })
+        };
+      }
+      
+      // Remove player
+      const deletedPlayer = currentPlayers.splice(playerIndex, 1)[0];
+      
+      // Save updated players
+      setStoredPlayers(currentPlayers);
+      
       return {
         statusCode: 200,
         headers: {
@@ -183,15 +259,37 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          message: `Player ${playerId} has been deleted successfully`,
+          message: `Player "${deletedPlayer.name}" has been deleted successfully`,
           deletedPlayerId: playerId,
           timestamp: new Date().toISOString()
         })
       };
       
     } else if (action === 'remove' && playerId) {
-      // Remove specific player
+      // Remove specific player (alias for delete)
       console.log('Removing player:', playerId);
+      
+      // Find player index
+      const playerIndex = currentPlayers.findIndex(p => p.id === playerId);
+      if (playerIndex === -1) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Player not found'
+          })
+        };
+      }
+      
+      // Remove player
+      const removedPlayer = currentPlayers.splice(playerIndex, 1)[0];
+      
+      // Save updated players
+      setStoredPlayers(currentPlayers);
       
       return {
         statusCode: 200,
@@ -201,7 +299,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          message: `Player ${playerId} has been removed successfully`,
+          message: `Player "${removedPlayer.name}" has been removed successfully`,
           removedPlayerId: playerId,
           timestamp: new Date().toISOString()
         })
@@ -211,19 +309,24 @@ export const handler = async (event, context) => {
       // Save/update players operation
       console.log('Saving players...');
       
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'Players have been saved successfully',
-          savedCount: Array.isArray(players) ? players.length : 0,
-          timestamp: new Date().toISOString()
-        })
-      };
+      if (Array.isArray(players)) {
+        // Replace all players with provided array
+        setStoredPlayers(players);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Players have been saved successfully',
+            savedCount: players.length,
+            timestamp: new Date().toISOString()
+          })
+        };
+      }
       
     } else {
       // Default operation - treat as save
