@@ -109,8 +109,7 @@ export const handler = async (event, context) => {
         // Creating new registration - get data from settings object
         const {
           expiry,
-          playerLimit = 40,
-          enablePlayerLimit = true
+          playerLimit = 40
         } = settings || {};
         
         const tournamentName = 'Dota 2 Tournament';
@@ -140,11 +139,11 @@ export const handler = async (event, context) => {
         const result = await sql`
           INSERT INTO registration_settings (
             is_open, tournament_name, tournament_date, 
-            max_players, enable_player_limit, expiry,
+            max_players, expiry,
             created_at, updated_at
           ) VALUES (
             true, ${tournamentName}, ${tournamentDate},
-            ${playerLimit}, ${enablePlayerLimit}, ${expiry},
+            ${playerLimit}, ${expiry},
             NOW(), NOW()
           )
           RETURNING *
@@ -204,7 +203,6 @@ export const handler = async (event, context) => {
           tournamentName,
           tournamentDate,
           playerLimit,
-          enablePlayerLimit,
           expiry
         } = settings || requestBody;
         
@@ -213,7 +211,6 @@ export const handler = async (event, context) => {
           SET tournament_name = COALESCE(${tournamentName}, tournament_name),
               tournament_date = COALESCE(${tournamentDate}, tournament_date),
               max_players = COALESCE(${playerLimit}, max_players),
-              enable_player_limit = COALESCE(${enablePlayerLimit}, enable_player_limit),
               expiry = COALESCE(${expiry}, expiry),
               updated_at = NOW()
           WHERE is_open = true
