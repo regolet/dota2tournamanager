@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to check if player already exists
     async function checkDuplicatePlayer(name, dota2id) {
         try {
-            const response = await fetch('./api/players');
+            const response = await fetch('/.netlify/functions/get-players');
             if (!response.ok) {
                 throw new Error('Failed to fetch player data');
             }
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             // Save player to server using API endpoint
-            const response = await fetch('/api/add-player', {
+            const response = await fetch('/.netlify/functions/add-player', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to check current player count
     async function checkPlayerCount() {
         try {
-            const response = await fetch('/api/players');
+            const response = await fetch('/.netlify/functions/get-players');
             if (!response.ok) {
                 throw new Error('Failed to fetch player count');
             }
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check registration status from server
     function checkRegistrationStatus() {
         // Load registration status from Neon DB API
-        fetch('/api/registration')
+        fetch('/.netlify/functions/registration')
             .then(response => response.json())
             .then(data => {
                 // Use the data directly or extract the registration object if needed
