@@ -44,23 +44,23 @@ export const handler = async (event, context) => {
     
     if (httpMethod === 'GET') {
       try {
-        // Get current registration settings from database
+        // Get current registration settings from database using the helper function
         const registrationSettings = await getRegistrationSettings();
         
-        if (!registrationSettings) {
-          return {
-            statusCode: 404,
-            headers: corsHeaders,
-            body: JSON.stringify({
-              success: false,
-              message: 'No registration settings found'
-            })
-          };
-        }
-
         const response = {
           success: true,
-          registration: registrationSettings,
+          registration: registrationSettings || {
+            isOpen: false,
+            tournament: {
+              name: "Dota 2 Tournament",
+              date: new Date().toISOString().split('T')[0],
+              maxPlayers: 40
+            },
+            expiry: null,
+            createdAt: null,
+            closedAt: null,
+            autoClose: false
+          },
           message: 'Registration settings retrieved successfully'
         };
         
@@ -76,12 +76,28 @@ export const handler = async (event, context) => {
         console.error('Database error in GET request:', dbError);
         console.error('Error stack:', dbError.stack);
         
+        // Return a fallback response instead of error
         return {
-          statusCode: 500,
-          headers: corsHeaders,
+          statusCode: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify({
-            success: false,
-            message: 'Database error retrieving registration settings'
+            success: true,
+            registration: {
+              isOpen: false,
+              tournament: {
+                name: "Dota 2 Tournament",
+                date: new Date().toISOString().split('T')[0],
+                maxPlayers: 40
+              },
+              expiry: null,
+              createdAt: null,
+              closedAt: null,
+              autoClose: false
+            },
+            message: 'Default registration settings (database unavailable)'
           })
         };
       }
@@ -92,6 +108,7 @@ export const handler = async (event, context) => {
       try {
         requestBody = JSON.parse(body || '{}');
       } catch (parseError) {
+        console.error('JSON parse error:', parseError);
         return {
           statusCode: 400,
           headers: corsHeaders,
@@ -106,140 +123,182 @@ export const handler = async (event, context) => {
       const { action, settings } = requestBody;
 
       if (action === 'create') {
-        // Creating new registration - get data from settings object
-        const {
-          expiry,
-          playerLimit = 40
-        } = settings || {};
-        
-        const tournamentName = 'Dota 2 Tournament';
-        const tournamentDate = null; // Can be added later if needed
-        
-        if (!expiry) {
+        try {
+          // Creating new registration - get data from settings object
+          const {
+            expiry,
+            playerLimit = 40
+          } = settings || {};
+          
+          const tournamentName = 'Dota 2 Tournament';
+          const tournamentDate = null; // Can be added later if needed
+          
+          if (!expiry) {
+            return {
+              statusCode: 400,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                success: false,
+                message: 'Expiry date and time are required'
+              })
+            };
+          }
+          
+          // Close any existing registration first
+          await sql`
+            UPDATE registration_settings 
+            SET is_open = false, 
+                closed_at = NOW(),
+                updated_at = NOW()
+            WHERE is_open = true
+          `;
+          
+          // Create new registration
+          const result = await sql`
+            INSERT INTO registration_settings (
+              is_open, tournament_name, tournament_date, 
+              max_players, expiry,
+              created_at, updated_at
+            ) VALUES (
+              true, ${tournamentName}, ${tournamentDate},
+              ${playerLimit}, ${expiry},
+              NOW(), NOW()
+            )
+            RETURNING *
+          `;
+          
           return {
-            statusCode: 400,
+            statusCode: 200,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              success: true,
+              message: 'Registration created successfully',
+              registration: result[0]
+            })
+          };
+          
+        } catch (createError) {
+          console.error('Error creating registration:', createError);
+          console.error('Error stack:', createError.stack);
+          return {
+            statusCode: 500,
             headers: corsHeaders,
             body: JSON.stringify({
               success: false,
-              message: 'Expiry date and time are required'
+              message: 'Failed to create registration: ' + createError.message
             })
           };
         }
-        
-        // Close any existing registration first
-        await sql`
-          UPDATE registration_settings 
-          SET is_open = false, 
-              closed_at = NOW(),
-              updated_at = NOW()
-          WHERE is_open = true
-        `;
-        
-        // Create new registration
-        const result = await sql`
-          INSERT INTO registration_settings (
-            is_open, tournament_name, tournament_date, 
-            max_players, expiry,
-            created_at, updated_at
-          ) VALUES (
-            true, ${tournamentName}, ${tournamentDate},
-            ${playerLimit}, ${expiry},
-            NOW(), NOW()
-          )
-          RETURNING *
-        `;
-        
-        return {
-          statusCode: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            success: true,
-            message: 'Registration created successfully',
-            registration: result[0]
-          })
-        };
         
       } else if (action === 'close') {
-        // Closing registration
-        const result = await sql`
-          UPDATE registration_settings 
-          SET is_open = false, 
-              closed_at = NOW(),
-              updated_at = NOW()
-          WHERE is_open = true
-          RETURNING *
-        `;
-        
-        if (result.length === 0) {
+        try {
+          // Closing registration
+          const result = await sql`
+            UPDATE registration_settings 
+            SET is_open = false, 
+                closed_at = NOW(),
+                updated_at = NOW()
+            WHERE is_open = true
+            RETURNING *
+          `;
+          
+          if (result.length === 0) {
+            return {
+              statusCode: 404,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                success: false,
+                message: 'No open registration found to close'
+              })
+            };
+          }
+          
           return {
-            statusCode: 404,
+            statusCode: 200,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              success: true,
+              message: 'Registration closed successfully',
+              registration: result[0]
+            })
+          };
+          
+        } catch (closeError) {
+          console.error('Error closing registration:', closeError);
+          console.error('Error stack:', closeError.stack);
+          return {
+            statusCode: 500,
             headers: corsHeaders,
             body: JSON.stringify({
               success: false,
-              message: 'No open registration found to close'
+              message: 'Failed to close registration: ' + closeError.message
             })
           };
         }
-        
-        return {
-          statusCode: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            success: true,
-            message: 'Registration closed successfully',
-            registration: result[0]
-          })
-        };
         
       } else {
-        // Generic update - get data from settings object if available
-        const {
-          tournamentName,
-          tournamentDate,
-          playerLimit,
-          expiry
-        } = settings || requestBody;
-        
-        const result = await sql`
-          UPDATE registration_settings 
-          SET tournament_name = COALESCE(${tournamentName}, tournament_name),
-              tournament_date = COALESCE(${tournamentDate}, tournament_date),
-              max_players = COALESCE(${playerLimit}, max_players),
-              expiry = COALESCE(${expiry}, expiry),
-              updated_at = NOW()
-          WHERE is_open = true
-          RETURNING *
-        `;
-        
-        if (result.length === 0) {
+        try {
+          // Generic update - get data from settings object if available
+          const {
+            tournamentName,
+            tournamentDate,
+            playerLimit,
+            expiry
+          } = settings || requestBody;
+          
+          const result = await sql`
+            UPDATE registration_settings 
+            SET tournament_name = COALESCE(${tournamentName}, tournament_name),
+                tournament_date = COALESCE(${tournamentDate}, tournament_date),
+                max_players = COALESCE(${playerLimit}, max_players),
+                expiry = COALESCE(${expiry}, expiry),
+                updated_at = NOW()
+            WHERE is_open = true
+            RETURNING *
+          `;
+          
+          if (result.length === 0) {
+            return {
+              statusCode: 404,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                success: false,
+                message: 'No open registration found to update'
+              })
+            };
+          }
+          
           return {
-            statusCode: 404,
+            statusCode: 200,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              success: true,
+              message: 'Registration updated successfully',
+              registration: result[0]
+            })
+          };
+          
+        } catch (updateError) {
+          console.error('Error updating registration:', updateError);
+          console.error('Error stack:', updateError.stack);
+          return {
+            statusCode: 500,
             headers: corsHeaders,
             body: JSON.stringify({
               success: false,
-              message: 'No open registration found to update'
+              message: 'Failed to update registration: ' + updateError.message
             })
           };
         }
-        
-        return {
-          statusCode: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            success: true,
-            message: 'Registration updated successfully',
-            registration: result[0]
-          })
-        };
       }
       
     } else {
@@ -256,6 +315,7 @@ export const handler = async (event, context) => {
   } catch (error) {
     console.error('Registration API error:', error);
     console.error('Error stack:', error.stack);
+    console.error('Event data:', JSON.stringify(event, null, 2));
     return {
       statusCode: 500,
       headers: {
@@ -266,7 +326,7 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        message: 'Internal server error'
+        message: 'Internal server error: ' + error.message
       })
     };
   }
