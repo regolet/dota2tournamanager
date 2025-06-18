@@ -15,13 +15,13 @@ export const handler = async (event, context) => {
   }
 
   try {
-    console.log('Check session request received');
+    
     
     // Get session ID from headers
     const sessionId = event.headers['x-session-id'];
     
     if (!sessionId) {
-      console.log('No session ID provided');
+      
       return {
         statusCode: 401,
         headers: {
@@ -35,13 +35,13 @@ export const handler = async (event, context) => {
       };
     }
 
-    console.log('Validating session:', sessionId);
+    
     
     // Validate session using database
     const isValid = await validateSession(sessionId);
     
     if (isValid) {
-      console.log('Session is valid');
+      
       return {
         statusCode: 200,
         headers: {
@@ -54,7 +54,7 @@ export const handler = async (event, context) => {
         })
       };
     } else {
-      console.log('Session is invalid or expired');
+      
       return {
         statusCode: 401,
         headers: {

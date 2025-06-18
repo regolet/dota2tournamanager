@@ -244,7 +244,7 @@ async function loadRandomPicker() {
  * Loads and displays the masterlist section
  */
 async function loadMasterlist() {
-    console.log('=== loadMasterlist() called at:', Date.now());
+    
     
     // Loading Masterlist
     
@@ -474,62 +474,45 @@ function initNavigation() {
     const registrationTab = document.getElementById('registration-tab');
     const masterlistTab = document.getElementById('masterlist-tab');
     
-    console.log('Setting up navigation tabs:', {
-        teamBalancerTab: !!teamBalancerTab,
-        randomPickerTab: !!randomPickerTab,
-        playerListTab: !!playerListTab,
-        registrationTab: !!registrationTab,
-        masterlistTab: !!masterlistTab
-    });
+    
     
     if (teamBalancerTab) {
         teamBalancerTab.addEventListener('click', function(e) {
-            console.log('Team Balancer tab clicked');
+
             e.preventDefault();
             loadTeamBalancer();
         });
-    } else {
-        console.warn('Team Balancer tab not found');
-    }
+            }
     
     if (randomPickerTab) {
         randomPickerTab.addEventListener('click', function(e) {
-            console.log('Random Picker tab clicked');
+
             e.preventDefault();
             loadRandomPicker();
         });
-    } else {
-        console.warn('Random Picker tab not found');
-    }
+            }
     
     if (playerListTab) {
         playerListTab.addEventListener('click', function(e) {
-            console.log('Player List tab clicked');
+
             e.preventDefault();
             loadPlayerList();
         });
-    } else {
-        console.warn('Player List tab not found');
-    }
+            }
     
     if (registrationTab) {
         registrationTab.addEventListener('click', function(e) {
-            console.log('Registration tab clicked');
+
             e.preventDefault();
             loadRegistration();
         });
-    } else {
-        console.warn('Registration tab not found');
-    }
+            }
     
     if (masterlistTab) {
         masterlistTab.addEventListener('click', async function(e) {
-            console.log('Masterlist tab clicked! Time:', Date.now());
             e.preventDefault();
             try {
-                console.log('About to call loadMasterlist...');
                 await loadMasterlist();
-                console.log('loadMasterlist completed successfully');
             } catch (error) {
                 console.error('Error calling loadMasterlist:', error);
             }
@@ -564,32 +547,22 @@ function initNavigation() {
  * Enhanced content loader for admin tabs with JavaScript module loading
  */
 async function loadTabContent(templatePath, containerId, jsModulePath = null) {
-    console.log('Loading content:', { templatePath, containerId, jsModulePath });
-    
     try {
-        console.log('Fetching template:', templatePath);
         const response = await fetch(templatePath);
-        console.log('Fetch response:', { status: response.status, ok: response.ok });
         
         if (!response.ok) {
             throw new Error(`Failed to load ${templatePath}: ${response.status} ${response.statusText}`);
         }
         
         const content = await response.text();
-        console.log('Content loaded, length:', content.length);
-        
         const container = document.getElementById(containerId);
-        console.log('Container found:', !!container);
         
         if (container) {
             container.innerHTML = content;
-            console.log('Content inserted into container');
             
             // Load corresponding JavaScript module if specified
             if (jsModulePath) {
-                console.log('Loading JavaScript module:', jsModulePath);
                 await loadJavaScriptModule(jsModulePath);
-                console.log('JavaScript module loaded successfully');
             }
             
             return true;
@@ -614,15 +587,11 @@ async function loadTabContent(templatePath, containerId, jsModulePath = null) {
  * Dynamic JavaScript module loader with cleanup and duplicate prevention
  */
 async function loadJavaScriptModule(jsPath) {
-    console.log('Starting JavaScript module load:', jsPath);
-    
     try {
         // Remove any existing script tags for this module (force reload)
         const existingScripts = document.querySelectorAll(`script[src*="${jsPath.split('/').pop()}"]`);
-        console.log('Found existing scripts:', existingScripts.length);
         existingScripts.forEach(script => {
             script.remove();
-            console.log('Removed existing script:', script.src);
         });
         
         // Create and load new script with cache busting
@@ -631,12 +600,9 @@ async function loadJavaScriptModule(jsPath) {
         script.type = 'text/javascript';
         script.setAttribute('data-module', jsPath);
         
-        console.log('Loading script:', script.src);
-        
         // Wait for script to load
         await new Promise((resolve, reject) => {
             script.onload = () => {
-                console.log('Script loaded successfully:', script.src);
                 resolve();
             };
             script.onerror = (error) => {
@@ -652,7 +618,6 @@ async function loadJavaScriptModule(jsPath) {
         
         // Call the appropriate initialization function based on the module
         const moduleFileName = jsPath.split('/').pop().replace('.js', '');
-        console.log('Initializing module:', moduleFileName);
         await initializeModule(moduleFileName);
         
     } catch (error) {

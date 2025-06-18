@@ -3,7 +3,7 @@ import { getPlayers, savePlayers, addPlayer, updatePlayer, deletePlayer, validat
 
 export const handler = async (event, context) => {
   try {
-    console.log('Players API called:', event.httpMethod, event.path);
+    
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {

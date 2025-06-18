@@ -3,8 +3,8 @@ import { getMasterlist, addMasterlistPlayer, updateMasterlistPlayer, deleteMaste
 
 export const handler = async (event, context) => {
   try {
-    console.log('Masterlist API called:', event.httpMethod, event.path);
-    console.log('Headers:', event.headers);
+    
+    
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {

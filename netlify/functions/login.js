@@ -29,15 +29,15 @@ export const handler = async (event, context) => {
   }
 
   try {
-    console.log('Login request received');
+    
     
     const { username, password } = JSON.parse(event.body);
     
-    console.log('Login attempt for username:', username);
+    
     
     // Simple authentication (in production, use proper password hashing)
     if (username === 'admin' && password === 'admin123') {
-      console.log('Login successful');
+      
       
       // Generate session ID
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -63,7 +63,7 @@ export const handler = async (event, context) => {
         })
       };
     } else {
-      console.log('Login failed - invalid credentials');
+      
       return {
         statusCode: 401,
         headers: {

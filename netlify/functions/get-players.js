@@ -3,7 +3,7 @@ import { playerDb } from './database.js';
 
 export const handler = async (event, context) => {
   try {
-    console.log('Get Players function called:', event.httpMethod, event.path);
+    
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -35,7 +35,7 @@ export const handler = async (event, context) => {
     // Get players from database
     const players = await playerDb.getAllPlayers();
     
-    console.log(`Returning ${players.length} players from database`);
+    
     
     return {
       statusCode: 200,

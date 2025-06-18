@@ -3,9 +3,9 @@ import { playerDb } from './database.js';
 
 export const handler = async (event, context) => {
   try {
-    console.log('Save Players API called:', event.httpMethod, event.path);
-    console.log('Request body:', event.body);
-    console.log('Headers:', event.headers);
+    
+    
+    
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -71,14 +71,14 @@ export const handler = async (event, context) => {
       };
     }
     
-    console.log('Parsed request body:', requestBody);
+    
     
     // Handle different operations
     const { action, players, playerId, player } = requestBody;
     
     if (action === 'removeAll' || requestBody.removeAll === true) {
       // Remove all players operation
-      console.log('Removing all players from database...');
+      
       
       const result = await playerDb.deleteAllPlayers();
       if (!result.success) {
@@ -111,7 +111,7 @@ export const handler = async (event, context) => {
       
     } else if (action === 'edit' && player) {
       // Edit/update specific player
-      console.log('Editing player in database:', player);
+      
       
       // Validate player data
       if (!player.name || !player.dota2id) {
@@ -164,7 +164,7 @@ export const handler = async (event, context) => {
       
     } else if (action === 'add' && player) {
       // Add new player
-      console.log('Adding new player to database:', player);
+      
       
       // Validate player data
       if (!player.name || !player.dota2id) {
@@ -219,7 +219,7 @@ export const handler = async (event, context) => {
       
     } else if (action === 'delete' && playerId) {
       // Delete specific player
-      console.log('Deleting player from database:', playerId);
+      
       
       const result = await playerDb.deletePlayer(playerId);
       
@@ -253,7 +253,7 @@ export const handler = async (event, context) => {
       
     } else if (action === 'remove' && playerId) {
       // Remove specific player (alias for delete)
-      console.log('Removing player from database:', playerId);
+      
       
       const result = await playerDb.deletePlayer(playerId);
       
@@ -287,7 +287,7 @@ export const handler = async (event, context) => {
       
     } else if (action === 'save' || players) {
       // Save/update players operation
-      console.log('Bulk save players to database...');
+      
       
       if (Array.isArray(players)) {
         // This would require a bulk operation - for now return success
@@ -310,7 +310,7 @@ export const handler = async (event, context) => {
       
     } else {
       // Default operation - treat as save
-      console.log('Default save operation...');
+      
       
       return {
         statusCode: 200,

@@ -3,7 +3,7 @@ import { playerDb } from './database.js';
 
 export const handler = async (event, context) => {
   try {
-    console.log('Add Player function called:', event.httpMethod, event.path);
+    
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {

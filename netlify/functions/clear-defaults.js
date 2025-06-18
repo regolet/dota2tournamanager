@@ -5,7 +5,7 @@ const sql = neon(process.env.DATABASE_URL);
 
 export const handler = async (event, context) => {
   try {
-    console.log('Clear defaults API called:', event.httpMethod);
+    
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -54,7 +54,7 @@ export const handler = async (event, context) => {
       };
     }
     
-    console.log('Clearing default players from database...');
+    
     
     // Remove the specific default players by their known Dota2 IDs
     const defaultDota2Ids = [
@@ -80,7 +80,7 @@ export const handler = async (event, context) => {
       DELETE FROM players WHERE id = 'player_1750218791586_198'
     `;
     
-    console.log(`Removed ${deletedCount} default masterlist players and ${playerResult.count || 0} sample players`);
+    
     
     return {
       statusCode: 200,
