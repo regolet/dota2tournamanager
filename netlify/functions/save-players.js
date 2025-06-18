@@ -72,7 +72,7 @@ export const handler = async (event, context) => {
     console.log('Parsed request body:', requestBody);
     
     // Handle different operations
-    const { action, players, playerId } = requestBody;
+    const { action, players, playerId, player } = requestBody;
     
     if (action === 'removeAll' || requestBody.removeAll === true) {
       // Remove all players operation
@@ -88,6 +88,103 @@ export const handler = async (event, context) => {
           success: true,
           message: 'All players have been removed successfully',
           removedCount: 12, // Mock count
+          timestamp: new Date().toISOString()
+        })
+      };
+      
+    } else if (action === 'edit' && player) {
+      // Edit/update specific player
+      console.log('Editing player:', player);
+      
+      // Validate player data
+      if (!player.name || !player.dota2id) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Player name and Dota 2 ID are required'
+          })
+        };
+      }
+      
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          message: `Player "${player.name}" has been updated successfully`,
+          updatedPlayer: {
+            id: player.id || 'player_' + Date.now(),
+            name: player.name,
+            peakmmr: player.peakmmr || 0,
+            dota2id: player.dota2id,
+            registrationDate: player.registrationDate || new Date().toISOString()
+          },
+          timestamp: new Date().toISOString()
+        })
+      };
+      
+    } else if (action === 'add' && player) {
+      // Add new player
+      console.log('Adding new player:', player);
+      
+      // Validate player data
+      if (!player.name || !player.dota2id) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Player name and Dota 2 ID are required'
+          })
+        };
+      }
+      
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          message: `Player "${player.name}" has been added successfully`,
+          addedPlayer: {
+            id: player.id || 'player_' + Date.now(),
+            name: player.name,
+            peakmmr: player.peakmmr || 0,
+            dota2id: player.dota2id,
+            registrationDate: player.registrationDate || new Date().toISOString(),
+            ipAddress: '192.168.1.' + Math.floor(Math.random() * 200 + 50) // Mock IP
+          },
+          timestamp: new Date().toISOString()
+        })
+      };
+      
+    } else if (action === 'delete' && playerId) {
+      // Delete specific player
+      console.log('Deleting player:', playerId);
+      
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          message: `Player ${playerId} has been deleted successfully`,
+          deletedPlayerId: playerId,
           timestamp: new Date().toISOString()
         })
       };
