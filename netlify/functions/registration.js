@@ -1,5 +1,9 @@
 // Registration API function for admin panel using Neon DB
 import { getRegistrationSettings, saveRegistrationSettings } from './database.js';
+import { neon } from '@netlify/neon';
+
+// Initialize Neon database connection
+const sql = neon();
 
 export const handler = async (event, context) => {
   try {
@@ -99,17 +103,18 @@ export const handler = async (event, context) => {
       }
       
       // Handle different action types
-      const { action } = requestBody;
+      const { action, settings } = requestBody;
 
       if (action === 'create') {
-        // Creating new registration
+        // Creating new registration - get data from settings object
         const {
-          tournamentName = 'Dota 2 Tournament',
-          tournamentDate,
-          maxPlayers = 40,
-          enablePlayerLimit = true,
-          expiry
-        } = requestBody;
+          expiry,
+          playerLimit = 40,
+          enablePlayerLimit = true
+        } = settings || {};
+        
+        const tournamentName = 'Dota 2 Tournament';
+        const tournamentDate = null; // Can be added later if needed
         
         if (!expiry) {
           return {
@@ -127,7 +132,7 @@ export const handler = async (event, context) => {
           UPDATE registration_settings 
           SET is_open = false, 
               closed_at = NOW(),
-              last_updated = NOW()
+              updated_at = NOW()
           WHERE is_open = true
         `;
         
@@ -136,10 +141,10 @@ export const handler = async (event, context) => {
           INSERT INTO registration_settings (
             is_open, tournament_name, tournament_date, 
             max_players, enable_player_limit, expiry,
-            created_at, last_updated
+            created_at, updated_at
           ) VALUES (
             true, ${tournamentName}, ${tournamentDate},
-            ${maxPlayers}, ${enablePlayerLimit}, ${expiry},
+            ${playerLimit}, ${enablePlayerLimit}, ${expiry},
             NOW(), NOW()
           )
           RETURNING *
@@ -164,7 +169,7 @@ export const handler = async (event, context) => {
           UPDATE registration_settings 
           SET is_open = false, 
               closed_at = NOW(),
-              last_updated = NOW()
+              updated_at = NOW()
           WHERE is_open = true
           RETURNING *
         `;
@@ -194,23 +199,23 @@ export const handler = async (event, context) => {
         };
         
       } else {
-        // Generic update
+        // Generic update - get data from settings object if available
         const {
           tournamentName,
           tournamentDate,
-          maxPlayers,
+          playerLimit,
           enablePlayerLimit,
           expiry
-        } = requestBody;
+        } = settings || requestBody;
         
         const result = await sql`
           UPDATE registration_settings 
           SET tournament_name = COALESCE(${tournamentName}, tournament_name),
               tournament_date = COALESCE(${tournamentDate}, tournament_date),
-              max_players = COALESCE(${maxPlayers}, max_players),
+              max_players = COALESCE(${playerLimit}, max_players),
               enable_player_limit = COALESCE(${enablePlayerLimit}, enable_player_limit),
               expiry = COALESCE(${expiry}, expiry),
-              last_updated = NOW()
+              updated_at = NOW()
           WHERE is_open = true
           RETURNING *
         `;
@@ -256,7 +261,12 @@ export const handler = async (event, context) => {
     console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
-      headers: corsHeaders,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-session-id',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         success: false,
         message: 'Internal server error'
