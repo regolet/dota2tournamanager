@@ -34,6 +34,11 @@
   status = 200
 
 [[redirects]]
+  from = "/admin/save-players"
+  to = "/.netlify/functions/save-players"
+  status = 200
+
+[[redirects]]
   from = "/admin/api/*"
   to = "/.netlify/functions/server"
   status = 200
