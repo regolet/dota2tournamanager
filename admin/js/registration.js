@@ -8,10 +8,10 @@ if (typeof API_CONFIG === 'undefined') {
     var API_CONFIG = {
         baseUrl: window.location.origin, // Use the current origin (e.g., http://localhost:3000)
         endpoints: {
-            save: '/api/registration',
-            load: '/api/registration/status',
-            close: '/api/registration/close',
-            playerCount: '/api/get-players'
+            save: '/.netlify/functions/registration',
+            load: '/.netlify/functions/registration',
+            close: '/.netlify/functions/registration',
+            playerCount: '/.netlify/functions/get-players'
         }
     };
 }
@@ -20,10 +20,10 @@ if (typeof API_CONFIG === 'undefined') {
 window.API_CONFIG = window.API_CONFIG || {
     baseUrl: window.location.origin, // Use the current origin (e.g., http://localhost:3000)
     endpoints: {
-        save: '/api/registration',
-        load: '/api/registration/status',
-        close: '/api/registration/close',
-        playerCount: '/api/get-players'
+        save: '/.netlify/functions/registration',
+        load: '/.netlify/functions/registration',
+        close: '/.netlify/functions/registration',
+        playerCount: '/.netlify/functions/get-players'
     }
 };
 

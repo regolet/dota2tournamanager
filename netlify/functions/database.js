@@ -46,6 +46,9 @@ async function initializeDatabase() {
         tournament_name VARCHAR(255) DEFAULT 'Dota 2 Tournament',
         tournament_date DATE DEFAULT CURRENT_DATE,
         max_players INTEGER DEFAULT 50,
+        expiry TIMESTAMP,
+        closed_at TIMESTAMP,
+        auto_close BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
@@ -361,7 +364,7 @@ export async function getRegistrationSettings() {
     console.log('getRegistrationSettings called');
     
     const settings = await sql`
-      SELECT is_open, tournament_name, tournament_date, max_players
+      SELECT is_open, tournament_name, tournament_date, max_players, expiry, closed_at, auto_close, created_at, updated_at
       FROM registration_settings 
       ORDER BY id DESC 
       LIMIT 1
@@ -369,12 +372,16 @@ export async function getRegistrationSettings() {
     
     if (settings.length === 0) {
       return {
-        isOpen: true,
+        isOpen: false,
         tournament: {
           name: "Dota 2 Tournament",
           date: new Date().toISOString().split('T')[0],
           maxPlayers: 50
-        }
+        },
+        expiry: null,
+        createdAt: null,
+        closedAt: null,
+        autoClose: false
       };
     }
     
@@ -385,7 +392,11 @@ export async function getRegistrationSettings() {
         name: setting.tournament_name,
         date: setting.tournament_date,
         maxPlayers: setting.max_players
-      }
+      },
+      expiry: setting.expiry ? setting.expiry.toISOString() : null,
+      createdAt: setting.created_at ? setting.created_at.toISOString() : null,
+      closedAt: setting.closed_at ? setting.closed_at.toISOString() : null,
+      autoClose: setting.auto_close || false
     };
   } catch (error) {
     console.error('Error getting registration settings:', error);
@@ -402,8 +413,16 @@ export async function saveRegistrationSettings(settings) {
     await sql`DELETE FROM registration_settings`;
     
     await sql`
-      INSERT INTO registration_settings (is_open, tournament_name, tournament_date, max_players)
-      VALUES (${settings.isOpen}, ${settings.tournament.name}, ${settings.tournament.date}, ${settings.tournament.maxPlayers})
+      INSERT INTO registration_settings (is_open, tournament_name, tournament_date, max_players, expiry, closed_at, auto_close)
+      VALUES (
+        ${settings.isOpen}, 
+        ${settings.tournament.name}, 
+        ${settings.tournament.date}, 
+        ${settings.tournament.maxPlayers},
+        ${settings.expiry || null},
+        ${settings.closedAt || null},
+        ${settings.autoClose || false}
+      )
     `;
     
     console.log('Registration settings saved to database');
