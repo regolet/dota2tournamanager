@@ -1157,7 +1157,8 @@ async function removeAllPlayers() {
         const response = await fetch('../admin/save-players', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Session-Id': localStorage.getItem('adminSessionId')
             },
             body: JSON.stringify({
                 action: 'removeAll'
