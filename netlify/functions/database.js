@@ -1,231 +1,525 @@
-// Database module for serverless functions
-// Since serverless functions can't persist to file system, we use in-memory storage
+// Database module for Netlify Functions using Neon DB (PostgreSQL)
+import { neon } from '@netlify/neon';
 
-let playersCache = [
-  {
-    "id": "player_1750218791586_198",
-    "name": "asdasd",
-    "dota2id": "123456789",
-    "peakmmr": 3000,
-    "ipAddress": "::1",
-    "registrationDate": "2025-06-18T03:53:11.586Z"
+// Initialize Neon database connection
+const sql = neon();
+
+// Database schema initialization
+async function initializeDatabase() {
+  try {
+    console.log('Initializing database schema...');
+    
+    // Create players table
+    await sql`
+      CREATE TABLE IF NOT EXISTS players (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        dota2id VARCHAR(255) UNIQUE NOT NULL,
+        peakmmr INTEGER DEFAULT 0,
+        ip_address INET,
+        registration_date TIMESTAMP DEFAULT NOW(),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Create masterlist table
+    await sql`
+      CREATE TABLE IF NOT EXISTS masterlist (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        dota2id VARCHAR(255) UNIQUE NOT NULL,
+        mmr INTEGER DEFAULT 0,
+        team VARCHAR(255) DEFAULT '',
+        achievements TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Create registration_settings table
+    await sql`
+      CREATE TABLE IF NOT EXISTS registration_settings (
+        id SERIAL PRIMARY KEY,
+        is_open BOOLEAN DEFAULT true,
+        tournament_name VARCHAR(255) DEFAULT 'Dota 2 Tournament',
+        tournament_date DATE DEFAULT CURRENT_DATE,
+        max_players INTEGER DEFAULT 50,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Create admin_sessions table
+    await sql`
+      CREATE TABLE IF NOT EXISTS admin_sessions (
+        id VARCHAR(255) PRIMARY KEY,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Insert default masterlist data if table is empty
+    const masterlistCount = await sql`SELECT COUNT(*) as count FROM masterlist`;
+    if (masterlistCount[0].count == 0) {
+      console.log('Inserting default masterlist data...');
+      await sql`
+        INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes) VALUES
+        ('Miracle-', '105248644', 8500, 'OG', 'Multiple Major Winner, Former TI Winner', 'Exceptional carry player known for mechanical skill'),
+        ('Arteezy', '86745912', 8200, 'Team Secret', 'Multiple Major Winner, Top NA Player', 'Iconic carry player with exceptional farming efficiency'),
+        ('SumaiL', '111620041', 8000, 'OG', 'TI5 Winner, Youngest TI Winner', 'Aggressive mid laner with incredible game sense'),
+        ('Dendi', '70388657', 7800, 'Na''Vi', 'TI1 Winner, Legendary Mid Player', 'Icon of Dota 2, known for Pudge plays'),
+        ('Puppey', '87276347', 7500, 'Team Secret', 'TI1 Winner, Legendary Captain', 'Most experienced captain in professional Dota'),
+        ('N0tail', '19672354', 7300, 'OG', 'Back-to-back TI Winner (TI8, TI9)', 'Inspirational leader and versatile player')
+      `;
+    }
+
+    // Insert default registration settings if table is empty
+    const settingsCount = await sql`SELECT COUNT(*) as count FROM registration_settings`;
+    if (settingsCount[0].count == 0) {
+      console.log('Inserting default registration settings...');
+      await sql`
+        INSERT INTO registration_settings (is_open, tournament_name, tournament_date, max_players) 
+        VALUES (true, 'Dota 2 Tournament', CURRENT_DATE, 50)
+      `;
+    }
+
+    // Insert sample player data if table is empty
+    const playersCount = await sql`SELECT COUNT(*) as count FROM players`;
+    if (playersCount[0].count == 0) {
+      console.log('Inserting sample player data...');
+      await sql`
+        INSERT INTO players (id, name, dota2id, peakmmr, ip_address) 
+        VALUES ('player_1750218791586_198', 'asdasd', '123456789', 3000, '::1')
+      `;
+    }
+
+    console.log('Database schema initialized successfully');
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    throw error;
   }
-];
+}
 
-let masterlistCache = [
-  {
-    "id": 1,
-    "name": "Miracle-",
-    "dota2id": "105248644",
-    "mmr": 8500,
-    "team": "OG",
-    "achievements": "Multiple Major Winner, Former TI Winner",
-    "notes": "Exceptional carry player known for mechanical skill"
-  },
-  {
-    "id": 2,
-    "name": "Arteezy",
-    "dota2id": "86745912",
-    "mmr": 8200,
-    "team": "Team Secret",
-    "achievements": "Multiple Major Winner, Top NA Player",
-    "notes": "Iconic carry player with exceptional farming efficiency"
-  },
-  {
-    "id": 3,
-    "name": "SumaiL",
-    "dota2id": "111620041",
-    "mmr": 8000,
-    "team": "OG",
-    "achievements": "TI5 Winner, Youngest TI Winner",
-    "notes": "Aggressive mid laner with incredible game sense"
-  },
-  {
-    "id": 4,
-    "name": "Dendi",
-    "dota2id": "70388657",
-    "mmr": 7800,
-    "team": "Na'Vi",
-    "achievements": "TI1 Winner, Legendary Mid Player",
-    "notes": "Icon of Dota 2, known for Pudge plays"
-  },
-  {
-    "id": 5,
-    "name": "Puppey",
-    "dota2id": "87276347",
-    "mmr": 7500,
-    "team": "Team Secret",
-    "achievements": "TI1 Winner, Legendary Captain",
-    "notes": "Most experienced captain in professional Dota"
-  },
-  {
-    "id": 6,
-    "name": "N0tail",
-    "dota2id": "19672354",
-    "mmr": 7300,
-    "team": "OG",
-    "achievements": "Back-to-back TI Winner (TI8, TI9)",
-    "notes": "Inspirational leader and versatile player"
-  }
-];
-
-// Registration settings cache
-let registrationSettingsCache = {
-  isOpen: true,
-  tournament: {
-    name: "Dota 2 Tournament",
-    date: new Date().toISOString().split('T')[0],
-    maxPlayers: 50
-  }
-};
-
-// In-memory cache will persist during the lifetime of the serverless function
-// Note: This resets on each cold start, but provides session persistence
-
+// Players operations
 export async function getPlayers() {
-  console.log('getPlayers called, returning cached players:', playersCache.length);
-  return [...playersCache]; // Return a copy to prevent direct mutations
+  try {
+    await initializeDatabase();
+    console.log('getPlayers called - querying database');
+    
+    const players = await sql`
+      SELECT id, name, dota2id, peakmmr, ip_address, registration_date 
+      FROM players 
+      ORDER BY registration_date DESC
+    `;
+    
+    console.log(`Retrieved ${players.length} players from database`);
+    return players;
+  } catch (error) {
+    console.error('Error getting players:', error);
+    throw error;
+  }
 }
 
 export async function savePlayers(players) {
-  console.log('savePlayers called with:', players.length, 'players');
-  if (!Array.isArray(players)) {
-    throw new Error('Players must be an array');
-  }
-  
-  // Validate player objects
-  players.forEach((player, index) => {
-    if (!player.id || !player.name) {
-      throw new Error(`Player at index ${index} is missing required fields (id, name)`);
+  try {
+    await initializeDatabase();
+    console.log('savePlayers called with:', players.length, 'players');
+    
+    if (!Array.isArray(players)) {
+      throw new Error('Players must be an array');
     }
-  });
-  
-  playersCache = [...players]; // Create a copy to store
-  console.log('Players saved to cache:', playersCache.length);
-  return playersCache;
+    
+    // Clear existing players and insert new ones
+    await sql`DELETE FROM players`;
+    
+    for (const player of players) {
+      if (!player.id || !player.name) {
+        throw new Error('Player must have id and name');
+      }
+      
+      await sql`
+        INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date)
+        VALUES (${player.id}, ${player.name}, ${player.dota2id}, ${player.peakmmr || 0}, ${player.ipAddress || '::1'}, ${player.registrationDate || new Date().toISOString()})
+      `;
+    }
+    
+    console.log('Players saved to database');
+    return await getPlayers();
+  } catch (error) {
+    console.error('Error saving players:', error);
+    throw error;
+  }
 }
 
 export async function addPlayer(player) {
-  console.log('addPlayer called with:', player);
-  if (!player.id || !player.name) {
-    throw new Error('Player must have id and name');
+  try {
+    await initializeDatabase();
+    console.log('addPlayer called with:', player);
+    
+    if (!player.id || !player.name) {
+      throw new Error('Player must have id and name');
+    }
+    
+    // Check if player already exists
+    const existing = await sql`
+      SELECT id FROM players WHERE id = ${player.id} OR dota2id = ${player.dota2id}
+    `;
+    
+    if (existing.length > 0) {
+      throw new Error('Player with this ID or Dota2ID already exists');
+    }
+    
+    await sql`
+      INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date)
+      VALUES (${player.id}, ${player.name}, ${player.dota2id}, ${player.peakmmr || 0}, ${player.ipAddress || '::1'}, ${player.registrationDate || new Date().toISOString()})
+    `;
+    
+    console.log('Player added to database');
+    return await getPlayers();
+  } catch (error) {
+    console.error('Error adding player:', error);
+    throw error;
   }
-  
-  // Check if player already exists
-  const existingIndex = playersCache.findIndex(p => p.id === player.id);
-  if (existingIndex !== -1) {
-    throw new Error('Player with this ID already exists');
-  }
-  
-  playersCache.push({...player});
-  console.log('Player added to cache. Total players:', playersCache.length);
-  return [...playersCache];
 }
 
 export async function updatePlayer(playerId, updates) {
-  console.log('updatePlayer called for:', playerId, 'with updates:', updates);
-  const index = playersCache.findIndex(p => p.id === playerId);
-  if (index === -1) {
-    throw new Error('Player not found');
+  try {
+    await initializeDatabase();
+    console.log('updatePlayer called for:', playerId, 'with updates:', updates);
+    
+    const setClause = [];
+    const values = [];
+    
+    if (updates.name) {
+      setClause.push(`name = $${setClause.length + 1}`);
+      values.push(updates.name);
+    }
+    if (updates.dota2id) {
+      setClause.push(`dota2id = $${setClause.length + 1}`);
+      values.push(updates.dota2id);
+    }
+    if (updates.peakmmr !== undefined) {
+      setClause.push(`peakmmr = $${setClause.length + 1}`);
+      values.push(updates.peakmmr);
+    }
+    
+    if (setClause.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+    
+    setClause.push(`updated_at = NOW()`);
+    values.push(playerId);
+    
+    await sql`
+      UPDATE players 
+      SET ${sql.raw(setClause.join(', '))}
+      WHERE id = ${playerId}
+    `;
+    
+    console.log('Player updated in database');
+    return await getPlayers();
+  } catch (error) {
+    console.error('Error updating player:', error);
+    throw error;
   }
-  
-  playersCache[index] = { ...playersCache[index], ...updates };
-  console.log('Player updated in cache');
-  return [...playersCache];
 }
 
 export async function deletePlayer(playerId) {
-  console.log('deletePlayer called for:', playerId);
-  const index = playersCache.findIndex(p => p.id === playerId);
-  if (index === -1) {
-    throw new Error('Player not found');
+  try {
+    await initializeDatabase();
+    console.log('deletePlayer called for:', playerId);
+    
+    const result = await sql`
+      DELETE FROM players WHERE id = ${playerId}
+    `;
+    
+    if (result.count === 0) {
+      throw new Error('Player not found');
+    }
+    
+    console.log('Player deleted from database');
+    return await getPlayers();
+  } catch (error) {
+    console.error('Error deleting player:', error);
+    throw error;
   }
-  
-  playersCache.splice(index, 1);
-  console.log('Player deleted from cache. Total players:', playersCache.length);
-  return [...playersCache];
 }
 
+// Masterlist operations
 export async function getMasterlist() {
-  console.log('getMasterlist called, returning cached masterlist:', masterlistCache.length);
-  return [...masterlistCache];
+  try {
+    await initializeDatabase();
+    console.log('getMasterlist called - querying database');
+    
+    const masterlist = await sql`
+      SELECT id, name, dota2id, mmr, team, achievements, notes, created_at, updated_at
+      FROM masterlist 
+      ORDER BY mmr DESC, name ASC
+    `;
+    
+    console.log(`Retrieved ${masterlist.length} masterlist players from database`);
+    return masterlist;
+  } catch (error) {
+    console.error('Error getting masterlist:', error);
+    throw error;
+  }
 }
 
 export async function saveMasterlist(masterlist) {
-  console.log('saveMasterlist called with:', masterlist.length, 'players');
-  if (!Array.isArray(masterlist)) {
-    throw new Error('Masterlist must be an array');
+  try {
+    await initializeDatabase();
+    console.log('saveMasterlist called with:', masterlist.length, 'players');
+    
+    if (!Array.isArray(masterlist)) {
+      throw new Error('Masterlist must be an array');
+    }
+    
+    // Clear existing masterlist and insert new ones
+    await sql`DELETE FROM masterlist`;
+    
+    for (const player of masterlist) {
+      if (!player.name) {
+        throw new Error('Player must have a name');
+      }
+      
+      await sql`
+        INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes)
+        VALUES (${player.name}, ${player.dota2id}, ${player.mmr || 0}, ${player.team || ''}, ${player.achievements || ''}, ${player.notes || ''})
+      `;
+    }
+    
+    console.log('Masterlist saved to database');
+    return await getMasterlist();
+  } catch (error) {
+    console.error('Error saving masterlist:', error);
+    throw error;
   }
-  
-  masterlistCache = [...masterlist];
-  console.log('Masterlist saved to cache:', masterlistCache.length);
-  return masterlistCache;
 }
 
 export async function addMasterlistPlayer(player) {
-  console.log('addMasterlistPlayer called with:', player);
-  if (!player.name) {
-    throw new Error('Player must have a name');
+  try {
+    await initializeDatabase();
+    console.log('addMasterlistPlayer called with:', player);
+    
+    if (!player.name) {
+      throw new Error('Player must have a name');
+    }
+    
+    const result = await sql`
+      INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes)
+      VALUES (${player.name}, ${player.dota2id}, ${player.mmr || 0}, ${player.team || ''}, ${player.achievements || ''}, ${player.notes || ''})
+      RETURNING *
+    `;
+    
+    console.log('Player added to masterlist database');
+    return await getMasterlist();
+  } catch (error) {
+    console.error('Error adding masterlist player:', error);
+    throw error;
   }
-  
-  // Generate new ID
-  const maxId = masterlistCache.reduce((max, p) => Math.max(max, p.id || 0), 0);
-  const newPlayer = { ...player, id: maxId + 1 };
-  
-  masterlistCache.push(newPlayer);
-  console.log('Player added to masterlist cache. Total players:', masterlistCache.length);
-  return [...masterlistCache];
 }
 
 export async function updateMasterlistPlayer(playerId, updates) {
-  console.log('updateMasterlistPlayer called for:', playerId, 'with updates:', updates);
-  const index = masterlistCache.findIndex(p => p.id === parseInt(playerId));
-  if (index === -1) {
-    throw new Error('Player not found in masterlist');
+  try {
+    await initializeDatabase();
+    console.log('updateMasterlistPlayer called for:', playerId, 'with updates:', updates);
+    
+    const setClause = [];
+    const values = [];
+    
+    if (updates.name) {
+      setClause.push(`name = $${setClause.length + 1}`);
+      values.push(updates.name);
+    }
+    if (updates.dota2id) {
+      setClause.push(`dota2id = $${setClause.length + 1}`);
+      values.push(updates.dota2id);
+    }
+    if (updates.mmr !== undefined) {
+      setClause.push(`mmr = $${setClause.length + 1}`);
+      values.push(updates.mmr);
+    }
+    if (updates.team !== undefined) {
+      setClause.push(`team = $${setClause.length + 1}`);
+      values.push(updates.team);
+    }
+    if (updates.achievements !== undefined) {
+      setClause.push(`achievements = $${setClause.length + 1}`);
+      values.push(updates.achievements);
+    }
+    if (updates.notes !== undefined) {
+      setClause.push(`notes = $${setClause.length + 1}`);
+      values.push(updates.notes);
+    }
+    
+    if (setClause.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+    
+    setClause.push(`updated_at = NOW()`);
+    values.push(parseInt(playerId));
+    
+    await sql`
+      UPDATE masterlist 
+      SET ${sql.raw(setClause.join(', '))}
+      WHERE id = ${parseInt(playerId)}
+    `;
+    
+    console.log('Masterlist player updated in database');
+    return await getMasterlist();
+  } catch (error) {
+    console.error('Error updating masterlist player:', error);
+    throw error;
   }
-  
-  masterlistCache[index] = { ...masterlistCache[index], ...updates };
-  console.log('Masterlist player updated in cache');
-  return [...masterlistCache];
 }
 
 export async function deleteMasterlistPlayer(playerId) {
-  console.log('deleteMasterlistPlayer called for:', playerId);
-  const index = masterlistCache.findIndex(p => p.id === parseInt(playerId));
-  if (index === -1) {
-    throw new Error('Player not found in masterlist');
+  try {
+    await initializeDatabase();
+    console.log('deleteMasterlistPlayer called for:', playerId);
+    
+    const result = await sql`
+      DELETE FROM masterlist WHERE id = ${parseInt(playerId)}
+    `;
+    
+    if (result.count === 0) {
+      throw new Error('Player not found in masterlist');
+    }
+    
+    console.log('Player deleted from masterlist database');
+    return await getMasterlist();
+  } catch (error) {
+    console.error('Error deleting masterlist player:', error);
+    throw error;
   }
-  
-  masterlistCache.splice(index, 1);
-  console.log('Player deleted from masterlist cache. Total players:', masterlistCache.length);
-  return [...masterlistCache];
 }
 
+// Registration settings operations
 export async function getRegistrationSettings() {
-  console.log('getRegistrationSettings called');
-  return {...registrationSettingsCache};
+  try {
+    await initializeDatabase();
+    console.log('getRegistrationSettings called');
+    
+    const settings = await sql`
+      SELECT is_open, tournament_name, tournament_date, max_players
+      FROM registration_settings 
+      ORDER BY id DESC 
+      LIMIT 1
+    `;
+    
+    if (settings.length === 0) {
+      return {
+        isOpen: true,
+        tournament: {
+          name: "Dota 2 Tournament",
+          date: new Date().toISOString().split('T')[0],
+          maxPlayers: 50
+        }
+      };
+    }
+    
+    const setting = settings[0];
+    return {
+      isOpen: setting.is_open,
+      tournament: {
+        name: setting.tournament_name,
+        date: setting.tournament_date,
+        maxPlayers: setting.max_players
+      }
+    };
+  } catch (error) {
+    console.error('Error getting registration settings:', error);
+    throw error;
+  }
 }
 
 export async function saveRegistrationSettings(settings) {
-  console.log('saveRegistrationSettings called with:', settings);
-  registrationSettingsCache = {...settings};
-  console.log('Registration settings saved to cache');
-  return registrationSettingsCache;
+  try {
+    await initializeDatabase();
+    console.log('saveRegistrationSettings called with:', settings);
+    
+    // Delete existing settings and insert new ones
+    await sql`DELETE FROM registration_settings`;
+    
+    await sql`
+      INSERT INTO registration_settings (is_open, tournament_name, tournament_date, max_players)
+      VALUES (${settings.isOpen}, ${settings.tournament.name}, ${settings.tournament.date}, ${settings.tournament.maxPlayers})
+    `;
+    
+    console.log('Registration settings saved to database');
+    return await getRegistrationSettings();
+  } catch (error) {
+    console.error('Error saving registration settings:', error);
+    throw error;
+  }
+}
+
+// Session management operations
+export async function createSession(sessionId, expiresAt) {
+  try {
+    await initializeDatabase();
+    
+    await sql`
+      INSERT INTO admin_sessions (id, expires_at)
+      VALUES (${sessionId}, ${expiresAt})
+      ON CONFLICT (id) DO UPDATE SET expires_at = ${expiresAt}
+    `;
+    
+    console.log('Session created/updated in database');
+    return true;
+  } catch (error) {
+    console.error('Error creating session:', error);
+    throw error;
+  }
+}
+
+export async function validateSession(sessionId) {
+  try {
+    await initializeDatabase();
+    
+    const sessions = await sql`
+      SELECT id FROM admin_sessions 
+      WHERE id = ${sessionId} AND expires_at > NOW()
+    `;
+    
+    return sessions.length > 0;
+  } catch (error) {
+    console.error('Error validating session:', error);
+    return false;
+  }
+}
+
+export async function deleteSession(sessionId) {
+  try {
+    await initializeDatabase();
+    
+    await sql`
+      DELETE FROM admin_sessions WHERE id = ${sessionId}
+    `;
+    
+    console.log('Session deleted from database');
+    return true;
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    throw error;
+  }
 }
 
 // Clear all data (for testing)
-export function clearAllData() {
-  console.log('clearAllData called - resetting all caches');
-  playersCache = [];
-  masterlistCache = [];
-  registrationSettingsCache = {
-    isOpen: true,
-    tournament: {
-      name: "Dota 2 Tournament",
-      date: new Date().toISOString().split('T')[0],
-      maxPlayers: 50
-    }
-  };
+export async function clearAllData() {
+  try {
+    console.log('clearAllData called - clearing all database tables');
+    await sql`DELETE FROM players`;
+    await sql`DELETE FROM masterlist`;
+    await sql`DELETE FROM registration_settings`;
+    await sql`DELETE FROM admin_sessions`;
+    console.log('All data cleared from database');
+  } catch (error) {
+    console.error('Error clearing data:', error);
+    throw error;
+  }
 }
 
 // Legacy exports for compatibility (wrap the new functions)
@@ -254,7 +548,7 @@ export const playerDb = {
   
   async deletePlayer(playerId) {
     try {
-      const players = await deletePlayer(playerId);
+      await deletePlayer(playerId);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

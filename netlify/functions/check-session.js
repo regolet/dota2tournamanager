@@ -1,62 +1,27 @@
-// Simple session check function
+// Session validation function for admin authentication
+import { validateSession } from './database.js';
+
 export const handler = async (event, context) => {
+  // Handle CORS
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Session-Id',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS'
+      }
+    };
+  }
+
   try {
-    console.log('Session check called:', event.httpMethod, event.path);
-    console.log('Headers:', event.headers);
-    console.log('Query params:', event.queryStringParameters);
+    console.log('Check session request received');
     
-    // Handle CORS preflight
-    if (event.httpMethod === 'OPTIONS') {
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type, x-session-id',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS'
-        }
-      };
-    }
+    // Get session ID from headers
+    const sessionId = event.headers['x-session-id'];
     
-    // Only handle GET requests
-    if (event.httpMethod !== 'GET') {
-      return {
-        statusCode: 405,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Method not allowed'
-        })
-      };
-    }
-    
-    // Get session ID from headers or query params
-    const sessionId = event.headers['x-session-id'] || 
-                     event.queryStringParameters?.sessionId;
-    
-    console.log('Checking session ID:', sessionId);
-    
-    // For now, accept any session ID that looks valid (has content)
-    // In a real app, you'd validate against stored sessions
-    if (sessionId && sessionId.length > 10) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'Session is valid',
-          user: {
-            username: 'admin',
-            role: 'admin'
-          }
-        })
-      };
-    } else {
+    if (!sessionId) {
+      console.log('No session ID provided');
       return {
         statusCode: 401,
         headers: {
@@ -65,13 +30,46 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          message: 'Session is invalid or expired'
+          error: 'No session ID provided'
         })
       };
     }
+
+    console.log('Validating session:', sessionId);
     
+    // Validate session using database
+    const isValid = await validateSession(sessionId);
+    
+    if (isValid) {
+      console.log('Session is valid');
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          message: 'Session is valid'
+        })
+      };
+    } else {
+      console.log('Session is invalid or expired');
+      return {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          error: 'Session is invalid or expired'
+        })
+      };
+    }
+
   } catch (error) {
-    console.error('Session check error:', error);
+    console.error('Error checking session:', error);
     return {
       statusCode: 500,
       headers: {
@@ -80,7 +78,7 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        message: 'Internal server error: ' + error.message
+        error: 'Internal server error'
       })
     };
   }
