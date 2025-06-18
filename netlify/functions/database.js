@@ -140,17 +140,22 @@ export async function addPlayer(player) {
     await initializeDatabase();
 
     
-    if (!player.id || !player.name) {
-      throw new Error('Player must have id and name');
+    if (!player.name) {
+      throw new Error('Player must have a name');
     }
     
-    // Check if player already exists
+    // Generate ID if not provided
+    if (!player.id) {
+      player.id = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    }
+    
+    // Check if player already exists by Dota2ID or name
     const existing = await sql`
-      SELECT id FROM players WHERE id = ${player.id} OR dota2id = ${player.dota2id}
+      SELECT id FROM players WHERE dota2id = ${player.dota2id} OR name = ${player.name}
     `;
     
     if (existing.length > 0) {
-      throw new Error('Player with this ID or Dota2ID already exists');
+      throw new Error('Player with this name or Dota2ID already exists');
     }
     
     await sql`
