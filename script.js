@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to check current player count
     async function checkPlayerCount() {
         try {
-            const response = await fetch('./api/players/count');
+            const response = await fetch('/api/players');
             if (!response.ok) {
                 throw new Error('Failed to fetch player count');
             }
@@ -172,16 +172,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Check registration status from server
     function checkRegistrationStatus() {
-        // Load registration status from static JSON file instead of API
-        fetch('./registration-settings.json' + '?_=' + new Date().getTime())  // Add cache-busting parameter
+        // Load registration status from Neon DB API
+        fetch('/api/registration')
             .then(response => response.json())
             .then(data => {
                 // Use the data directly or extract the registration object if needed
-                const registration = data;
+                const registration = data.settings || data;
                 updateRegistrationUI(registration);
             })
             .catch(error => {
-                console.error('Error fetching registration status from JSON file:', error);
+                console.error('Error fetching registration status from API:', error);
                 // If error, default to registration not open
                 showRegistrationNotOpen();
             });

@@ -1,10 +1,10 @@
-// Public API players function using persistent database storage
-import { playerDb } from './database.js';
+// Public API players function using Neon DB
+import { getPlayers } from './database.js';
 
 export const handler = async (event, context) => {
   try {
     console.log('API Players function called:', event.httpMethod, event.path);
-    console.log('PlayerDb available:', !!playerDb);
+    console.log('Neon DB getPlayers function available:', !!getPlayers);
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -34,7 +34,7 @@ export const handler = async (event, context) => {
     }
     
     // Get players from database
-    const players = await playerDb.getAllPlayers();
+    const players = await getPlayers();
     
     // Format for team balancer - only include essential data
     const formattedPlayers = players.map(player => ({

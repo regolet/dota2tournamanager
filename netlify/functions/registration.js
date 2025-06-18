@@ -1,4 +1,6 @@
 // Registration API function for admin panel
+import { getRegistrationSettings } from './database.js';
+
 export const handler = async (event, context) => {
   try {
     console.log('Registration API called:', event.httpMethod, event.path);
@@ -53,30 +55,10 @@ export const handler = async (event, context) => {
           })
         };
       } else {
-        // Return registration settings
-        const registrationSettings = {
-          id: 1,
-          tournamentName: "Dota 2 Championship 2025",
-          description: "Annual Dota 2 tournament featuring the best players",
-          maxPlayers: 100,
-          registrationOpen: true,
-          openDate: "2025-01-18T08:00:00.000Z",
-          closeDate: "2025-01-25T23:59:59.000Z",
-          allowLateRegistration: true,
-          requireApproval: false,
-          minimumMMR: 2000,
-          maximumMMR: 8000,
-          allowTeamRegistration: true,
-          maxTeamSize: 5,
-          entryFee: 0,
-          prizePool: 5000,
-          contactEmail: "admin@tournament.com",
-          discordServer: "https://discord.gg/tournament",
-          rules: "Standard Dota 2 tournament rules apply. No cheating, be respectful.",
-          lastModified: new Date().toISOString()
-        };
+        // Return registration settings from database
+        const registrationSettings = await getRegistrationSettings();
         
-        console.log('Returning registration settings');
+        console.log('Returning registration settings from database');
         
         return {
           statusCode: 200,
@@ -86,7 +68,15 @@ export const handler = async (event, context) => {
           },
           body: JSON.stringify({
             success: true,
-            settings: registrationSettings,
+            settings: {
+              isOpen: registrationSettings.is_open,
+              tournamentName: registrationSettings.tournament_name,
+              tournamentDate: registrationSettings.tournament_date,
+              maxPlayers: registrationSettings.max_players,
+              playerLimit: registrationSettings.max_players,
+              expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+              enablePlayerLimit: true
+            },
             message: 'Registration settings retrieved successfully'
           })
         };
