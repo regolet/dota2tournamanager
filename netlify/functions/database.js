@@ -3,10 +3,26 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Use root directory files that persist with deployment
-const PLAYERS_FILE = process.env.NETLIFY ? '../../players.json' : './players.json';
-const MASTERLIST_FILE = process.env.NETLIFY ? '../../masterlist.json' : './masterlist.json';
+// Get the correct file paths for both local and Netlify environments
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Files are in the site root directory
+const PLAYERS_FILE = process.env.NETLIFY 
+  ? path.resolve(__dirname, '../../players.json') 
+  : './players.json';
+const MASTERLIST_FILE = process.env.NETLIFY 
+  ? path.resolve(__dirname, '../../masterlist.json') 
+  : './masterlist.json';
+
+// Debug: Log the resolved file paths
+console.log('Database module initialized:');
+console.log('NETLIFY environment:', !!process.env.NETLIFY);
+console.log('Players file path:', PLAYERS_FILE);
+console.log('Masterlist file path:', MASTERLIST_FILE);
+console.log('Current directory:', __dirname);
 
 // In-memory cache for serverless environments
 let playersCache = null;
@@ -15,10 +31,14 @@ let masterlistCache = null;
 // Read JSON file with cache support
 async function readJsonFile(filePath, defaultData = []) {
   try {
+    console.log(`Attempting to read file: ${filePath}`);
     const data = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    console.log(`Successfully read ${filePath} with ${parsed.length} items`);
+    return parsed;
   } catch (error) {
-    console.log(`File ${filePath} not found, using default data:`, error.message);
+    console.error(`Failed to read file ${filePath}:`, error.message);
+    console.log(`Using default data instead`);
     return defaultData;
   }
 }
