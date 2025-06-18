@@ -156,7 +156,27 @@ export const handler = async (event, context) => {
     }
     
     // Add player to database
-    await addPlayer(playerData);
+    try {
+      await addPlayer(playerData);
+    } catch (dbError) {
+      // Handle specific database errors
+      if (dbError.message.includes('already exists')) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'A player with this name or Dota 2 ID is already registered. Please use a different name or check if you have already registered.',
+            errorType: 'DUPLICATE_PLAYER'
+          })
+        };
+      }
+      // Re-throw other database errors
+      throw dbError;
+    }
     
     // Get the newly added player
     const allPlayers = await getPlayers();

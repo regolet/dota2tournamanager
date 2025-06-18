@@ -112,6 +112,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) {
                 // Extract error message from server response if available
                 const errorMessage = result && result.message ? result.message : 'Failed to save player';
+                
+                // Handle specific error types
+                if (result && result.errorType === 'DUPLICATE_PLAYER') {
+                    throw new Error(errorMessage);
+                }
+                
                 throw new Error(errorMessage);
             }
             
