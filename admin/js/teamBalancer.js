@@ -264,7 +264,7 @@ async function initTeamBalancer() {
 async function loadPlayers() {
     try {
         // Use API endpoint to load players from database
-        const response = await fetch('../api/players');
+        const response = await fetch('/api/players');
         
         if (!response.ok) {
             throw new Error(`Failed to load players: ${response.status} ${response.statusText}`);
