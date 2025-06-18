@@ -323,46 +323,28 @@ export async function updateMasterlistPlayer(playerId, updates) {
     await initializeDatabase();
     console.log('updateMasterlistPlayer called for:', playerId, 'with updates:', updates);
     
-    const setClause = [];
-    const values = [];
+    // Get default values from current record if not provided
+    const { name, dota2id, mmr, team, achievements, notes } = updates;
     
-    if (updates.name) {
-      setClause.push(`name = $${setClause.length + 1}`);
-      values.push(updates.name);
-    }
-    if (updates.dota2id) {
-      setClause.push(`dota2id = $${setClause.length + 1}`);
-      values.push(updates.dota2id);
-    }
-    if (updates.mmr !== undefined) {
-      setClause.push(`mmr = $${setClause.length + 1}`);
-      values.push(updates.mmr);
-    }
-    if (updates.team !== undefined) {
-      setClause.push(`team = $${setClause.length + 1}`);
-      values.push(updates.team);
-    }
-    if (updates.achievements !== undefined) {
-      setClause.push(`achievements = $${setClause.length + 1}`);
-      values.push(updates.achievements);
-    }
-    if (updates.notes !== undefined) {
-      setClause.push(`notes = $${setClause.length + 1}`);
-      values.push(updates.notes);
-    }
-    
-    if (setClause.length === 0) {
-      throw new Error('No valid fields to update');
-    }
-    
-    setClause.push(`updated_at = NOW()`);
-    values.push(parseInt(playerId));
-    
-    await sql`
+    // Execute update query with all fields
+    const result = await sql`
       UPDATE masterlist 
-      SET ${sql.raw(setClause.join(', '))}
+      SET 
+        name = ${name || ''},
+        dota2id = ${dota2id || ''},
+        mmr = ${mmr || 0},
+        team = ${team || ''},
+        achievements = ${achievements || ''},
+        notes = ${notes || ''},
+        updated_at = NOW()
       WHERE id = ${parseInt(playerId)}
     `;
+    
+    console.log('Update result:', result);
+    
+    if (result.count === 0) {
+      throw new Error('Player not found in masterlist');
+    }
     
     console.log('Masterlist player updated in database');
     return await getMasterlist();
