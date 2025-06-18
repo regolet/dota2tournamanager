@@ -91,7 +91,13 @@ export async function getPlayers() {
 
     
     const players = await sql`
-      SELECT id, name, dota2id, peakmmr, ip_address, registration_date 
+      SELECT 
+        id, 
+        name, 
+        dota2id, 
+        peakmmr, 
+        ip_address as "ipAddress", 
+        registration_date as "registrationDate"
       FROM players 
       ORDER BY registration_date DESC
     `;
