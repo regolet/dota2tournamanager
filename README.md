@@ -1,144 +1,205 @@
-# Dota 2 Tournament Manager
+# Dota 2 Tournament Manager - Serverless Edition
 
-A comprehensive tournament management system for Dota 2 tournaments with player registration, team balancing, and admin management features.
+A modern, serverless tournament management system for Dota 2 tournaments. Built with vanilla JavaScript and deployed on Netlify with JSON-based data persistence.
 
-## Features
+## 🚀 Features
 
-- **Player Registration**: Secure player registration with Dota 2 ID validation
-- **Admin Panel**: Complete tournament management interface
-- **Team Balancer**: Automatic team balancing based on MMR
-- **Random Picker**: Random player selection tools
-- **Player Master List**: Verified player database
-- **Session Management**: Secure admin authentication
+- **Player Registration**: Public registration form for tournament participants
+- **Admin Panel**: Complete management interface for tournament administrators
+- **Team Balancer**: Automatic team balancing based on MMR ratings
+- **Player List Management**: Add, edit, delete players with persistent storage
+- **Masterlist**: Professional player database for reference
+- **Random Picker**: Tournament bracket and random selection tools
+- **Responsive Design**: Works on desktop and mobile devices
 
-## Tech Stack
+## 🛠 Architecture
 
-- **Backend**: Node.js with Express
-- **Database**: SQLite with better-sqlite3
-- **Frontend**: Vanilla JavaScript, HTML, CSS
+- **Frontend**: Vanilla JavaScript, HTML5, CSS3, Bootstrap 5
+- **Backend**: Netlify Functions (Node.js serverless)
+- **Database**: JSON file-based persistence 
+- **Deployment**: Netlify (serverless hosting)
 - **Authentication**: Session-based admin authentication
 
-## Local Development
+## 📁 Project Structure
 
-1. **Install dependencies**:
+```
+├── netlify/
+│   └── functions/          # Serverless functions
+│       ├── database.js     # JSON database module
+│       ├── login.js        # Admin authentication
+│       ├── check-session.js # Session validation
+│       ├── get-players.js  # Player data retrieval
+│       ├── save-players.js # Player management
+│       ├── api-players.js  # Public player API
+│       ├── masterlist.js   # Professional players
+│       └── registration.js # Tournament settings
+├── admin/                  # Admin panel interface
+│   ├── js/                # Admin JavaScript modules
+│   ├── login.html         # Admin login page
+│   ├── index.html         # Admin dashboard
+│   ├── player-list.html   # Player management
+│   ├── team-balancer.html # Team balancing
+│   ├── masterlist.html    # Professional players
+│   └── registration.html  # Tournament settings
+├── index.html             # Public registration page
+├── style.css              # Main stylesheet
+├── script.js              # Public page JavaScript
+├── netlify.toml           # Netlify configuration
+└── package.json           # Dependencies
+
+```
+
+## 🗄️ Data Storage
+
+The system uses JSON files for data persistence:
+
+- **players.json**: Tournament participant data
+- **masterlist.json**: Professional player database
+- **registration-settings.json**: Tournament configuration
+- **admin-sessions.json**: Authentication sessions
+
+Data is stored in Netlify's filesystem during function execution, providing persistence across requests while maintaining serverless architecture.
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ 
+- Netlify CLI (optional for local development)
+
+### Local Development
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/regolet/dota2tournamanager.git
+   cd dota2tournamanager
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. **Start the server**:
+3. **Run locally with Netlify Dev**
    ```bash
-   npm start
+   npm run dev
    ```
 
-3. **Access the application**:
-   - Main site: http://localhost:3001
-   - Admin panel: http://localhost:3001/admin
+4. **Access the application**
+   - Public page: http://localhost:8888
+   - Admin panel: http://localhost:8888/admin
    - Default admin password: `admin123`
 
-## Deployment on Vercel
+### Production Deployment
 
-### Prerequisites
-- GitHub repository (already set up at: https://github.com/regolet/dota2tournamanager)
-- Vercel account
-
-### Deployment Steps
-
-1. **Connect your GitHub repository to Vercel**:
-   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
-   - Click "New Project"
-   - Select your GitHub repository: `regolet/dota2tournamanager`
-
-2. **Configure the project**:
-   - Framework Preset: **Other**
-   - Root Directory: `./` (leave default)
-   - Build Command: `npm install` (auto-detected)
-   - Output Directory: `./` (leave default)
-   - Install Command: `npm install` (auto-detected)
-
-3. **Environment Variables** (Optional):
-   Set these in your Vercel project settings:
-   ```
-   NODE_ENV=production
-   DEFAULT_ADMIN_PASSWORD=your-secure-password
+1. **Deploy to Netlify**
+   ```bash
+   npm run deploy
    ```
 
-4. **Deploy**:
-   - Click "Deploy"
-   - Vercel will automatically build and deploy your application
+2. **Or connect your GitHub repository to Netlify for automatic deployments**
 
-### Important Notes for Vercel Deployment
+## 🔧 Configuration
 
-⚠️ **Database Persistence**: 
-- SQLite databases are ephemeral on Vercel (reset on each deployment)
-- For production, consider migrating to:
-  - Vercel Postgres
-  - PlanetScale
-  - Supabase
-  - MongoDB Atlas
+### Admin Authentication
 
-⚠️ **File Storage**:
-- Local file storage (JSON files) will not persist
-- Consider using Vercel KV or external storage for session management
+Default admin credentials:
+- Username: `admin`
+- Password: `admin123`
 
-### Post-Deployment Configuration
+Change the password through the admin panel after first login.
 
-1. **Access your deployed app**: `https://your-project-name.vercel.app`
-2. **Admin access**: `https://your-project-name.vercel.app/admin`
-3. **Default login**: Use the admin password you set in environment variables
+### Tournament Settings
 
-## Project Structure
+Configure tournament details in the Registration tab of the admin panel:
+- Tournament name and description
+- Registration deadlines
+- Prize pool information
+- Player limits
 
-```
-tournament/
-├── admin/                 # Admin panel files
-│   ├── js/               # Admin JavaScript modules
-│   └── *.html            # Admin HTML pages
-├── db.js                 # Database configuration
-├── server.js             # Main Express server
-├── vercel.json           # Vercel deployment configuration
-├── package.json          # Dependencies and scripts
-└── README.md             # This file
-```
+## 📱 Usage
 
-## API Endpoints
+### For Tournament Participants
 
-### Public Endpoints
-- `GET /` - Main tournament page
-- `POST /save-registration.php` - Player registration (legacy compatibility)
+1. Visit the public registration page
+2. Fill in your details (Name, Dota 2 ID, Peak MMR)
+3. Submit registration
+4. Check your email for confirmation
 
-### Admin Endpoints (Authenticated)
-- `POST /admin/api/login` - Admin authentication
-- `GET /admin/api/players` - Get all registered players
-- `POST /admin/api/players` - Add/update players
-- `GET /admin/api/masterlist` - Get master list players
-- `POST /admin/api/masterlist` - Manage master list
+### For Tournament Administrators
 
-## Security Features
+1. Access `/admin` and login
+2. **Player List**: Manage registered players
+3. **Team Balancer**: Create balanced teams based on MMR
+4. **Masterlist**: Reference professional player database
+5. **Registration**: Configure tournament settings
+6. **Random Picker**: Generate brackets and random selections
+
+## 🛡️ Security Features
 
 - Session-based authentication
-- Admin password protection
-- Input validation and sanitization
 - CORS protection
-- SQL injection prevention
+- Input validation and sanitization
+- SQL injection prevention (using JSON storage)
+- XSS protection
 
-## Contributing
+## 🌐 API Endpoints
+
+### Public APIs
+- `GET /api/players` - Get tournament players for team balancer
+- `POST /api/add-player` - Register new player
+- `GET /api/registration/status` - Get tournament info
+
+### Admin APIs (Authenticated)
+- `POST /admin/api/login` - Admin authentication
+- `GET /admin/api/check-session` - Session validation
+- `GET /admin/api/players` - Get all player data
+- `POST /admin/save-players` - Player management operations
+- `GET /admin/api/masterlist` - Professional player database
+
+## 🔄 Data Flow
+
+1. **Registration**: Public form → `api-players.js` → JSON storage
+2. **Team Balancer**: Frontend → `api-players.js` → JSON data → Balancing algorithm
+3. **Admin Management**: Admin panel → Authenticated APIs → JSON storage
+4. **Persistence**: JSON files maintain state across serverless function calls
+
+## 📊 Performance
+
+- **Cold start**: ~200-500ms (Netlify Functions)
+- **Warm requests**: ~50-100ms
+- **Data persistence**: File-based JSON storage
+- **Scalability**: Serverless auto-scaling
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## 📝 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
+## 🆘 Support
 
-For issues and questions:
+For support and questions:
 - Create an issue on GitHub
-- Check the admin panel logs for debugging information
+- Check the documentation
+- Review the admin panel help sections
+
+## 🎮 Dota 2 Integration
+
+The system integrates with Dota 2 player data:
+- MMR tracking and validation
+- Professional player database
+- Team balancing algorithms
+- Tournament bracket generation
 
 ---
 
-**Note**: This application was designed for tournament management and includes features specific to Dota 2 player management and team balancing algorithms. 
+**Live Demo**: [maplescurse.netlify.app](https://maplescurse.netlify.app)
+
+**Admin Panel**: [maplescurse.netlify.app/admin](https://maplescurse.netlify.app/admin) 

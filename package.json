@@ -1,20 +1,21 @@
 {
-  "name": "tournament",
-  "version": "1.0.0",
-  "description": "Tournament registration system",
-  "main": "server.js",
+  "name": "dota2-tournament-manager",
+  "version": "2.0.0",
+  "description": "Serverless Dota 2 Tournament Management System",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "migrate": "node migrate-to-sqlite.js"
+    "dev": "netlify dev",
+    "build": "echo 'Static site - no build needed'",
+    "deploy": "netlify deploy --prod",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@codegenie/serverless-express": "^4.16.0",
-    "better-sqlite3": "^11.10.0",
-    "body-parser": "^1.20.3",
-    "cors": "^2.8.5",
-    "express": "^4.21.2",
     "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

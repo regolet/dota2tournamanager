@@ -1,8 +1,9 @@
-// Public add player function for registration
+// Public player registration function
+import { playerDb } from './database.js';
+
 export const handler = async (event, context) => {
   try {
-    console.log('Add Player API called:', event.httpMethod, event.path);
-    console.log('Request body:', event.body);
+    console.log('Add Player function called:', event.httpMethod, event.path);
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -16,7 +17,7 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Only handle POST requests
+    // Only handle POST requests for this endpoint
     if (event.httpMethod !== 'POST') {
       return {
         statusCode: 405,
@@ -51,8 +52,6 @@ export const handler = async (event, context) => {
     
     const { name, dota2id, peakmmr } = requestBody;
     
-    console.log('Registration attempt:', { name, dota2id, peakmmr });
-    
     // Validate required fields
     if (!name || !dota2id) {
       return {
@@ -68,7 +67,22 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Validate Dota2 ID format (should be numeric)
+    // Validate name length
+    if (name.length < 2 || name.length > 50) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Player name must be between 2 and 50 characters'
+        })
+      };
+    }
+    
+    // Validate Dota 2 ID (should be numeric)
     if (!/^\d+$/.test(dota2id)) {
       return {
         statusCode: 400,
@@ -83,17 +97,52 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Mock successful registration
-    const newPlayer = {
-      id: `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    // Validate MMR if provided
+    const mmr = parseInt(peakmmr) || 0;
+    if (mmr < 0 || mmr > 15000) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Peak MMR must be between 0 and 15000'
+        })
+      };
+    }
+    
+    // Get client IP address
+    const clientIP = event.headers['x-forwarded-for'] || 
+                    event.headers['x-real-ip'] || 
+                    event.headers['cf-connecting-ip'] || 
+                    'unknown';
+    
+    // Add player to database
+    const result = await playerDb.addPlayer({
       name: name.trim(),
       dota2id: dota2id.trim(),
-      peakmmr: parseInt(peakmmr) || 0,
-      registrationDate: new Date().toISOString(),
-      ipAddress: event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown'
-    };
+      peakmmr: mmr,
+      ipAddress: clientIP.split(',')[0].trim(), // Take first IP if multiple
+      registrationDate: new Date().toISOString()
+    });
     
-    console.log('Player registered successfully:', newPlayer);
+    if (!result.success) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: result.error
+        })
+      };
+    }
+    
+    console.log(`Successfully registered player: ${result.player.name} (${result.player.id})`);
     
     return {
       statusCode: 200,
@@ -103,13 +152,20 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: true,
-        message: 'Player registered successfully! Welcome to the tournament.',
-        player: newPlayer
+        message: 'Player registered successfully!',
+        player: {
+          id: result.player.id,
+          name: result.player.name,
+          dota2id: result.player.dota2id,
+          peakmmr: result.player.peakmmr,
+          registrationDate: result.player.registrationDate
+        },
+        timestamp: new Date().toISOString()
       })
     };
     
   } catch (error) {
-    console.error('Add Player API error:', error);
+    console.error('Add Player function error:', error);
     return {
       statusCode: 500,
       headers: {
@@ -118,7 +174,9 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        message: 'Internal server error: ' + error.message
+        message: 'Internal server error: ' + error.message,
+        error: error.toString(),
+        timestamp: new Date().toISOString()
       })
     };
   }
