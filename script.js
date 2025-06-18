@@ -177,11 +177,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/api/registration')
             .then(response => response.json())
             .then(data => {
-                console.log('Registration API Response:', data);
                 // Use the data directly or extract the registration object if needed
                 const registration = data.registration || data.settings || data;
-                console.log('Extracted registration data:', registration);
-                console.log('Registration isOpen:', registration.isOpen);
                 updateRegistrationUI(registration);
             })
             .catch(error => {
@@ -196,9 +193,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update UI based on registration status
     function updateRegistrationUI(data) {
-        console.log('updateRegistrationUI called with:', data);
-        console.log('data.isOpen value:', data.isOpen, 'type:', typeof data.isOpen);
-        
         // Hide all registration status containers
         countdownContainer.classList.add('hidden');
         registrationClosedDiv.classList.add('hidden');
@@ -214,7 +208,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // First check if registration is explicitly marked as closed
         if (!data.isOpen) {
-            console.log('Registration is closed, showing closed message');
             // Registration is closed (either manually by admin or due to expiry)
             showRegistrationClosed();
             
@@ -227,10 +220,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add clear visual indication that form is disabled
             playerForm.classList.add('disabled-form');
         } else {
-            console.log('Registration is open, showing countdown');
             // Registration is open with countdown
             const expiryTime = new Date(data.expiry).getTime();
-            console.log('Expiry time:', new Date(data.expiry), 'Timestamp:', expiryTime);
             showCountdown(expiryTime);
             startCountdown(expiryTime);
             
