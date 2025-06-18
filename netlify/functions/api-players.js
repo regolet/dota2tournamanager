@@ -4,6 +4,7 @@ import { playerDb } from './database.js';
 export const handler = async (event, context) => {
   try {
     console.log('API Players function called:', event.httpMethod, event.path);
+    console.log('PlayerDb available:', !!playerDb);
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {

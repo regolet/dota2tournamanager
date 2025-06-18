@@ -3,18 +3,13 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-// Get the correct file paths for both local and Netlify environments
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Files are in the site root directory
+// Simpler file path resolution that works reliably in Netlify
 const PLAYERS_FILE = process.env.NETLIFY 
-  ? path.resolve(__dirname, '../../players.json') 
+  ? path.join(process.cwd(), 'players.json')
   : './players.json';
 const MASTERLIST_FILE = process.env.NETLIFY 
-  ? path.resolve(__dirname, '../../masterlist.json') 
+  ? path.join(process.cwd(), 'masterlist.json')
   : './masterlist.json';
 
 // Debug: Log the resolved file paths
@@ -22,7 +17,7 @@ console.log('Database module initialized:');
 console.log('NETLIFY environment:', !!process.env.NETLIFY);
 console.log('Players file path:', PLAYERS_FILE);
 console.log('Masterlist file path:', MASTERLIST_FILE);
-console.log('Current directory:', __dirname);
+console.log('Current working directory:', process.cwd());
 
 // In-memory cache for serverless environments
 let playersCache = null;
