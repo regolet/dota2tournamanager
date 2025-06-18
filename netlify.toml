@@ -34,6 +34,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/players"
+  to = "/.netlify/functions/api-players"
+  status = 200
+
+[[redirects]]
+  from = "/api/add-player"
+  to = "/.netlify/functions/add-player"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/server"
   status = 200
