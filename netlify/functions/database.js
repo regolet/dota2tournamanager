@@ -35,115 +35,9 @@ async function writeJsonFile(filePath, data) {
   }
 }
 
-// Default player data
-const DEFAULT_PLAYERS = [
-  {
-    id: "player_1",
-    name: "Alice Johnson",
-    dota2id: "123456789",
-    peakmmr: 3500,
-    registrationDate: "2025-01-18T10:00:00.000Z",
-    ipAddress: "192.168.1.1"
-  },
-  {
-    id: "player_2", 
-    name: "Bob Smith",
-    dota2id: "987654321",
-    peakmmr: 4200,
-    registrationDate: "2025-01-18T11:00:00.000Z",
-    ipAddress: "192.168.1.2"
-  },
-  {
-    id: "player_3",
-    name: "Charlie Brown",
-    dota2id: "456789123",
-    peakmmr: 2800,
-    registrationDate: "2025-01-18T12:00:00.000Z",
-    ipAddress: "192.168.1.3"
-  },
-  {
-    id: "player_4",
-    name: "Diana Prince",
-    dota2id: "789123456",
-    peakmmr: 5100,
-    registrationDate: "2025-01-18T13:00:00.000Z",
-    ipAddress: "192.168.1.4"
-  },
-  {
-    id: "player_5",
-    name: "Edward Norton",
-    dota2id: "321654987",
-    peakmmr: 3800,
-    registrationDate: "2025-01-18T14:00:00.000Z",
-    ipAddress: "192.168.1.5"
-  },
-  {
-    id: "player_6",
-    name: "Fiona Green",
-    dota2id: "654987321",
-    peakmmr: 4500,
-    registrationDate: "2025-01-18T15:00:00.000Z",
-    ipAddress: "192.168.1.6"
-  }
-];
+// No hardcoded fallback data - use players.json directly
 
-// Default masterlist data
-const DEFAULT_MASTERLIST = [
-  {
-    id: 1,
-    name: "Miracle-",
-    dota2id: "105248644",
-    mmr: 8500,
-    team: "OG",
-    achievements: "Multiple Major Winner, Former TI Winner",
-    notes: "Exceptional carry player known for mechanical skill"
-  },
-  {
-    id: 2,
-    name: "Arteezy",
-    dota2id: "86745912",
-    mmr: 8200,
-    team: "Team Secret",
-    achievements: "Multiple Major Winner, Top NA Player",
-    notes: "Iconic carry player with exceptional farming efficiency"
-  },
-  {
-    id: 3,
-    name: "SumaiL",
-    dota2id: "111620041",
-    mmr: 8000,
-    team: "OG",
-    achievements: "TI5 Winner, Youngest TI Winner",
-    notes: "Aggressive mid laner with incredible game sense"
-  },
-  {
-    id: 4,
-    name: "Dendi",
-    dota2id: "70388657",
-    mmr: 7800,
-    team: "Na'Vi",
-    achievements: "TI1 Winner, Legendary Mid Player",
-    notes: "Icon of Dota 2, known for Pudge plays"
-  },
-  {
-    id: 5,
-    name: "Puppey",
-    dota2id: "87276347",
-    mmr: 7500,
-    team: "Team Secret",
-    achievements: "TI1 Winner, Legendary Captain",
-    notes: "Most experienced captain in professional Dota"
-  },
-  {
-    id: 6,
-    name: "N0tail",
-    dota2id: "19672354",
-    mmr: 7300,
-    team: "OG",
-    achievements: "Back-to-back TI Winner (TI8, TI9)",
-    notes: "Inspirational leader and versatile player"
-  }
-];
+// No hardcoded fallback data - use masterlist.json directly
 
 // Player database operations
 export const playerDb = {
@@ -292,18 +186,10 @@ export const masterlistDb = {
     if (masterlistCache === null) {
       try {
         masterlistCache = await readJsonFile(MASTERLIST_FILE, []);
-        
-        // If empty, initialize with default masterlist
-        if (masterlistCache.length === 0) {
-          masterlistCache = [...DEFAULT_MASTERLIST];
-          await writeJsonFile(MASTERLIST_FILE, masterlistCache);
-          console.log('Initialized masterlist cache with default professional players');
-        } else {
-          console.log(`Initialized masterlist cache with ${masterlistCache.length} players`);
-        }
+        console.log(`Initialized masterlist cache with ${masterlistCache.length} players from masterlist.json`);
       } catch (error) {
-        console.log('Failed to read masterlist file, using default data');
-        masterlistCache = [...DEFAULT_MASTERLIST];
+        console.log('Failed to read masterlist.json file, starting with empty masterlist');
+        masterlistCache = [];
       }
     }
   },
