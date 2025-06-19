@@ -642,7 +642,6 @@ function displayPlayersForPicker(players) {
                     </div>
                     <div>
                         <div class="fw-bold">${escapeHtml(player.name)}</div>
-                        <small class="text-muted">${player.dota2id || 'N/A'}</small>
                     </div>
                 </div>
             </td>
@@ -677,26 +676,32 @@ function setupPickerActionButtons() {
     // Pick single player buttons
     document.querySelectorAll('.pick-single-player').forEach(button => {
         button.addEventListener('click', (e) => {
+            const playerId = e.currentTarget.getAttribute('data-id');
             const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
-            pickSpecificPlayer(playerIndex);
+            pickSpecificPlayer(playerId, playerIndex);
         });
     });
 
     // Exclude player buttons
     document.querySelectorAll('.exclude-player').forEach(button => {
         button.addEventListener('click', (e) => {
+            const playerId = e.currentTarget.getAttribute('data-id');
             const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
-            excludePlayerFromPool(playerIndex);
+            excludePlayerFromPool(playerId, playerIndex);
         });
     });
 }
 
 /**
- * Pick a specific player by index
+ * Pick a specific player by ID
  */
-function pickSpecificPlayer(playerIndex) {
-    if (playerIndex >= 0 && playerIndex < availablePlayers.length) {
-        const selectedPlayer = availablePlayers[playerIndex];
+function pickSpecificPlayer(playerId, playerIndex) {
+    // Find player by ID instead of using index (fixes sorting bug)
+    const playerRealIndex = availablePlayers.findIndex(p => p.id === playerId);
+    
+    if (playerRealIndex >= 0 && playerRealIndex < availablePlayers.length) {
+        const selectedPlayer = availablePlayers[playerRealIndex];
+        console.log(`Player to pick: ${selectedPlayer.name} (ID: ${playerId}, Real Index: ${playerRealIndex})`);
         
         // Add to history
         const historyEntry = {
@@ -715,15 +720,22 @@ function pickSpecificPlayer(playerIndex) {
         updateHistoryDisplay();
 
         showNotification(`Selected: ${selectedPlayer.name}`, 'success');
+    } else {
+        console.error(`Player not found with ID: ${playerId}. Available players: ${availablePlayers.length}`);
+        showNotification('Error: Player not found', 'error');
     }
 }
 
 /**
  * Exclude player from the pool temporarily
  */
-function excludePlayerFromPool(playerIndex) {
-    if (playerIndex >= 0 && playerIndex < availablePlayers.length) {
-        const player = availablePlayers[playerIndex];
+function excludePlayerFromPool(playerId, playerIndex) {
+    // Find player by ID instead of using index (fixes sorting bug)
+    const playerRealIndex = availablePlayers.findIndex(p => p.id === playerId);
+    
+    if (playerRealIndex >= 0 && playerRealIndex < availablePlayers.length) {
+        const player = availablePlayers[playerRealIndex];
+        console.log(`Player to exclude: ${player.name} (ID: ${playerId}, Real Index: ${playerRealIndex})`);
         
         if (confirm(`Temporarily exclude ${player.name} from random picker?`)) {
             // Add to excluded players if not already there
@@ -735,8 +747,8 @@ function excludePlayerFromPool(playerIndex) {
             if (!alreadyExcluded) {
                 excludedPlayers.push(player);
                 
-                // Remove from available players
-                availablePlayers.splice(playerIndex, 1);
+                // Remove from available players using the correct index
+                availablePlayers.splice(playerRealIndex, 1);
                 
                 // Refresh display
                 displayPlayersForPicker(availablePlayers);
@@ -746,6 +758,9 @@ function excludePlayerFromPool(playerIndex) {
                 showNotification(`${player.name} is already excluded`, 'warning');
             }
         }
+    } else {
+        console.error(`Player not found with ID: ${playerId}. Available players: ${availablePlayers.length}`);
+        showNotification('Error: Player not found', 'error');
     }
 }
 
