@@ -6,7 +6,7 @@ let currentUser = null;
 async function initRegistration() {
     try {
         // Get current user info from session manager
-        currentUser = window.sessionManager?.getCurrentUser();
+        currentUser = window.sessionManager?.getUserInfo();
         
         // Setup event listeners
         setupEventListeners();
