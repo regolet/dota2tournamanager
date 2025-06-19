@@ -276,26 +276,26 @@ async function initRandomPicker() {
 // Load players for the picker
 async function loadPickerPlayers() {
     try {
-        // Load from API endpoint
-        const response = await fetch('/api/players');
+        // Load from correct API endpoint
+        const response = await fetch('/.netlify/functions/api-players');
         if (response.ok) {
             const data = await response.json();
-            if (Array.isArray(data) && data.length > 0) {
-                pickerPlayers = state.pickerPlayers = data.map(player => ({
+            if (data.success && Array.isArray(data.players) && data.players.length > 0) {
+                pickerPlayers = state.pickerPlayers = data.players.map(player => ({
                     name: player.name,
                     dota2id: player.dota2id || 'N/A',
                     peakmmr: player.peakmmr || 'N/A'
                 }));
-                        // Loaded players from API
-    } else {
-        // No players returned from API or invalid format
+                console.log(`Loaded ${pickerPlayers.length} players from API`);
+            } else {
+                console.log('No players returned from API or invalid format');
                 pickerPlayers = state.pickerPlayers = [];
             }
         } else {
             throw new Error(`Failed to load players: ${response.status}`);
         }
     } catch (error) {
-        // Error loading players
+        console.error('Error loading players:', error);
         pickerPlayers = state.pickerPlayers = [];
     }
     

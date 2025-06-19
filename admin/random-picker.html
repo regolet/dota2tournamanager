@@ -163,20 +163,20 @@
     // Import players from team balancer
     async function importPlayersFromTeamBalancer() {
         try {
-            const response = await fetch('/api/players');
+            const response = await fetch('/.netlify/functions/api-players');
             if (!response.ok) {
                 throw new Error(`Failed to load players: ${response.status}`);
             }
             
-            const players = await response.json();
-            if (!players || players.length === 0) {
+            const data = await response.json();
+            if (!data.success || !data.players || data.players.length === 0) {
                 showToast('No players available to import', 'warning');
                 return;
             }
             
             // Add each player to the picker
             let importCount = 0;
-            for (const player of players) {
+            for (const player of data.players) {
                 if (window.randomPickerAPI && window.randomPickerAPI.addPlayer) {
                     window.randomPickerAPI.addPlayer(player.name);
                     importCount++;
