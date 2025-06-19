@@ -389,6 +389,91 @@ function setupPickerButtons() {
         exportHistoryBtn.removeAttribute('onclick');
         exportHistoryBtn.addEventListener('click', exportPickerHistory);
     }
+
+    // Add Player button
+    const addPlayerBtn = document.getElementById('add-player-picker');
+    const playerNameInput = document.getElementById('player-name-picker');
+    if (addPlayerBtn && playerNameInput) {
+        addPlayerBtn.addEventListener('click', function() {
+            const playerName = playerNameInput.value.trim();
+            if (playerName) {
+                addPlayerManually(playerName);
+                playerNameInput.value = '';
+                playerNameInput.focus();
+            } else {
+                showNotification('Please enter a player name', 'warning');
+            }
+        });
+
+        // Add on Enter key
+        playerNameInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                const playerName = this.value.trim();
+                if (playerName) {
+                    addPlayerManually(playerName);
+                    this.value = '';
+                } else {
+                    showNotification('Please enter a player name', 'warning');
+                }
+            }
+        });
+    }
+
+    // Show Excluded button
+    const showExcludedBtn = document.getElementById('show-excluded-picker');
+    if (showExcludedBtn) {
+        showExcludedBtn.addEventListener('click', showExcludedPlayersModal);
+    }
+
+    // Clear All button
+    const clearAllBtn = document.getElementById('clear-players-picker');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all players from the picker?')) {
+                availablePlayers = [];
+                excludedPlayers = [];
+                displayPlayersForPicker([]);
+                showNotification('All players cleared from picker', 'success');
+            }
+        });
+    }
+}
+
+/**
+ * Add a player manually to the picker
+ */
+function addPlayerManually(playerName) {
+    if (!playerName || !playerName.trim()) {
+        showNotification('Please enter a valid player name', 'warning');
+        return;
+    }
+
+    // Check if player already exists
+    const existingPlayer = availablePlayers.find(p => 
+        p.name.toLowerCase() === playerName.toLowerCase()
+    );
+    
+    if (existingPlayer) {
+        showNotification('Player already exists in the pool', 'warning');
+        return;
+    }
+
+    // Create a new player object
+    const newPlayer = {
+        id: `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: playerName.trim(),
+        dota2id: 'Manual',
+        peakmmr: 0,
+        isManual: true
+    };
+
+    // Add to available players
+    availablePlayers.push(newPlayer);
+    
+    // Update display
+    displayPlayersForPicker(availablePlayers);
+    
+    showNotification(`Added "${playerName}" to picker`, 'success');
 }
 
 /**
@@ -675,7 +760,7 @@ function pickRandomPlayerInternal() {
 
     // Get timer duration from input
     const timerInput = document.getElementById('timer-input');
-    const timerSeconds = timerInput ? parseInt(timerInput.value) || 3 : 3;
+    const timerSeconds = timerInput ? parseInt(timerInput.value) || 5 : 5;
     
     // Disable the pick button during animation
     const pickButton = document.getElementById('pick-random');
@@ -686,6 +771,19 @@ function pickRandomPlayerInternal() {
 
     // Start the animated picking process
     startAnimatedPicking(timerSeconds, (selectedPlayer) => {
+        // Check if "remove name after picking" is enabled
+        const removeAfterPickCheckbox = document.getElementById('remove-after-pick');
+        const shouldRemove = removeAfterPickCheckbox ? removeAfterPickCheckbox.checked : false;
+        
+        if (shouldRemove) {
+            // Remove the selected player from available players
+            const playerIndex = availablePlayers.findIndex(p => p.name === selectedPlayer.name);
+            if (playerIndex > -1) {
+                availablePlayers.splice(playerIndex, 1);
+                displayPlayersForPicker(availablePlayers);
+            }
+        }
+
         // Add to history
         const historyEntry = {
             type: 'single',
