@@ -1,83 +1,87 @@
-// Helper functions for MMR calculations
-function ensureNumericMmr(mmr) {
-    const numericMmr = parseInt(mmr);
-    return isNaN(numericMmr) ? 0 : numericMmr;
-}
+(function() {
+    'use strict';
 
-function calculateTotalMmr(players) {
-    return players.reduce((sum, player) => sum + ensureNumericMmr(player.peakmmr), 0);
-}
+    // Team Balancer Module State
+    const state = {
+        currentSessionId: null,
+        registrationSessions: [],
+        availablePlayers: [],
+        balancedTeams: []
+    };
 
-function calculateAverageMmr(players) {
-    if (!players || players.length === 0) return 0;
-    return Math.round(calculateTotalMmr(players) / players.length);
-}
-
-// Utility functions
-function fetchWithAuth(url, options = {}) {
-    const sessionId = localStorage.getItem('adminSessionId');
-    if (sessionId) {
-        if (!options.headers) options.headers = {};
-        options.headers['X-Session-Id'] = sessionId;
+    // Helper functions for MMR calculations
+    function ensureNumericMmr(mmr) {
+        const numericMmr = parseInt(mmr);
+        return isNaN(numericMmr) ? 0 : numericMmr;
     }
-    return fetch(url, options);
-}
 
-function showNotification(message, type = 'info') {
-    // Create notification element if it doesn't exist
-    let notification = document.getElementById('notification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'notification';
-        notification.style.position = 'fixed';
-        notification.style.top = '20px';
-        notification.style.right = '20px';
-        notification.style.padding = '15px 20px';
-        notification.style.borderRadius = '4px';
-        notification.style.color = 'white';
-        notification.style.zIndex = '1050';
-        notification.style.maxWidth = '300px';
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateY(-20px)';
-        notification.style.transition = 'opacity 0.3s, transform 0.3s';
-        document.body.appendChild(notification);
+    function calculateTotalMmr(players) {
+        return players.reduce((sum, player) => sum + ensureNumericMmr(player.peakmmr), 0);
     }
-    
-    // Set notification type
-    notification.className = type;
-    switch (type) {
-        case 'success':
-            notification.style.backgroundColor = '#28a745';
-            break;
-        case 'error':
-            notification.style.backgroundColor = '#dc3545';
-            break;
-        case 'warning':
-            notification.style.backgroundColor = '#ffc107';
-            notification.style.color = '#212529';
-            break;
-        default:
-            notification.style.backgroundColor = '#17a2b8';
+
+    function calculateAverageMmr(players) {
+        if (!players || players.length === 0) return 0;
+        return Math.round(calculateTotalMmr(players) / players.length);
     }
-    
-    // Set message and show
-    notification.textContent = message;
-    notification.style.opacity = '1';
-    notification.style.transform = 'translateY(0)';
-    
-    // Hide after 5 seconds
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateY(-20px)';
-    }, 5000);
-}
 
-// Team Balancer with Registration Session Support
+    // Utility functions
+    function fetchWithAuth(url, options = {}) {
+        const sessionId = localStorage.getItem('adminSessionId');
+        if (sessionId) {
+            if (!options.headers) options.headers = {};
+            options.headers['X-Session-Id'] = sessionId;
+        }
+        return fetch(url, options);
+    }
 
-let currentSessionId = null;
-let registrationSessions = [];
-let availablePlayers = [];
-let balancedTeams = [];
+    function showNotification(message, type = 'info') {
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'notification';
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.padding = '15px 20px';
+            notification.style.borderRadius = '4px';
+            notification.style.color = 'white';
+            notification.style.zIndex = '1050';
+            notification.style.maxWidth = '300px';
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-20px)';
+            notification.style.transition = 'opacity 0.3s, transform 0.3s';
+            document.body.appendChild(notification);
+        }
+        
+        // Set notification type
+        notification.className = type;
+        switch (type) {
+            case 'success':
+                notification.style.backgroundColor = '#28a745';
+                break;
+            case 'error':
+                notification.style.backgroundColor = '#dc3545';
+                break;
+            case 'warning':
+                notification.style.backgroundColor = '#ffc107';
+                notification.style.color = '#212529';
+                break;
+            default:
+                notification.style.backgroundColor = '#17a2b8';
+        }
+        
+        // Set message and show
+        notification.textContent = message;
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateY(0)';
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-20px)';
+        }, 5000);
+    }
 
 /**
  * Initialize the team balancer
@@ -167,7 +171,7 @@ async function loadRegistrationSessions() {
         const data = await response.json();
 
         if (data.success && data.sessions) {
-            registrationSessions = data.sessions;
+            state.registrationSessions = data.sessions;
             updateSessionSelector();
         } else {
             showNotification(data.message || 'Failed to load registration sessions', 'error');
@@ -187,7 +191,7 @@ function updateSessionSelector() {
 
     selector.innerHTML = '<option value="">Choose a tournament...</option>';
 
-    registrationSessions.forEach(session => {
+    state.registrationSessions.forEach(session => {
         const option = document.createElement('option');
         option.value = session.sessionId;
         option.textContent = `${session.title} (${session.playerCount} players)`;
@@ -206,7 +210,7 @@ function setupTeamBalancerEventListeners() {
     const sessionSelector = document.getElementById('team-balancer-session-selector');
     if (sessionSelector) {
         sessionSelector.addEventListener('change', async (e) => {
-            currentSessionId = e.target.value || null;
+            state.currentSessionId = e.target.value || null;
             await loadPlayersForBalancer();
             clearTeams(); // Clear existing teams when session changes
         });
@@ -264,36 +268,10 @@ function setupBalancerButtons() {
  * Load players for the selected tournament session
  */
 async function loadPlayersForBalancer() {
-    if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
-        
-        // Clear player display
-        const playersContainer = document.getElementById('players-container') || 
-                                document.querySelector('.players-container');
-        if (playersContainer) {
-            playersContainer.innerHTML = `
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Please select a tournament from the dropdown above to load players.
-                </div>
-            `;
-        }
-        return;
-    }
-
     try {
-        // Show loading state
-        const playersContainer = document.getElementById('players-container') || 
-                                document.querySelector('.players-container');
-        if (playersContainer) {
-            playersContainer.innerHTML = `
-                <div class="d-flex justify-content-center align-items-center py-4">
-                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    Loading players from tournament...
-                </div>
-            `;
+        if (!state.currentSessionId) {
+            showNotification('Please select a tournament first', 'warning');
+            return;
         }
 
         const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
@@ -303,61 +281,62 @@ async function loadPlayersForBalancer() {
             return;
         }
 
-        // Load players for the specific session
-        const response = await fetch(`/.netlify/functions/api-players?sessionId=${currentSessionId}`, {
-            headers: {
-                'x-session-id': sessionId
-            }
-        });
+        // Clear existing players
+        state.availablePlayers = [];
+        
+        // Clear existing teams when loading new players
+        clearTeams();
 
-        if (!response.ok) {
-            throw new Error(`Failed to load players: ${response.status} ${response.statusText}`);
+        const loadingElement = document.getElementById('loading-indicator');
+        if (loadingElement) {
+            loadingElement.style.display = 'block';
         }
 
-        const data = await response.json();
+        try {
+            const response = await fetch(`/.netlify/functions/api-players?sessionId=${state.currentSessionId}`, {
+                headers: {
+                    'x-session-id': sessionId
+                }
+            });
 
-        if (data.success && Array.isArray(data.players)) {
-            availablePlayers = data.players.map(player => ({
-                id: player.id,
-                name: player.name,
-                peakmmr: player.peakmmr || 0,
-                dota2id: player.dota2id
-            }));
+            const data = await response.json();
 
-            displayPlayersForBalancer(availablePlayers);
-            
-            // Update player count
-            const playerCountBadge = document.getElementById('balancer-player-count');
-            if (playerCountBadge) {
-                playerCountBadge.textContent = `${availablePlayers.length} players`;
+            if (data.success && data.players) {
+                state.availablePlayers = data.players.filter(player => 
+                    player.name && 
+                    player.name.trim() !== '' && 
+                    player.registration_session_id === state.currentSessionId
+                );
+                
+                displayPlayersForBalancer(state.availablePlayers);
+                
+                // Update player count in badge
+                const countBadge = document.getElementById('balancer-player-count');
+                if (countBadge) {
+                    countBadge.textContent = `${state.availablePlayers.length} players`;
+                }
+                
+                if (state.availablePlayers.length === 0) {
+                    showNotification('No players found in selected tournament', 'info');
+                } else {
+                    showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
+                }
+            } else {
+                console.error('Failed to load players:', data.message || 'Unknown error');
+                showNotification(data.message || 'Failed to load players', 'error');
             }
-
-            showNotification(`Loaded ${availablePlayers.length} players from tournament`, 'success');
-        } else {
-            availablePlayers = [];
-            displayPlayersForBalancer([]);
-            
-            const playerCountBadge = document.getElementById('balancer-player-count');
-            if (playerCountBadge) {
-                playerCountBadge.textContent = '0 players';
+        } catch (fetchError) {
+            console.error('Network error loading players:', fetchError);
+            showNotification('Network error loading players', 'error');
+        } finally {
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
             }
         }
 
     } catch (error) {
-        console.error('Error loading players for balancer:', error);
-        
-        const playersContainer = document.getElementById('players-container') || 
-                                document.querySelector('.players-container');
-        if (playersContainer) {
-            playersContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    Error loading players: ${error.message}
-                </div>
-            `;
-        }
-        
-        showNotification('Failed to load players for team balancer', 'error');
+        console.error('Error in loadPlayersForBalancer:', error);
+        showNotification('Error loading players', 'error');
     }
 }
 
@@ -365,102 +344,100 @@ async function loadPlayersForBalancer() {
  * Display players for the team balancer
  */
 function displayPlayersForBalancer(players) {
-    const playersContainer = document.getElementById('players-container') || 
-                            document.querySelector('.players-container');
+    const playersList = document.getElementById('players-list') || 
+                       document.querySelector('.players-list') ||
+                       document.querySelector('#player-list');
     
-    if (!playersContainer) {
-        console.error('Players container not found');
+    if (!playersList) {
+        console.error('Players list container not found');
         return;
     }
 
     if (!players || players.length === 0) {
-        playersContainer.innerHTML = `
+        playersList.innerHTML = `
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
-                ${currentSessionId ? 'No players found in this tournament.' : 'Please select a tournament to load players.'}
+                ${state.currentSessionId ? 'No players found in this tournament.' : 'Please select a tournament to load players.'}
             </div>
         `;
         return;
     }
 
-    // Sort players by MMR (highest first)
+    // Sort players by MMR (highest first) for better display
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
 
     const playersHtml = `
         <div class="row">
-            <div class="col-12">
-                <h5 class="mb-3">
+            <div class="col-12 mb-3">
+                <h5>
                     <i class="bi bi-people me-2"></i>
                     Available Players (${players.length})
                 </h5>
-                <div class="row">
-                    ${sortedPlayers.map(player => `
-                        <div class="col-md-6 col-lg-4 mb-2">
-                            <div class="card h-100 player-card" data-player-id="${player.id}">
-                                <div class="card-body p-2">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <div class="fw-bold small">${escapeHtml(player.name)}</div>
-                                            <small class="text-muted">${player.dota2id || 'N/A'}</small>
-                                        </div>
-                                        <span class="badge bg-primary">${player.peakmmr || 0}</span>
-                                    </div>
+            </div>
+            ${sortedPlayers.map(player => `
+                <div class="col-lg-6 mb-2">
+                    <div class="card border-left-primary shadow-sm">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">${escapeHtml(player.name)}</div>
+                                    <small class="text-muted">${player.dota2id || 'N/A'}</small>
                                 </div>
+                                <span class="badge bg-primary">${player.peakmmr || 0}</span>
                             </div>
                         </div>
-                    `).join('')}
+                    </div>
                 </div>
-            </div>
+            `).join('')}
         </div>
     `;
 
-    playersContainer.innerHTML = playersHtml;
+    playersList.innerHTML = playersHtml;
 }
 
 /**
  * Auto balance teams based on MMR
  */
 function autoBalance() {
-    if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
-        return;
-    }
-
-    if (!availablePlayers || availablePlayers.length === 0) {
-        showNotification('Please load players first', 'warning');
-        return;
-    }
-
-    if (availablePlayers.length < 10) {
-        showNotification('Need at least 10 players to create balanced teams', 'warning');
-        return;
-    }
-
     try {
-        // Get team size from input or default to 5
-        const teamSizeInput = document.getElementById('team-size-input') || 
-                             document.querySelector('input[name="team-size"]');
-        const teamSize = teamSizeInput ? parseInt(teamSizeInput.value) || 5 : 5;
-
-        // Shuffle players randomly first
-        const shuffledPlayers = [...availablePlayers].sort(() => Math.random() - 0.5);
-        
-        // Sort by MMR (descending)
-        const sortedPlayers = shuffledPlayers.sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
-
-        // Calculate number of complete teams
-        const numTeams = Math.floor(sortedPlayers.length / teamSize);
-        
-        if (numTeams < 2) {
-            showNotification(`Need at least ${teamSize * 2} players to create 2 teams of ${teamSize}`, 'warning');
+        if (!state.currentSessionId) {
+            showNotification('Please select a tournament first', 'warning');
             return;
         }
 
+        if (!state.availablePlayers || state.availablePlayers.length === 0) {
+            showNotification('No players available for balancing', 'warning');
+            return;
+        }
+
+        // Get balance settings
+        const teamSizeSelect = document.getElementById('team-size');
+        const balanceMethodSelect = document.getElementById('balance-method');
+        
+        const teamSize = parseInt(teamSizeSelect?.value) || 5;
+        const balanceMethod = balanceMethodSelect?.value || 'mmr-balanced';
+
+        // Calculate number of teams
+        const numTeams = Math.floor(state.availablePlayers.length / teamSize);
+        
+        if (numTeams < 2) {
+            showNotification(`Not enough players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players.`, 'warning');
+            return;
+        }
+
+        // Clear existing teams
+        state.balancedTeams = [];
+
         // Initialize teams
-        balancedTeams = Array.from({ length: numTeams }, () => ({
-            players: [],
-            totalMmr: 0
-        }));
+        for (let i = 0; i < numTeams; i++) {
+            state.balancedTeams.push({
+                players: [],
+                totalMmr: 0
+            });
+        }
+
+        // Sort players by MMR (highest first)
+        const sortedPlayers = [...state.availablePlayers].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
 
         // Distribute players using snake draft method
         let currentTeam = 0;
@@ -468,8 +445,8 @@ function autoBalance() {
 
         for (let i = 0; i < sortedPlayers.length && i < numTeams * teamSize; i++) {
             const player = sortedPlayers[i];
-            balancedTeams[currentTeam].players.push(player);
-            balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
+            state.balancedTeams[currentTeam].players.push(player);
+            state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
 
             // Move to next team using snake pattern
             if (direction === 1) {
@@ -510,7 +487,7 @@ function displayBalancedTeams() {
         return;
     }
 
-    if (!balancedTeams || balancedTeams.length === 0) {
+    if (!state.balancedTeams || state.balancedTeams.length === 0) {
         teamsContainer.innerHTML = `
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
@@ -525,10 +502,10 @@ function displayBalancedTeams() {
             <div class="col-12 mb-3">
                 <h5>
                     <i class="bi bi-people-fill me-2"></i>
-                    Balanced Teams (${balancedTeams.length})
+                    Balanced Teams (${state.balancedTeams.length})
                 </h5>
             </div>
-            ${balancedTeams.map((team, teamIndex) => `
+            ${state.balancedTeams.map((team, teamIndex) => `
                 <div class="col-lg-6 mb-4">
                     <div class="card border-primary">
                         <div class="card-header bg-primary text-white">
@@ -568,7 +545,7 @@ function displayBalancedTeams() {
  * Clear all teams
  */
 function clearTeams() {
-    balancedTeams = [];
+    state.balancedTeams = [];
     
     const teamsContainer = document.getElementById('teams-container') || 
                           document.querySelector('.teams-container');
@@ -589,18 +566,18 @@ function clearTeams() {
  * Export teams to various formats
  */
 function exportTeams() {
-    if (!balancedTeams || balancedTeams.length === 0) {
+    if (!state.balancedTeams || state.balancedTeams.length === 0) {
         showNotification('No teams to export', 'warning');
         return;
     }
 
     // Create export data
     const exportData = {
-        tournament: registrationSessions.find(s => s.sessionId === currentSessionId)?.title || 'Unknown Tournament',
-        sessionId: currentSessionId,
+        tournament: state.registrationSessions.find(s => s.sessionId === state.currentSessionId)?.title || 'Unknown Tournament',
+        sessionId: state.currentSessionId,
         exportDate: new Date().toISOString(),
-        totalTeams: balancedTeams.length,
-        teams: balancedTeams.map((team, index) => ({
+        totalTeams: state.balancedTeams.length,
+        teams: state.balancedTeams.map((team, index) => ({
             teamNumber: index + 1,
             totalMmr: team.totalMmr,
             averageMmr: Math.round(team.totalMmr / team.players.length),
@@ -617,7 +594,7 @@ function exportTeams() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `team-balance-${currentSessionId}-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `team-balance-${state.currentSessionId}-${new Date().toISOString().slice(0, 10)}.json`;
     link.style.display = 'none';
     
     document.body.appendChild(link);
@@ -656,8 +633,10 @@ window.teamBalancerModule = {
     exportTeams
 };
 
-// Legacy global functions for existing onclick handlers
-window.loadPlayers = loadPlayersForBalancer;
-window.autoBalance = autoBalance;
-window.clearTeams = clearTeams;
-window.exportTeams = exportTeams;
+    // Legacy global functions for existing onclick handlers
+    window.loadPlayers = loadPlayersForBalancer;
+    window.autoBalance = autoBalance;
+    window.clearTeams = clearTeams;
+    window.exportTeams = exportTeams;
+
+})();
