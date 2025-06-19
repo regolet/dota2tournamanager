@@ -747,46 +747,54 @@ export async function updateAdminUser(userId, updates) {
   try {
     await initializeDatabase();
     
-    const setClause = [];
-    const values = [];
+    // Check if user exists first
+    const existingUser = await sql`
+      SELECT id FROM admin_users WHERE id = ${userId}
+    `;
     
-    if (updates.username) {
-      setClause.push('username = $' + (values.length + 1));
-      values.push(updates.username);
-    }
-    if (updates.password) {
-      setClause.push('password_hash = $' + (values.length + 1));
-      values.push(updates.password);
-    }
-    if (updates.role) {
-      setClause.push('role = $' + (values.length + 1));
-      values.push(updates.role);
-    }
-    if (updates.fullName !== undefined) {
-      setClause.push('full_name = $' + (values.length + 1));
-      values.push(updates.fullName);
-    }
-    if (updates.email !== undefined) {
-      setClause.push('email = $' + (values.length + 1));
-      values.push(updates.email);
-    }
-    if (updates.isActive !== undefined) {
-      setClause.push('is_active = $' + (values.length + 1));
-      values.push(updates.isActive);
+    if (existingUser.length === 0) {
+      return { success: false, message: 'User not found' };
     }
     
-    if (setClause.length === 0) {
+    // Build update query dynamically
+    const updateFields = {};
+    if (updates.username) updateFields.username = updates.username;
+    if (updates.password) updateFields.password_hash = updates.password;
+    if (updates.role) updateFields.role = updates.role;
+    if (updates.fullName !== undefined) updateFields.full_name = updates.fullName;
+    if (updates.email !== undefined) updateFields.email = updates.email;
+    if (updates.isActive !== undefined) updateFields.is_active = updates.isActive;
+    
+    if (Object.keys(updateFields).length === 0) {
       return { success: false, message: 'No fields to update' };
     }
     
-    setClause.push('updated_at = NOW()');
-    values.push(userId);
-    
-    await sql`UPDATE admin_users SET ${sql.raw(setClause.join(', '))} WHERE id = $${values.length}`.apply(null, values);
+    // Perform individual updates
+    if (updateFields.username) {
+      await sql`UPDATE admin_users SET username = ${updateFields.username}, updated_at = NOW() WHERE id = ${userId}`;
+    }
+    if (updateFields.password_hash) {
+      await sql`UPDATE admin_users SET password_hash = ${updateFields.password_hash}, updated_at = NOW() WHERE id = ${userId}`;
+    }
+    if (updateFields.role) {
+      await sql`UPDATE admin_users SET role = ${updateFields.role}, updated_at = NOW() WHERE id = ${userId}`;
+    }
+    if (updateFields.full_name !== undefined) {
+      await sql`UPDATE admin_users SET full_name = ${updateFields.full_name}, updated_at = NOW() WHERE id = ${userId}`;
+    }
+    if (updateFields.email !== undefined) {
+      await sql`UPDATE admin_users SET email = ${updateFields.email}, updated_at = NOW() WHERE id = ${userId}`;
+    }
+    if (updateFields.is_active !== undefined) {
+      await sql`UPDATE admin_users SET is_active = ${updateFields.is_active}, updated_at = NOW() WHERE id = ${userId}`;
+    }
     
     return { success: true };
   } catch (error) {
     console.error('Error updating admin user:', error);
+    if (error.message.includes('duplicate key')) {
+      return { success: false, message: 'Username already exists' };
+    }
     return { success: false, message: 'Error updating user' };
   }
 }

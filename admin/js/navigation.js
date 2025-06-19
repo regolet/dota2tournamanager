@@ -1011,10 +1011,76 @@ function showUserManagementModal() {
                                     </tbody>
                                 </table>
                             </div>
+                            <div id="user-management-alert" class="alert" style="display: none;"></div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Add/Edit User Modal -->
+            <div class="modal fade" id="add-edit-user-modal" tabindex="-1" aria-labelledby="addEditUserModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="addEditUserModalLabel">
+                                <i class="bi bi-person-plus me-2"></i>Add User
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form id="add-edit-user-form">
+                            <div class="modal-body">
+                                <input type="hidden" id="edit-user-id">
+                                
+                                <div class="mb-3">
+                                    <label for="user-username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="user-username" required minlength="3" maxlength="50">
+                                    <div class="form-text">3-50 characters, letters, numbers, and underscores only</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="user-password" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="user-password" required minlength="6">
+                                    <div class="form-text">Minimum 6 characters</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="user-full-name" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="user-full-name" maxlength="255">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="user-email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="user-email" maxlength="255">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="user-role" class="form-label">Role</label>
+                                    <select class="form-select" id="user-role" required>
+                                        <option value="">Select Role</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="superadmin">Super Admin</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="user-active" checked>
+                                        <label class="form-check-label" for="user-active">
+                                            Active User
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div id="add-edit-user-alert" class="alert" style="display: none;"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary" id="save-user-btn">Add User</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -1023,47 +1089,291 @@ function showUserManagementModal() {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
         // Set up event handlers
-        document.getElementById('add-user-btn').addEventListener('click', () => {
-            alert('User management functionality will be implemented in the next update!');
-        });
+        document.getElementById('add-user-btn').addEventListener('click', showAddUserModal);
+        document.getElementById('add-edit-user-form').addEventListener('submit', handleUserSave);
     }
     
-    // Show modal
+    // Show modal and load users
     const modal = new bootstrap.Modal(document.getElementById('user-management-modal'));
     modal.show();
     
-    // Load users (placeholder for now)
-    const tbody = document.getElementById('users-table-body');
-    tbody.innerHTML = `
-        <tr>
-            <td>superadmin</td>
-            <td>Super Administrator</td>
-            <td>superadmin@tournament.local</td>
-            <td><span class="badge bg-danger">Super Admin</span></td>
-            <td><span class="badge bg-success">Active</span></td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary me-1" disabled>
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger" disabled>
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        </tr>
-        <tr>
-            <td>admin</td>
-            <td>Administrator</td>
-            <td>admin@tournament.local</td>
-            <td><span class="badge bg-primary">Admin</span></td>
-            <td><span class="badge bg-success">Active</span></td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary me-1" disabled>
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger" disabled>
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `;
+    // Load users from backend
+    loadAdminUsers();
 }
+
+/**
+ * Load admin users from backend
+ */
+async function loadAdminUsers() {
+    const tbody = document.getElementById('users-table-body');
+    
+    try {
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        if (!sessionId) {
+            showUserManagementAlert('Session expired. Please login again.', 'danger');
+            return;
+        }
+        
+        const response = await fetch('/.netlify/functions/admin-users', {
+            headers: {
+                'x-session-id': sessionId
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.users) {
+            tbody.innerHTML = '';
+            
+            data.users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.username}</td>
+                    <td>${user.fullName || '-'}</td>
+                    <td>${user.email || '-'}</td>
+                    <td>
+                        <span class="badge ${user.role === 'superadmin' ? 'bg-danger' : 'bg-primary'}">
+                            ${user.role === 'superadmin' ? 'Super Admin' : 'Admin'}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${user.isActive ? 'bg-success' : 'bg-secondary'}">
+                            ${user.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editUser('${user.id}')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${user.id}', '${user.username}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            showUserManagementAlert(data.message || 'Failed to load users', 'danger');
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showUserManagementAlert('Error loading users', 'danger');
+    }
+}
+
+/**
+ * Show add user modal
+ */
+function showAddUserModal() {
+    // Reset form
+    document.getElementById('add-edit-user-form').reset();
+    document.getElementById('edit-user-id').value = '';
+    document.getElementById('user-active').checked = true;
+    
+    // Update modal title and button
+    document.getElementById('addEditUserModalLabel').innerHTML = '<i class="bi bi-person-plus me-2"></i>Add User';
+    document.getElementById('save-user-btn').textContent = 'Add User';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('add-edit-user-modal'));
+    modal.show();
+}
+
+/**
+ * Edit user
+ */
+async function editUser(userId) {
+    try {
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        const response = await fetch(`/.netlify/functions/admin-users?userId=${userId}`, {
+            headers: {
+                'x-session-id': sessionId
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.user) {
+            const user = data.user;
+            
+            // Fill form
+            document.getElementById('edit-user-id').value = user.id;
+            document.getElementById('user-username').value = user.username;
+            document.getElementById('user-password').value = ''; // Don't show current password
+            document.getElementById('user-full-name').value = user.fullName || '';
+            document.getElementById('user-email').value = user.email || '';
+            document.getElementById('user-role').value = user.role;
+            document.getElementById('user-active').checked = user.isActive;
+            
+            // Update modal title and button
+            document.getElementById('addEditUserModalLabel').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit User';
+            document.getElementById('save-user-btn').textContent = 'Update User';
+            
+            // Make password optional for editing
+            document.getElementById('user-password').removeAttribute('required');
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('add-edit-user-modal'));
+            modal.show();
+        } else {
+            showUserManagementAlert(data.message || 'Failed to load user', 'danger');
+        }
+    } catch (error) {
+        console.error('Error loading user:', error);
+        showUserManagementAlert('Error loading user', 'danger');
+    }
+}
+
+/**
+ * Delete user
+ */
+async function deleteUser(userId, username) {
+    if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+        return;
+    }
+    
+    try {
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        const response = await fetch(`/.netlify/functions/admin-users`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-session-id': sessionId
+            },
+            body: JSON.stringify({ userId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showUserManagementAlert(`User "${username}" deleted successfully`, 'success');
+            loadAdminUsers(); // Reload the list
+        } else {
+            showUserManagementAlert(data.message || 'Failed to delete user', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showUserManagementAlert('Error deleting user', 'danger');
+    }
+}
+
+/**
+ * Handle user save (add/edit)
+ */
+async function handleUserSave(e) {
+    e.preventDefault();
+    
+    const userId = document.getElementById('edit-user-id').value;
+    const isEdit = !!userId;
+    
+    const userData = {
+        username: document.getElementById('user-username').value,
+        password: document.getElementById('user-password').value,
+        fullName: document.getElementById('user-full-name').value,
+        email: document.getElementById('user-email').value,
+        role: document.getElementById('user-role').value,
+        isActive: document.getElementById('user-active').checked
+    };
+    
+    // For editing, password is optional
+    if (isEdit && !userData.password) {
+        delete userData.password;
+    }
+    
+    const saveButton = document.getElementById('save-user-btn');
+    const originalText = saveButton.textContent;
+    
+    try {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+        
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        const url = isEdit ? `/.netlify/functions/admin-users` : '/.netlify/functions/admin-users';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        if (isEdit) {
+            userData.userId = userId;
+        }
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'x-session-id': sessionId
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showUserManagementAlert(`User ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('add-edit-user-modal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Reload users list
+            loadAdminUsers();
+        } else {
+            showAddEditUserAlert(data.message || `Failed to ${isEdit ? 'update' : 'create'} user`, 'danger');
+        }
+    } catch (error) {
+        console.error('Error saving user:', error);
+        showAddEditUserAlert('Error saving user', 'danger');
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = originalText;
+        
+        // Restore required attribute for password if adding new user
+        if (!isEdit) {
+            document.getElementById('user-password').setAttribute('required', '');
+        }
+    }
+}
+
+/**
+ * Show alert in user management modal
+ */
+function showUserManagementAlert(message, type) {
+    const alertDiv = document.getElementById('user-management-alert');
+    if (alertDiv) {
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}-fill me-2"></i>${message}`;
+        alertDiv.style.display = 'block';
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+}
+
+/**
+ * Show alert in add/edit user modal
+ */
+function showAddEditUserAlert(message, type) {
+    const alertDiv = document.getElementById('add-edit-user-alert');
+    if (alertDiv) {
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}-fill me-2"></i>${message}`;
+        alertDiv.style.display = 'block';
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+}
+
+// Make functions globally available
+window.editUser = editUser;
+window.deleteUser = deleteUser;
