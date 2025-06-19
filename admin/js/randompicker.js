@@ -175,14 +175,19 @@ let pickerHistory = [];
  */
 async function initRandomPicker() {
     try {
+        console.log('Starting Random Picker initialization...');
+        
         // Create session selector for random picker
         await createRandomPickerSessionSelector();
+        console.log('Session selector created');
         
         // Load registration sessions
         await loadRegistrationSessions();
+        console.log('Registration sessions loaded');
         
         // Setup event listeners
         setupRandomPickerEventListeners();
+        console.log('Event listeners setup complete');
         
         console.log('Random picker initialized successfully');
     } catch (error) {
@@ -274,7 +279,12 @@ async function loadRegistrationSessions() {
  */
 function updateSessionSelector() {
     const selector = document.getElementById('picker-session-selector');
-    if (!selector) return;
+    if (!selector) {
+        console.error('Random Picker session selector not found');
+        return;
+    }
+
+    console.log('Updating Random Picker session selector with sessions:', registrationSessions);
 
     selector.innerHTML = '<option value="">Choose a tournament...</option>';
 
@@ -282,6 +292,8 @@ function updateSessionSelector() {
     const sortedSessions = [...registrationSessions].sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
     });
+
+    console.log('Sorted sessions for Random Picker:', sortedSessions);
 
     sortedSessions.forEach(session => {
         const option = document.createElement('option');
@@ -299,8 +311,12 @@ function updateSessionSelector() {
         selector.value = latestSession.sessionId;
         currentSessionId = latestSession.sessionId;
         
+        console.log('Auto-selected tournament for Random Picker:', latestSession.title, 'ID:', latestSession.sessionId);
+        
         // Load players for the selected session
         loadPlayersForPicker();
+    } else {
+        console.log('No tournaments available for Random Picker');
     }
 }
 
@@ -435,6 +451,7 @@ async function loadPlayersForPicker() {
         }
 
         const data = await response.json();
+        console.log('Random Picker API Response:', data); // Debug logging
 
         if (data.success && Array.isArray(data.players)) {
             availablePlayers = data.players.filter(player => 
@@ -442,12 +459,14 @@ async function loadPlayersForPicker() {
                 player.name.trim() !== ''
             );
 
+            console.log('Filtered players for Random Picker:', availablePlayers); // Debug logging
+
             displayPlayersForPicker(availablePlayers);
             
             // Update player count
             const playerCountBadge = document.getElementById('picker-player-count');
             if (playerCountBadge) {
-                playerCountBadge.textContent = `${availablePlayers.length} players`;
+                playerCountBadge.textContent = availablePlayers.length;
             }
 
             if (availablePlayers.length === 0) {
@@ -456,12 +475,14 @@ async function loadPlayersForPicker() {
                 showNotification(`Loaded ${availablePlayers.length} players from tournament`, 'success');
             }
         } else {
+            console.error('Failed to load players for Random Picker:', data.message || 'Unknown error');
+            showNotification(data.message || 'Failed to load players', 'error');
             availablePlayers = [];
             displayPlayersForPicker([]);
             
             const playerCountBadge = document.getElementById('picker-player-count');
             if (playerCountBadge) {
-                playerCountBadge.textContent = '0 players';
+                playerCountBadge.textContent = '0';
             }
         }
 
