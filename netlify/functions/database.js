@@ -9,18 +9,38 @@ async function initializeDatabase() {
   try {
     console.log('Starting database initialization...');
     
-    // Create players table
+    // Create players table with registration session support
     await sql`
       CREATE TABLE IF NOT EXISTS players (
         id VARCHAR(255) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        dota2id VARCHAR(255) UNIQUE NOT NULL,
+        dota2id VARCHAR(255) NOT NULL,
         peakmmr INTEGER DEFAULT 0,
         ip_address INET,
         registration_date TIMESTAMP DEFAULT NOW(),
+        registration_session_id VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(dota2id, registration_session_id)
       )
+    `;
+
+    // Add registration_session_id column if it doesn't exist (for existing installations)
+    await sql`
+      ALTER TABLE players 
+      ADD COLUMN IF NOT EXISTS registration_session_id VARCHAR(255)
+    `;
+
+    // Drop the old unique constraint on dota2id and add new composite constraint
+    await sql`
+      ALTER TABLE players 
+      DROP CONSTRAINT IF EXISTS players_dota2id_key
+    `;
+
+    await sql`
+      ALTER TABLE players 
+      ADD CONSTRAINT IF NOT EXISTS players_dota2id_session_unique 
+      UNIQUE(dota2id, registration_session_id)
     `;
 
     // Create masterlist table
@@ -98,19 +118,14 @@ async function initializeDatabase() {
       )
     `;
 
-    // No default masterlist data - start with empty masterlist for true realtime database
-
     // Insert default registration settings if table is empty
     const settingsCount = await sql`SELECT COUNT(*) as count FROM registration_settings`;
     if (settingsCount[0].count == 0) {
-      
       await sql`
         INSERT INTO registration_settings (is_open, tournament_name, tournament_date, max_players, expiry, closed_at, auto_close) 
         VALUES (false, 'Dota 2 Tournament', CURRENT_DATE, 50, null, null, false)
       `;
     }
-
-    // No default player data - start with empty players table for true realtime database
 
     // Create default admin users if table is empty
     const usersCount = await sql`SELECT COUNT(*) as count FROM admin_users`;
@@ -152,24 +167,42 @@ async function initializeDatabase() {
   }
 }
 
-// Players operations
-export async function getPlayers() {
+// Tournament-scoped player operations
+export async function getPlayers(registrationSessionId = null) {
   try {
     await initializeDatabase();
 
-    
-    const players = await sql`
-      SELECT 
-        id, 
-        name, 
-        dota2id, 
-        peakmmr, 
-        ip_address as "ipAddress", 
-        registration_date as "registrationDate"
-      FROM players 
-      ORDER BY registration_date DESC
-    `;
-    
+    let players;
+    if (registrationSessionId) {
+      // Get players for specific registration session
+      players = await sql`
+        SELECT 
+          id, 
+          name, 
+          dota2id, 
+          peakmmr, 
+          ip_address as "ipAddress", 
+          registration_date as "registrationDate",
+          registration_session_id as "registrationSessionId"
+        FROM players 
+        WHERE registration_session_id = ${registrationSessionId}
+        ORDER BY registration_date DESC
+      `;
+    } else {
+      // Get all players (for super admin or legacy compatibility)
+      players = await sql`
+        SELECT 
+          id, 
+          name, 
+          dota2id, 
+          peakmmr, 
+          ip_address as "ipAddress", 
+          registration_date as "registrationDate",
+          registration_session_id as "registrationSessionId"
+        FROM players 
+        ORDER BY registration_date DESC
+      `;
+    }
 
     return players;
   } catch (error) {
@@ -178,42 +211,10 @@ export async function getPlayers() {
   }
 }
 
-export async function savePlayers(players) {
-  try {
-    await initializeDatabase();
-
-    
-    if (!Array.isArray(players)) {
-      throw new Error('Players must be an array');
-    }
-    
-    // Clear existing players and insert new ones
-    await sql`DELETE FROM players`;
-    
-    for (const player of players) {
-      if (!player.id || !player.name) {
-        throw new Error('Player must have id and name');
-      }
-      
-      await sql`
-        INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date)
-        VALUES (${player.id}, ${player.name}, ${player.dota2id}, ${player.peakmmr || 0}, ${player.ipAddress || '::1'}, ${player.registrationDate || new Date().toISOString()})
-      `;
-    }
-    
-
-    return await getPlayers();
-  } catch (error) {
-    console.error('Error saving players:', error);
-    throw error;
-  }
-}
-
 export async function addPlayer(player) {
   try {
     await initializeDatabase();
 
-    
     if (!player.name) {
       throw new Error('Player must have a name');
     }
@@ -223,22 +224,44 @@ export async function addPlayer(player) {
       player.id = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     }
     
-    // Check if player already exists by Dota2ID or name
-    const existing = await sql`
-      SELECT id FROM players WHERE dota2id = ${player.dota2id} OR name = ${player.name}
-    `;
-    
-    if (existing.length > 0) {
-      throw new Error('Player with this name or Dota2ID already exists');
+    // Check if player already exists in the same registration session
+    if (player.registrationSessionId) {
+      const existing = await sql`
+        SELECT id FROM players 
+        WHERE (dota2id = ${player.dota2id} OR name = ${player.name}) 
+        AND registration_session_id = ${player.registrationSessionId}
+      `;
+      
+      if (existing.length > 0) {
+        throw new Error('Player with this name or Dota2ID already exists in this tournament');
+      }
+    } else {
+      // Legacy check for players without session (global scope)
+      const existing = await sql`
+        SELECT id FROM players 
+        WHERE (dota2id = ${player.dota2id} OR name = ${player.name}) 
+        AND registration_session_id IS NULL
+      `;
+      
+      if (existing.length > 0) {
+        throw new Error('Player with this name or Dota2ID already exists');
+      }
     }
     
     await sql`
-      INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date)
-      VALUES (${player.id}, ${player.name}, ${player.dota2id}, ${player.peakmmr || 0}, ${player.ipAddress || '::1'}, ${player.registrationDate || new Date().toISOString()})
+      INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date, registration_session_id)
+      VALUES (
+        ${player.id}, 
+        ${player.name}, 
+        ${player.dota2id}, 
+        ${player.peakmmr || 0}, 
+        ${player.ipAddress || '::1'}, 
+        ${player.registrationDate || new Date().toISOString()},
+        ${player.registrationSessionId || null}
+      )
     `;
-    
 
-    return await getPlayers();
+    return await getPlayers(player.registrationSessionId);
   } catch (error) {
     console.error('Error adding player:', error);
     throw error;
@@ -249,35 +272,60 @@ export async function updatePlayer(playerId, updates) {
   try {
     await initializeDatabase();
 
-    
-    // Simple approach: update all fields at once
-    const name = updates.name || '';
-    const dota2id = updates.dota2id || '';
-    const peakmmr = updates.peakmmr || 0;
-    
-    if (!name && !dota2id && peakmmr === 0) {
-      throw new Error('No valid fields to update');
+    if (!playerId) {
+      throw new Error('Player ID is required');
     }
-    
-    // Execute update query with all fields
-    const result = await sql`
-      UPDATE players 
-      SET 
-        name = ${name},
-        dota2id = ${dota2id},
-        peakmmr = ${peakmmr},
-        updated_at = NOW()
-      WHERE id = ${playerId}
-    `;
-    
 
-    
-    if (result.count === 0) {
-      throw new Error('Player not found');
+    // Build update query dynamically
+    const updateFields = [];
+    const values = [playerId];
+    let valueIndex = 2;
+
+    if (updates.name !== undefined) {
+      updateFields.push(`name = $${valueIndex}`);
+      values.push(updates.name);
+      valueIndex++;
     }
-    
 
-    return await getPlayers();
+    if (updates.dota2id !== undefined) {
+      updateFields.push(`dota2id = $${valueIndex}`);
+      values.push(updates.dota2id);
+      valueIndex++;
+    }
+
+    if (updates.peakmmr !== undefined) {
+      updateFields.push(`peakmmr = $${valueIndex}`);
+      values.push(updates.peakmmr);
+      valueIndex++;
+    }
+
+    if (updates.ipAddress !== undefined) {
+      updateFields.push(`ip_address = $${valueIndex}`);
+      values.push(updates.ipAddress);
+      valueIndex++;
+    }
+
+    if (updates.registrationSessionId !== undefined) {
+      updateFields.push(`registration_session_id = $${valueIndex}`);
+      values.push(updates.registrationSessionId);
+      valueIndex++;
+    }
+
+    if (updateFields.length === 0) {
+      throw new Error('No fields to update');
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+
+    const query = `UPDATE players SET ${updateFields.join(', ')} WHERE id = $1`;
+    
+    await sql.unsafe(query, values);
+
+    // Get the player to determine which session to return
+    const updatedPlayer = await sql`SELECT registration_session_id FROM players WHERE id = ${playerId}`;
+    const sessionId = updatedPlayer[0]?.registration_session_id;
+
+    return await getPlayers(sessionId);
   } catch (error) {
     console.error('Error updating player:', error);
     throw error;
@@ -288,19 +336,103 @@ export async function deletePlayer(playerId) {
   try {
     await initializeDatabase();
 
-    
-    const result = await sql`
-      DELETE FROM players WHERE id = ${playerId}
-    `;
-    
-    if (result.count === 0) {
-      throw new Error('Player not found');
+    if (!playerId) {
+      throw new Error('Player ID is required');
+    }
+
+    // Get the player to determine which session to return
+    const player = await sql`SELECT registration_session_id FROM players WHERE id = ${playerId}`;
+    const sessionId = player[0]?.registration_session_id;
+
+    await sql`DELETE FROM players WHERE id = ${playerId}`;
+
+    return await getPlayers(sessionId);
+  } catch (error) {
+    console.error('Error deleting player:', error);
+    throw error;
+  }
+}
+
+// Legacy function for backward compatibility
+export async function savePlayers(players) {
+  try {
+    await initializeDatabase();
+
+    if (!Array.isArray(players)) {
+      throw new Error('Players must be an array');
     }
     
+    // Clear existing players and insert new ones (legacy behavior)
+    await sql`DELETE FROM players WHERE registration_session_id IS NULL`;
+    
+    for (const player of players) {
+      if (!player.id || !player.name) {
+        throw new Error('Player must have id and name');
+      }
+      
+      await sql`
+        INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date, registration_session_id)
+        VALUES (
+          ${player.id}, 
+          ${player.name}, 
+          ${player.dota2id}, 
+          ${player.peakmmr || 0}, 
+          ${player.ipAddress || '::1'}, 
+          ${player.registrationDate || new Date().toISOString()},
+          ${player.registrationSessionId || null}
+        )
+      `;
+    }
 
     return await getPlayers();
   } catch (error) {
-    console.error('Error deleting player:', error);
+    console.error('Error saving players:', error);
+    throw error;
+  }
+}
+
+// Helper function to get players for a specific admin's sessions
+export async function getPlayersForAdmin(adminUserId, includeSessionInfo = false) {
+  try {
+    await initializeDatabase();
+
+    if (includeSessionInfo) {
+      const players = await sql`
+        SELECT 
+          p.id, 
+          p.name, 
+          p.dota2id, 
+          p.peakmmr, 
+          p.ip_address as "ipAddress", 
+          p.registration_date as "registrationDate",
+          p.registration_session_id as "registrationSessionId",
+          rs.title as "sessionTitle",
+          rs.admin_username as "sessionAdmin"
+        FROM players p
+        LEFT JOIN registration_sessions rs ON p.registration_session_id = rs.session_id
+        WHERE rs.admin_user_id = ${adminUserId} OR p.registration_session_id IS NULL
+        ORDER BY p.registration_date DESC
+      `;
+      return players;
+    } else {
+      const players = await sql`
+        SELECT 
+          p.id, 
+          p.name, 
+          p.dota2id, 
+          p.peakmmr, 
+          p.ip_address as "ipAddress", 
+          p.registration_date as "registrationDate",
+          p.registration_session_id as "registrationSessionId"
+        FROM players p
+        LEFT JOIN registration_sessions rs ON p.registration_session_id = rs.session_id
+        WHERE rs.admin_user_id = ${adminUserId} OR p.registration_session_id IS NULL
+        ORDER BY p.registration_date DESC
+      `;
+      return players;
+    }
+  } catch (error) {
+    console.error('Error getting players for admin:', error);
     throw error;
   }
 }

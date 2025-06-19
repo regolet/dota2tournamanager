@@ -213,7 +213,8 @@ export const handler = async (event, context) => {
       dota2id: dota2id.trim(),
       peakmmr: mmr,
       ipAddress: clientIP.split(',')[0].trim(), // Take first IP if multiple
-      registrationDate: new Date().toISOString()
+      registrationDate: new Date().toISOString(),
+      registrationSessionId: registrationSessionId // Link player to registration session
     };
     
     // Check if player exists in masterlist for MMR verification
