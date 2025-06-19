@@ -682,25 +682,17 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
  * Perfect MMR Balance - Try to make team MMR totals as close as possible (with shuffling)
  */
 function distributePerfectMmrBalance(players, numTeams, teamSize) {
-    // Sort players by MMR (highest first), then add some shuffling within tiers
+    // Sort players by MMR (highest first) - purely deterministic, no randomization
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
     
-    // Add slight randomization while maintaining general MMR order
-    const tierSize = Math.max(2, Math.floor(sortedPlayers.length / numTeams)); // Smaller tiers for more precision
-    const shuffledPlayers = [];
-    
-    for (let i = 0; i < sortedPlayers.length; i += tierSize) {
-        const tier = sortedPlayers.slice(i, i + tierSize);
-        // Light shuffle within tier to add variety while keeping balance
-        const shuffledTier = tier.sort(() => (Math.random() - 0.5) * 0.3); // Gentle shuffle
-        shuffledPlayers.push(...shuffledTier);
-    }
-    
-    console.log(`⚖️ Using shuffled tiers of ${tierSize} players for Perfect MMR balance`);
+    console.log(`⚖️ Perfect MMR Balance: Distributing ${sortedPlayers.length} players deterministically for closest possible MMR balance`);
 
-    for (const player of shuffledPlayers) {
+    // Distribute each player to the team with the lowest current total MMR
+    for (const player of sortedPlayers) {
+        // Stop if all teams are full
         if (state.balancedTeams.every(team => team.players.length >= teamSize)) {
-            break; // All teams are full
+            console.log(`All teams are full (${teamSize} players each)`);
+            break;
         }
 
         // Find the team with the lowest total MMR that still has space
@@ -709,11 +701,19 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
             current.totalMmr < lowest.totalMmr ? current : lowest
         );
 
+        // Add player to the target team
         targetTeam.players.push(player);
         targetTeam.totalMmr += player.peakmmr || 0;
         
-        console.log(`Added ${player.name} (${player.peakmmr}) to team with ${targetTeam.totalMmr - player.peakmmr} MMR`);
+        console.log(`⚖️ Added ${player.name} (${player.peakmmr} MMR) to team with ${targetTeam.totalMmr - (player.peakmmr || 0)} MMR (new total: ${targetTeam.totalMmr})`);
     }
+    
+    // Log final team balance for verification
+    console.log('⚖️ Final Perfect MMR Balance Results:');
+    state.balancedTeams.forEach((team, index) => {
+        const avgMmr = team.players.length > 0 ? Math.round(team.totalMmr / team.players.length) : 0;
+        console.log(`Team ${index + 1}: ${team.players.length} players, Total MMR: ${team.totalMmr}, Avg MMR: ${avgMmr}`);
+    });
 }
 
 /**
