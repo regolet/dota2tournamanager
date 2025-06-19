@@ -380,7 +380,17 @@ async function loadPlayerList() {
     updateActiveTab('player-list');
 
     // Load player list template and JavaScript
-    return loadTabContent('./player-list.html', 'main-content', '/admin/js/playerList.js');
+    const result = await loadTabContent('./player-list.html', 'main-content', '/admin/js/playerList.js');
+    
+    // After template and script are loaded, initialize the player list
+    if (result && typeof window.initPlayerListWhenReady === 'function') {
+        window.initPlayerListWhenReady();
+    } else if (typeof window.initPlayerList === 'function') {
+        // Fallback to direct initialization with delay
+        setTimeout(window.initPlayerList, 50);
+    }
+    
+    return result;
 }
 
 /**

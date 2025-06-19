@@ -61,10 +61,24 @@ async function initPlayerList() {
  * Create session selector UI
  */
 async function createSessionSelector() {
+    // Check if session selector already exists
+    const existingSelector = document.getElementById('session-selector');
+    if (existingSelector) {
+        console.log('Session selector already exists, skipping creation');
+        return;
+    }
+    
     const playerListContainer = document.getElementById('player-list') || 
                                 document.getElementById('main-content');
     
     if (!playerListContainer) {
+        console.error('No container found for player list');
+        return;
+    }
+    
+    // If the player list section doesn't exist, we might be using the template
+    const playerListSection = document.getElementById('player-list');
+    if (!playerListSection) {
         // Create the player list section if it doesn't exist
             const mainContent = document.getElementById('main-content');
             if (mainContent) {
@@ -975,8 +989,24 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initPlayerList);
+// Initialize when DOM is loaded OR when explicitly called by navigation system
+document.addEventListener('DOMContentLoaded', function() {
+    // Only initialize if we're on the player list page and DOM is ready
+    if (document.getElementById('player-list') || document.getElementById('session-selector')) {
+        initPlayerList();
+    }
+});
+
+// Also allow explicit initialization for template-based loading
+window.initPlayerListWhenReady = function() {
+    // Wait for DOM elements to be ready, then initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPlayerList);
+    } else {
+        // DOM is already ready
+        setTimeout(initPlayerList, 10); // Small delay to ensure template is rendered
+    }
+};
 
 // Expose functions globally for compatibility
 window.playerListModule = {
