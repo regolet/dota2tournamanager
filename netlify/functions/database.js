@@ -284,50 +284,31 @@ export async function updatePlayer(playerId, updates) {
       throw new Error('Player ID is required');
     }
 
-    // Build update query dynamically
-    const updateFields = [];
-    const values = [playerId];
-    let valueIndex = 2;
-
-    if (updates.name !== undefined) {
-      updateFields.push(`name = $${valueIndex}`);
-      values.push(updates.name);
-      valueIndex++;
-    }
-
-    if (updates.dota2id !== undefined) {
-      updateFields.push(`dota2id = $${valueIndex}`);
-      values.push(updates.dota2id);
-      valueIndex++;
-    }
-
-    if (updates.peakmmr !== undefined) {
-      updateFields.push(`peakmmr = $${valueIndex}`);
-      values.push(updates.peakmmr);
-      valueIndex++;
-    }
-
-    if (updates.ipAddress !== undefined) {
-      updateFields.push(`ip_address = $${valueIndex}`);
-      values.push(updates.ipAddress);
-      valueIndex++;
-    }
-
-    if (updates.registrationSessionId !== undefined) {
-      updateFields.push(`registration_session_id = $${valueIndex}`);
-      values.push(updates.registrationSessionId);
-      valueIndex++;
-    }
-
-    if (updateFields.length === 0) {
+    // Check if there's anything to update
+    if (Object.keys(updates).length === 0) {
       throw new Error('No fields to update');
     }
 
-    updateFields.push(`updated_at = NOW()`);
-
-    const query = `UPDATE players SET ${updateFields.join(', ')} WHERE id = $1`;
+    // Use multiple individual UPDATE statements for safety with Neon
+    if (updates.name !== undefined) {
+      await sql`UPDATE players SET name = ${updates.name}, updated_at = NOW() WHERE id = ${playerId}`;
+    }
     
-    await sql.unsafe(query, values);
+    if (updates.dota2id !== undefined) {
+      await sql`UPDATE players SET dota2id = ${updates.dota2id}, updated_at = NOW() WHERE id = ${playerId}`;
+    }
+    
+    if (updates.peakmmr !== undefined) {
+      await sql`UPDATE players SET peakmmr = ${updates.peakmmr}, updated_at = NOW() WHERE id = ${playerId}`;
+    }
+    
+    if (updates.ipAddress !== undefined) {
+      await sql`UPDATE players SET ip_address = ${updates.ipAddress}, updated_at = NOW() WHERE id = ${playerId}`;
+    }
+    
+    if (updates.registrationSessionId !== undefined) {
+      await sql`UPDATE players SET registration_session_id = ${updates.registrationSessionId}, updated_at = NOW() WHERE id = ${playerId}`;
+    }
 
     // Get the player to determine which session to return
     const updatedPlayer = await sql`SELECT registration_session_id FROM players WHERE id = ${playerId}`;
