@@ -796,41 +796,26 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     console.log(`👑 High Ranked Balance: Prioritizing top ${numTeams * teamSize} players for teams`);
     console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
 
-    // Take only the top players that can fit in teams (high MMR priority)
-    const maxPlayersForTeams = numTeams * teamSize;
-    const topPlayers = sortedPlayers.slice(0, maxPlayersForTeams);
-    
-    console.log(`👑 Selected top ${topPlayers.length} players for teams (MMR range: ${topPlayers[topPlayers.length - 1]?.peakmmr || 0} - ${topPlayers[0]?.peakmmr || 0})`);
-    
-    // Create VERY small MMR tiers (max 2 players) to maintain strict MMR priority
-    const mmrTiers = [];
-    const tierSize = 2; // Fixed small tier size to prevent low MMR players jumping ahead
-    
-    for (let i = 0; i < topPlayers.length; i += tierSize) {
-        const tier = topPlayers.slice(i, i + tierSize);
-        // Only shuffle within very small tiers (2 players max) to maintain MMR priority
-        const shuffledTier = tier.sort(() => Math.random() - 0.5);
-        mmrTiers.push(...shuffledTier);
-    }
-    
-    console.log(`📊 Created small MMR tiers (${tierSize} players max) to maintain strict MMR priority`);
-
+    // Simple snake draft: distribute players in MMR order until teams are full
     let currentTeam = 0;
-    let direction = 1; // 1 for forward, -1 for backward
-    
-    // Randomly decide starting direction for more variety
-    if (Math.random() < 0.5) {
-        direction = -1;
-        currentTeam = numTeams - 1;
-    }
+    let direction = 1; // 1 for forward, -1 for backward (snake pattern)
+    let playersUsed = 0;
+    const maxPlayersForTeams = numTeams * teamSize;
 
-    // Distribute the top players using snake draft with controlled randomization
-    for (let i = 0; i < mmrTiers.length; i++) {
-        const player = mmrTiers[i];
+    // Snake draft all sorted players in strict MMR order
+    for (let i = 0; i < sortedPlayers.length; i++) {
+        const player = sortedPlayers[i];
+        
+        // Stop if all teams are full
+        if (playersUsed >= maxPlayersForTeams) {
+            console.log(`👑 All teams full (${maxPlayersForTeams} players used), remaining players go to reserves`);
+            break;
+        }
         state.balancedTeams[currentTeam].players.push(player);
         state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
+        playersUsed++;
 
-        console.log(`👑 Added ${player.name} (${player.peakmmr} MMR) to Team ${currentTeam + 1} [Pick ${i + 1}]`);
+        console.log(`👑 Added ${player.name} (${player.peakmmr} MMR) to Team ${currentTeam + 1} [Pick ${playersUsed}/${maxPlayersForTeams}]`);
 
         // Move to next team using snake pattern
         if (direction === 1) {
@@ -848,16 +833,16 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
         }
     }
     
-    // Lower MMR players will be handled as leftovers and moved to reserves automatically
-    const leftoverCount = sortedPlayers.length - topPlayers.length;
+    // Log info about unused players (they will go to reserves automatically)
+    const leftoverCount = sortedPlayers.length - playersUsed;
     if (leftoverCount > 0) {
-        const leftoverPlayers = sortedPlayers.slice(maxPlayersForTeams);
+        const leftoverPlayers = sortedPlayers.slice(playersUsed);
         const leftoverMmrRange = leftoverPlayers.length > 0 ? 
             `${leftoverPlayers[0]?.peakmmr || 0} - ${leftoverPlayers[leftoverPlayers.length - 1]?.peakmmr || 0}` : 'N/A';
-        console.log(`👑 High Ranked Balance: ${leftoverCount} lowest MMR players (${leftoverMmrRange}) will be moved to reserves`);
+        console.log(`👑 High Ranked Balance: ${leftoverCount} lowest MMR players (${leftoverMmrRange}) will go to reserves`);
     }
     
-    console.log(`🐍 Snake draft completed with randomized high MMR distribution`);
+    console.log(`🐍 Pure snake draft completed - highest ${playersUsed} MMR players distributed across teams`);
 }
 
 /**
