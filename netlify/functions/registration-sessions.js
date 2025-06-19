@@ -22,7 +22,12 @@ export const handler = async (event, context) => {
       };
     }
 
-    // Validate session
+    // Allow public GET access for fetching tournament list
+    if (event.httpMethod === 'GET') {
+      return await handleGetSessions(event, null);
+    }
+
+    // For other methods, require session validation
     const sessionId = event.headers['x-session-id'];
     if (!sessionId) {
       return {
@@ -55,8 +60,6 @@ export const handler = async (event, context) => {
 
     // Handle different HTTP methods
     switch (event.httpMethod) {
-      case 'GET':
-        return await handleGetSessions(event, sessionValidation);
       case 'POST':
         return await handleCreateSession(event, sessionValidation);
       case 'PUT':
@@ -129,9 +132,19 @@ async function handleGetSessions(event, sessionValidation) {
         })
       };
     } else {
-      // Get all sessions for this admin (or all if super admin)
-      const adminUserId = sessionValidation.role === 'superadmin' ? null : sessionValidation.userId;
-      const sessions = await getRegistrationSessions(adminUserId);
+      // Handle public vs authenticated access
+      let sessions;
+      
+      if (sessionValidation) {
+        // Authenticated access - get sessions based on role
+        const adminUserId = sessionValidation.role === 'superadmin' ? null : sessionValidation.userId;
+        sessions = await getRegistrationSessions(adminUserId);
+      } else {
+        // Public access - get all active sessions for tournament discovery
+        sessions = await getRegistrationSessions(null);
+        // Filter to only show active sessions for public view
+        sessions = sessions.filter(session => session.isActive);
+      }
       
       return {
         statusCode: 200,
