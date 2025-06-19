@@ -1,6 +1,35 @@
 // Masterlist function using Neon DB
 import { getMasterlist, addMasterlistPlayer, updateMasterlistPlayer, deleteMasterlistPlayer } from './database.js';
 
+// Calculate masterlist statistics
+function calculateMasterlistStats(players) {
+  if (!players || players.length === 0) {
+    return {
+      total: 0,
+      avgMmr: 0,
+      maxMmr: 0,
+      minMmr: 0,
+      topPlayer: 'N/A'
+    };
+  }
+  
+  const mmrValues = players.map(p => p.mmr || 0);
+  const maxMmr = Math.max(...mmrValues);
+  const minMmr = Math.min(...mmrValues);
+  const avgMmr = Math.round(mmrValues.reduce((sum, mmr) => sum + mmr, 0) / mmrValues.length);
+  
+  // Find top player
+  const topPlayer = players.find(p => p.mmr === maxMmr);
+  
+  return {
+    total: players.length,
+    avgMmr: avgMmr,
+    maxMmr: maxMmr,
+    minMmr: minMmr,
+    topPlayer: topPlayer ? topPlayer.name : 'N/A'
+  };
+}
+
 export const handler = async (event, context) => {
   try {
     
@@ -72,6 +101,9 @@ export const handler = async (event, context) => {
         }
       });
       
+      // Calculate stats
+      const stats = calculateMasterlistStats(responseData);
+      
       console.log(`Returning ${responseData.length} masterlist players from database (auth: ${isAuthenticated})`);
       
       return {
@@ -84,6 +116,7 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: true,
           players: responseData,
+          stats: stats,
           count: responseData.length,
           message: `Masterlist retrieved successfully from database (${isAuthenticated ? 'admin' : 'public'} view)`,
           isAuthenticated: isAuthenticated,

@@ -85,6 +85,11 @@ async function loadMasterlistData() {
             window.masterlistPlayers = data.players || [];
             window.masterlistStats = data.stats || {};
             
+            // If no stats from backend, calculate them on frontend
+            if (!window.masterlistStats || Object.keys(window.masterlistStats).length === 0) {
+                window.masterlistStats = calculateStatsFromPlayers(window.masterlistPlayers);
+            }
+            
             // Update UI
             updateMasterlistStats();
             renderMasterlistTable(window.masterlistPlayers);
@@ -100,6 +105,35 @@ async function loadMasterlistData() {
         // Show empty state
         renderMasterlistTable([]);
     }
+}
+
+// Calculate stats from players array (frontend fallback)
+function calculateStatsFromPlayers(players) {
+    if (!players || players.length === 0) {
+        return {
+            total: 0,
+            avgMmr: 0,
+            maxMmr: 0,
+            minMmr: 0,
+            topPlayer: 'N/A'
+        };
+    }
+    
+    const mmrValues = players.map(p => p.mmr || 0);
+    const maxMmr = Math.max(...mmrValues);
+    const minMmr = Math.min(...mmrValues);
+    const avgMmr = Math.round(mmrValues.reduce((sum, mmr) => sum + mmr, 0) / mmrValues.length);
+    
+    // Find top player
+    const topPlayer = players.find(p => p.mmr === maxMmr);
+    
+    return {
+        total: players.length,
+        avgMmr: avgMmr,
+        maxMmr: maxMmr,
+        minMmr: minMmr,
+        topPlayer: topPlayer ? topPlayer.name : 'N/A'
+    };
 }
 
 // Update statistics display
