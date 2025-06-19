@@ -132,31 +132,34 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-light">
                     <h3 class="h5 mb-0">
-                        <i class="bi bi-trophy me-2"></i>Result
+                        <i class="bi bi-trophy me-2"></i>Result & History
                     </h3>
                 </div>
-                <div class="card-body" id="picker-result-container" style="min-height: 300px;">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        No picks made yet. Use the buttons to pick random players.
+                <div class="card-body" style="min-height: 400px;">
+                    <!-- Result Section -->
+                    <div id="picker-result-container" style="min-height: 200px;">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            No picks made yet. Use the buttons to pick random players.
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Pick History -->
-            <div class="card mt-3 shadow-sm" style="margin-bottom: 100px;">
-                <div class="card-header bg-light">
-                    <h3 class="h6 mb-0">
-                        <i class="bi bi-clock-history me-2"></i>Pick History
-                        <button id="clear-history-btn" class="btn btn-sm btn-outline-danger ms-auto">
-                            <i class="bi bi-trash"></i> Clear
-                        </button>
-                    </h3>
-                </div>
-                <div class="card-body" id="picker-history-container" style="max-height: 120px; overflow-y: auto;">
-                    <div class="alert alert-info">
-                        <i class="bi bi-clock-history me-2"></i>
-                        No pick history yet.
+                    
+                    <!-- Pick History Section -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <i class="bi bi-clock-history me-2"></i>Pick History
+                            </h6>
+                            <button id="clear-history-btn" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Clear
+                            </button>
+                        </div>
+                        <div id="picker-history-container" class="border rounded p-3" style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa;">
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-clock-history me-2"></i>
+                                No pick history yet.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

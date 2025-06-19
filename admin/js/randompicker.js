@@ -1049,15 +1049,13 @@ function displayPickerResult(players, title) {
  * Clear picker results
  */
 function clearPickerResults() {
-    const resultContainer = document.getElementById('picker-result-container') || 
-                           document.querySelector('.picker-result-container') ||
-                           document.getElementById('pick-result');
+    const resultContainer = document.getElementById('picker-result-container');
     
     if (resultContainer) {
         resultContainer.innerHTML = `
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
-                No picks made yet. Use the buttons above to pick random players.
+                No picks made yet. Use the buttons to pick random players.
             </div>
         `;
     }
@@ -1067,15 +1065,13 @@ function clearPickerResults() {
  * Update history display
  */
 function updateHistoryDisplay() {
-    const historyContainer = document.getElementById('picker-history-container') || 
-                            document.querySelector('.picker-history-container') ||
-                            document.getElementById('pick-history');
+    const historyContainer = document.getElementById('picker-history-container');
     
     if (!historyContainer) return;
 
     if (!pickerHistory || pickerHistory.length === 0) {
         historyContainer.innerHTML = `
-            <div class="alert alert-info">
+            <div class="alert alert-info mb-0">
                 <i class="bi bi-clock-history me-2"></i>
                 No pick history yet.
             </div>
@@ -1084,38 +1080,27 @@ function updateHistoryDisplay() {
     }
 
     const historyHtml = `
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-clock-history me-2"></i>
-                    Pick History (${pickerHistory.length})
-                </h6>
+        <div class="small">
+            <div class="fw-bold mb-2 text-muted">
+                Recent Picks (${pickerHistory.length})
             </div>
-            <div class="card-body">
-                ${pickerHistory.slice(0, 10).map((entry, index) => `
-                    <div class="border-bottom pb-2 mb-2">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="fw-bold small">
-                                    ${entry.type === 'single' ? 'Single Pick' : `Multiple Pick (${entry.players.length})`}
-                                </div>
-                                <div class="text-muted small">${entry.tournament}</div>
-                                <div class="small">
-                                    ${entry.players.map(p => p.name).join(', ')}
-                                </div>
-                            </div>
-                            <small class="text-muted">
-                                ${new Date(entry.timestamp).toLocaleTimeString()}
-                            </small>
+            ${pickerHistory.slice(0, 8).map((entry, index) => `
+                <div class="d-flex justify-content-between align-items-center py-2 ${index < pickerHistory.length - 1 && index < 7 ? 'border-bottom' : ''}">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold" style="font-size: 0.85rem;">
+                            ${entry.type === 'single' ? '🎯' : '🎲'} ${entry.players.map(p => p.name).join(', ')}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            ${entry.tournament} • ${new Date(entry.timestamp).toLocaleTimeString()}
                         </div>
                     </div>
-                `).join('')}
-                ${pickerHistory.length > 10 ? `
-                    <div class="text-center text-muted small">
-                        ... and ${pickerHistory.length - 10} more entries
-                    </div>
-                ` : ''}
-            </div>
+                </div>
+            `).join('')}
+            ${pickerHistory.length > 8 ? `
+                <div class="text-center text-muted mt-2" style="font-size: 0.75rem;">
+                    ... and ${pickerHistory.length - 8} more picks
+                </div>
+            ` : ''}
         </div>
     `;
 
