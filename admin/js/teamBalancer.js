@@ -459,13 +459,28 @@ function autoBalance() {
         console.log('Current session ID:', state.currentSessionId);
         console.log('Available players:', state.availablePlayers?.length || 0);
         
+        // Get and disable the generate button to prevent multiple clicks
+        const generateBtn = document.getElementById('generate-teams');
+        if (generateBtn) {
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+        }
+        
         if (!state.currentSessionId) {
             showNotification('Please select a tournament first', 'warning');
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
+            }
             return;
         }
 
         if (!state.availablePlayers || state.availablePlayers.length === 0) {
             showNotification('No players available for balancing', 'warning');
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
+            }
             return;
         }
 
@@ -477,17 +492,24 @@ function autoBalance() {
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
 
         console.log('Selected balance method:', balanceMethod);
+        console.log('Balance method element:', balanceMethodSelect);
+        console.log('All balance options:', balanceMethodSelect ? Array.from(balanceMethodSelect.options).map(o => o.value) : 'No select found');
 
         // Calculate number of teams
         const numTeams = Math.floor(state.availablePlayers.length / teamSize);
         
         if (numTeams < 2) {
             showNotification(`Not enough players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players.`, 'warning');
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
+            }
             return;
         }
 
-        // Clear existing teams
+        // Clear existing teams completely
         state.balancedTeams = [];
+        console.log('Cleared existing teams');
     
         // Initialize teams
         for (let i = 0; i < numTeams; i++) {
@@ -496,6 +518,7 @@ function autoBalance() {
                 totalMmr: 0
             });
         }
+        console.log(`Initialized ${numTeams} empty teams`);
 
         // Distribute players based on selected balance method
         distributePlayersByMethod(state.availablePlayers, balanceMethod, numTeams, teamSize);
@@ -512,10 +535,35 @@ function autoBalance() {
 
         const methodName = methodNames[balanceMethod] || balanceMethod;
         showNotification(`Created ${numTeams} balanced teams using ${methodName}!`, 'success');
+        
+        // Update the teams display header to show the method used
+        const teamsContainer = document.getElementById('teams-display');
+        if (teamsContainer && teamsContainer.firstElementChild) {
+            const headerElement = teamsContainer.querySelector('.col-12 h5, .col-12 .h5');
+            if (headerElement) {
+                headerElement.innerHTML = `
+                    <i class="bi bi-people-fill me-2"></i>
+                    Balanced Teams (${numTeams}) - ${methodName}
+                `;
+            }
+        }
+        
+        // Re-enable the generate button
+        if (generateBtn) {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
+        }
 
     } catch (error) {
         console.error('Error in auto balance:', error);
         showNotification('Error creating balanced teams', 'error');
+        
+        // Re-enable the generate button on error
+        const generateBtn = document.getElementById('generate-teams');
+        if (generateBtn) {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
+        }
     }
 }
 
@@ -523,25 +571,37 @@ function autoBalance() {
  * Distribute players based on the selected balance method
  */
 function distributePlayersByMethod(players, method, numTeams, teamSize) {
-    console.log(`Distributing ${players.length} players using method: ${method}`);
+    console.log(`🎯 Distributing ${players.length} players using method: ${method}`);
     
     switch (method) {
         case 'highRanked':
+            console.log('📈 Using High Ranked Balance (Snake Draft)');
             distributeHighRankedBalance(players, numTeams, teamSize);
             break;
         case 'perfectMmr':
+            console.log('⚖️ Using Perfect MMR Balance');
             distributePerfectMmrBalance(players, numTeams, teamSize);
             break;
         case 'highLowShuffle':
+            console.log('🔄 Using High/Low Shuffle');
             distributeHighLowShuffle(players, numTeams, teamSize);
             break;
         case 'random':
+            console.log('🎲 Using Random Teams');
             distributeRandomTeams(players, numTeams, teamSize);
             break;
         default:
-            console.warn('Unknown balance method, using high ranked balance');
+            console.warn(`❓ Unknown balance method '${method}', using high ranked balance`);
             distributeHighRankedBalance(players, numTeams, teamSize);
     }
+    
+    // Log results after distribution
+    console.log('Teams after distribution:', state.balancedTeams.map((team, i) => ({
+        team: i + 1,
+        players: team.players.length,
+        totalMMR: team.totalMmr,
+        avgMMR: Math.round(team.totalMmr / team.players.length) || 0
+    })));
 }
 
 /**
