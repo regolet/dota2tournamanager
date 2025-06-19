@@ -658,10 +658,11 @@ export async function authenticateUser(username, password) {
     await initializeDatabase();
     console.log('Database initialized successfully');
     
+    // First get the user by username
     const users = await sql`
       SELECT id, username, password_hash, role, full_name, email, is_active
       FROM admin_users 
-      WHERE username = ${username} AND password_hash = ${password} AND is_active = true
+      WHERE username = ${username} AND is_active = true
     `;
     
     console.log('Query result:', users);
@@ -669,19 +670,26 @@ export async function authenticateUser(username, password) {
     if (users.length > 0) {
       const user = users[0];
       console.log('User found:', user.username, 'Role:', user.role);
-      return {
-        success: true,
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role,
-          fullName: user.full_name,
-          email: user.email
-        }
-      };
+      
+      // Simple password comparison (for development/testing)
+      if (user.password_hash === password) {
+        return {
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            fullName: user.full_name,
+            email: user.email
+          }
+        };
+      } else {
+        console.log('Password mismatch for user:', username);
+        return { success: false, message: 'Invalid username or password' };
+      }
     }
     
-    console.log('No user found with provided credentials');
+    console.log('No user found with username:', username);
     return { success: false, message: 'Invalid username or password' };
   } catch (error) {
     console.error('Error authenticating user:', error);
