@@ -32,16 +32,24 @@ async function initializeDatabase() {
     `;
 
     // Drop the old unique constraint on dota2id and add new composite constraint
-    await sql`
-      ALTER TABLE players 
-      DROP CONSTRAINT IF EXISTS players_dota2id_key
-    `;
+    try {
+      await sql`
+        ALTER TABLE players 
+        DROP CONSTRAINT IF EXISTS players_dota2id_key
+      `;
+    } catch (error) {
+      // Constraint may not exist, ignore error
+    }
 
-    await sql`
-      ALTER TABLE players 
-      ADD CONSTRAINT IF NOT EXISTS players_dota2id_session_unique 
-      UNIQUE(dota2id, registration_session_id)
-    `;
+    try {
+      await sql`
+        ALTER TABLE players 
+        ADD CONSTRAINT players_dota2id_session_unique 
+        UNIQUE(dota2id, registration_session_id)
+      `;
+    } catch (error) {
+      // Constraint may already exist, ignore error
+    }
 
     // Create masterlist table
     await sql`
