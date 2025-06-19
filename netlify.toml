@@ -51,10 +51,19 @@
   to = "/.netlify/functions/registration"
   status = 200
 
-# Catch-all for static files
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/admin/api/admin-users"
+  to = "/.netlify/functions/admin-users"
+  status = 200
+
+[[redirects]]
+  from = "/admin/api/registration-sessions"
+  to = "/.netlify/functions/registration-sessions"
+  status = 200
+
+[[redirects]]
+  from = "/api/get-registration-session"
+  to = "/.netlify/functions/get-registration-session"
   status = 200
 
 [functions]
