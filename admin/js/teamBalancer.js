@@ -260,8 +260,14 @@ function setupBalancerButtons() {
                           document.getElementById('auto-balance-btn') || 
                           document.querySelector('[onclick="autoBalance()"]');
     if (autoBalanceBtn) {
+        console.log('Team balancer: Found generate-teams button, adding click listener');
         autoBalanceBtn.removeAttribute('onclick');
-        autoBalanceBtn.addEventListener('click', autoBalance);
+        autoBalanceBtn.addEventListener('click', function(e) {
+            console.log('Generate teams button clicked');
+            autoBalance();
+        });
+    } else {
+        console.warn('Team balancer: Generate teams button not found');
     }
 
     // Clear Teams button
@@ -449,6 +455,10 @@ function displayPlayersForBalancer(players) {
  */
 function autoBalance() {
     try {
+        console.log('AutoBalance function called');
+        console.log('Current session ID:', state.currentSessionId);
+        console.log('Available players:', state.availablePlayers?.length || 0);
+        
         if (!state.currentSessionId) {
             showNotification('Please select a tournament first', 'warning');
             return;
@@ -461,10 +471,10 @@ function autoBalance() {
 
         // Get balance settings
         const teamSizeSelect = document.getElementById('team-size');
-        const balanceMethodSelect = document.getElementById('balance-method');
+        const balanceMethodSelect = document.getElementById('balance-type'); // Fixed ID to match HTML
         
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
-        const balanceMethod = balanceMethodSelect?.value || 'mmr-balanced';
+        const balanceMethod = balanceMethodSelect?.value || 'highRanked';
 
         // Calculate number of teams
         const numTeams = Math.floor(state.availablePlayers.length / teamSize);
@@ -528,11 +538,12 @@ function autoBalance() {
  * Display balanced teams
  */
 function displayBalancedTeams() {
-    const teamsContainer = document.getElementById('teams-container') || 
+    const teamsContainer = document.getElementById('teams-display') || // Fixed ID to match HTML
+                          document.getElementById('teams-container') || 
                           document.querySelector('.teams-container');
     
     if (!teamsContainer) {
-        console.error('Teams container not found');
+        console.error('Teams container not found - looking for teams-display');
         return;
     }
     
@@ -749,7 +760,8 @@ function restorePlayerFromReserved(playerIndex) {
 function clearTeams() {
     state.balancedTeams = [];
     
-    const teamsContainer = document.getElementById('teams-container') || 
+    const teamsContainer = document.getElementById('teams-display') || // Fixed ID to match HTML
+                          document.getElementById('teams-container') || 
                           document.querySelector('.teams-container');
     
     if (teamsContainer) {
