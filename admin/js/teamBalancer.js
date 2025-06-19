@@ -924,9 +924,12 @@ function movePlayerToReserved(playerId, playerIndex) {
     console.log(`Available players count: ${state.availablePlayers?.length || 0}`);
     console.log(`Reserved players count: ${state.reservedPlayers?.length || 0}`);
     
-    if (playerIndex >= 0 && playerIndex < state.availablePlayers.length) {
-        const player = state.availablePlayers[playerIndex];
-        console.log(`Player to move: ${player.name}`);
+    // Find player by ID instead of using index (fixes sorting bug)
+    const playerRealIndex = state.availablePlayers.findIndex(p => p.id === playerId);
+    
+    if (playerRealIndex >= 0 && playerRealIndex < state.availablePlayers.length) {
+        const player = state.availablePlayers[playerRealIndex];
+        console.log(`Player to move: ${player.name} (ID: ${playerId}, Real Index: ${playerRealIndex})`);
         
         // Add to reserved players if not already there
         if (!state.reservedPlayers) {
@@ -939,8 +942,8 @@ function movePlayerToReserved(playerId, playerIndex) {
             state.reservedPlayers.push(player);
             console.log(`Added ${player.name} to reserved players`);
             
-            // Remove from available players
-            state.availablePlayers.splice(playerIndex, 1);
+            // Remove from available players using the correct index
+            state.availablePlayers.splice(playerRealIndex, 1);
             console.log(`Removed ${player.name} from available players`);
             
             // Refresh displays
@@ -953,8 +956,8 @@ function movePlayerToReserved(playerId, playerIndex) {
             showNotification(`${player.name} is already in reserved players`, 'warning');
         }
     } else {
-        console.error(`Invalid player index: ${playerIndex}. Available players: ${state.availablePlayers.length}`);
-        showNotification('Error: Invalid player selected', 'error');
+        console.error(`Player not found with ID: ${playerId}. Available players: ${state.availablePlayers.length}`);
+        showNotification('Error: Player not found', 'error');
     }
 }
 
@@ -962,18 +965,25 @@ function movePlayerToReserved(playerId, playerIndex) {
  * Remove player from list
  */
 function removePlayerFromList(playerId, playerIndex) {
-    if (playerIndex >= 0 && playerIndex < state.availablePlayers.length) {
-        const player = state.availablePlayers[playerIndex];
+    // Find player by ID instead of using index (fixes sorting bug)
+    const playerRealIndex = state.availablePlayers.findIndex(p => p.id === playerId);
+    
+    if (playerRealIndex >= 0 && playerRealIndex < state.availablePlayers.length) {
+        const player = state.availablePlayers[playerRealIndex];
+        console.log(`Player to remove: ${player.name} (ID: ${playerId}, Real Index: ${playerRealIndex})`);
         
         if (confirm(`Are you sure you want to remove ${player.name} from the team balancer?`)) {
-            // Remove from available players
-            state.availablePlayers.splice(playerIndex, 1);
+            // Remove from available players using the correct index
+            state.availablePlayers.splice(playerRealIndex, 1);
             
             // Refresh display
             displayPlayersForBalancer(state.availablePlayers);
             
             showNotification(`${player.name} removed from team balancer`, 'info');
         }
+    } else {
+        console.error(`Player not found with ID: ${playerId}. Available players: ${state.availablePlayers.length}`);
+        showNotification('Error: Player not found', 'error');
     }
 }
 
