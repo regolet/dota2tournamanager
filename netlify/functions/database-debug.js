@@ -62,6 +62,24 @@ export const handler = async (event, context) => {
       SELECT * FROM players ORDER BY created_at DESC
     `;
 
+    // Fix player count mismatches
+    for (const session of registrationSessionsResult) {
+      const actualPlayerCount = await sql`
+        SELECT COUNT(*) as count 
+        FROM players 
+        WHERE registration_session_id = ${session.session_id}
+      `;
+      
+      if (actualPlayerCount[0].count !== session.player_count) {
+        await sql`
+          UPDATE registration_sessions 
+          SET player_count = ${actualPlayerCount[0].count}
+          WHERE session_id = ${session.session_id}
+        `;
+        session.player_count = actualPlayerCount[0].count;
+      }
+    }
+
     return {
       statusCode: 200,
       headers: {
