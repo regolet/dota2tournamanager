@@ -669,6 +669,40 @@ function autoBalance() {
 
         // Distribute players based on selected balance method (using only non-reserved players)
         distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
+        
+        // Handle leftover players - move them to reserved list
+        const playersUsedInTeams = state.balancedTeams.reduce((total, team) => total + team.players.length, 0);
+        const leftoverPlayers = playersForTeams.slice(playersUsedInTeams);
+        
+        if (leftoverPlayers.length > 0) {
+            console.log(`Found ${leftoverPlayers.length} leftover players, moving to reserved list:`, leftoverPlayers.map(p => p.name));
+            
+            // Initialize reserved players if needed
+            if (!state.reservedPlayers) {
+                state.reservedPlayers = [];
+            }
+            
+            // Move leftover players to reserved list
+            leftoverPlayers.forEach(player => {
+                // Remove from available players
+                const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
+                if (playerIndex > -1) {
+                    state.availablePlayers.splice(playerIndex, 1);
+                }
+                
+                // Add to reserved players if not already there
+                const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
+                if (!alreadyReserved) {
+                    state.reservedPlayers.push(player);
+                }
+            });
+            
+            // Update displays
+            displayPlayersForBalancer(state.availablePlayers);
+            displayReservedPlayers();
+            
+            showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
+        }
 
         // Display balanced teams with new layout
         console.log('🎯 Displaying teams with new compact table layout...');
