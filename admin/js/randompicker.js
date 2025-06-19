@@ -606,14 +606,15 @@ function displayPlayersForPicker(players) {
         return;
     }
     
-    // Update player count badges
+    // Update player count badges with total count
+    const count = players ? players.length : 0;
     if (playerCountElement) {
-        playerCountElement.textContent = players ? players.length : 0;
+        playerCountElement.textContent = count;
     }
     
     const totalCountElement = document.getElementById('picker-total-count');
     if (totalCountElement) {
-        totalCountElement.textContent = `${players ? players.length : 0} players`;
+        totalCountElement.textContent = `${count} players`;
     }
 
     if (!players || players.length === 0) {
@@ -635,14 +636,15 @@ function displayPlayersForPicker(players) {
         <tr>
             <td class="ps-3">
                 <div class="d-flex align-items-center">
-                    <div class="avatar avatar-sm bg-success-subtle text-success rounded-circle me-2">
-                        ${player.name.charAt(0).toUpperCase()}
-            </div>
+                    <div class="badge bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                         style="width: 32px; height: 32px; font-size: 0.85rem; font-weight: bold;">
+                        ${index + 1}
+                    </div>
                     <div>
                         <div class="fw-bold">${escapeHtml(player.name)}</div>
                         <small class="text-muted">${player.dota2id || 'N/A'}</small>
-            </div>
-            </div>
+                    </div>
+                </div>
             </td>
             <td class="text-center">
                 <span class="badge bg-primary">${player.peakmmr || 0}</span>
@@ -657,7 +659,7 @@ function displayPlayersForPicker(players) {
                             data-id="${player.id}" data-index="${index}" title="Exclude from Pool">
                         <i class="bi bi-eye-slash"></i>
                     </button>
-        </div>
+                </div>
             </td>
         </tr>
     `).join('');

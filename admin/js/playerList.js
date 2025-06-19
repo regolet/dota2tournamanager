@@ -465,8 +465,9 @@ function displayPlayers(players) {
         row.innerHTML = `
             <td class="px-3">
                 <div class="d-flex align-items-center">
-                    <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2">
-                        ${player.name.charAt(0).toUpperCase()}
+                    <div class="badge bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                         style="width: 32px; height: 32px; font-size: 0.85rem; font-weight: bold;">
+                        ${index + 1}
                     </div>
                     <div class="fw-bold">${escapeHtml(player.name || 'Unknown')}</div>
                 </div>

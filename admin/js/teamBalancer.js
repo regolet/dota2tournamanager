@@ -402,9 +402,20 @@ function displayPlayersForBalancer(players) {
         return;
     }
 
-    // Update player count badge
+    // Update player count badge with total count
     if (playerCountElement) {
-        playerCountElement.textContent = players ? players.length : 0;
+        const count = players ? players.length : 0;
+        playerCountElement.textContent = count;
+        
+        // Also update the header to show total players
+        const playerListHeader = document.querySelector('#team-balancer .h5');
+        if (playerListHeader) {
+            playerListHeader.innerHTML = `
+                <i class="bi bi-people me-2"></i>Player List
+                <span id="player-count" class="badge bg-primary ms-1">${count}</span>
+                <span class="badge bg-secondary ms-1">Total: ${count}</span>
+            `;
+        }
     }
 
     if (!players || players.length === 0) {
@@ -426,12 +437,12 @@ function displayPlayersForBalancer(players) {
         <tr>
             <td class="ps-3">
                 <div class="d-flex align-items-center">
-                    <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2">
-                        ${player.name.charAt(0).toUpperCase()}
+                    <div class="badge bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                         style="width: 32px; height: 32px; font-size: 0.85rem; font-weight: bold;">
+                        ${index + 1}
                     </div>
                     <div>
                         <div class="fw-bold">${escapeHtml(player.name)}</div>
-                        <small class="text-muted">${player.dota2id || 'N/A'}</small>
                     </div>
                 </div>
             </td>
