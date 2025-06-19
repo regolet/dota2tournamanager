@@ -167,6 +167,7 @@ function fetchWithAuth(url, options = {}) {
 let currentSessionId = null;
 let registrationSessions = [];
 let availablePlayers = [];
+let excludedPlayers = [];
 let pickerHistory = [];
 
 /**
@@ -417,8 +418,13 @@ async function loadPlayersForPicker() {
             return;
         }
 
-        // Load players for the specific session
-        const response = await fetch(`/.netlify/functions/api-players?sessionId=${currentSessionId}`, {
+        // Build API URL exactly like Team Balancer does
+        let apiUrl = '/.netlify/functions/api-players?includeSessionInfo=true';
+        if (currentSessionId) {
+            apiUrl += `&sessionId=${currentSessionId}`;
+        }
+
+        const response = await fetch(apiUrl, {
             headers: {
                 'x-session-id': sessionId
             }
@@ -431,7 +437,10 @@ async function loadPlayersForPicker() {
         const data = await response.json();
 
         if (data.success && Array.isArray(data.players)) {
-            availablePlayers = data.players;
+            availablePlayers = data.players.filter(player => 
+                player.name && 
+                player.name.trim() !== ''
+            );
 
             displayPlayersForPicker(availablePlayers);
             
@@ -441,7 +450,11 @@ async function loadPlayersForPicker() {
                 playerCountBadge.textContent = `${availablePlayers.length} players`;
             }
 
-            showNotification(`Loaded ${availablePlayers.length} players from tournament`, 'success');
+            if (availablePlayers.length === 0) {
+                showNotification('No players found in selected tournament', 'info');
+            } else {
+                showNotification(`Loaded ${availablePlayers.length} players from tournament`, 'success');
+            }
         } else {
             availablePlayers = [];
             displayPlayersForPicker([]);
@@ -475,55 +488,153 @@ async function loadPlayersForPicker() {
  * Display players for the random picker
  */
 function displayPlayersForPicker(players) {
-    const playersContainer = document.getElementById('picker-players-container') || 
-                            document.querySelector('.picker-players-container') ||
-                            document.getElementById('player-list-display');
+    const playersList = document.getElementById('picker-players-list');
+    const playerCountElement = document.getElementById('picker-player-count');
     
-    if (!playersContainer) {
-        console.error('Players container not found');
+    if (!playersList) {
+        console.error('Players list container not found');
         return;
     }
 
+    // Update player count badges
+    if (playerCountElement) {
+        playerCountElement.textContent = players ? players.length : 0;
+    }
+    
+    const totalCountElement = document.getElementById('picker-total-count');
+    if (totalCountElement) {
+        totalCountElement.textContent = `${players ? players.length : 0} players`;
+    }
+
     if (!players || players.length === 0) {
-        playersContainer.innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                ${currentSessionId ? 'No players found in this tournament.' : 'Please select a tournament to load players.'}
-            </div>
+        playersList.innerHTML = `
+            <tr>
+                <td colspan="3" class="text-center text-muted py-4">
+                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                    <span>${currentSessionId ? 'No players found in this tournament.' : 'Please select a tournament to load players.'}</span>
+                </td>
+            </tr>
         `;
         return;
     }
 
-    // Sort players by name
-    const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+    // Sort players by MMR (highest first) for better display
+    const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
 
-    const playersHtml = `
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-people me-2"></i>
-                    Available Players (${players.length})
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    ${sortedPlayers.map((player, index) => `
-                        <div class="col-md-6 col-lg-4 mb-2">
-                            <div class="d-flex justify-content-between align-items-center p-2 border rounded">
-                                <div>
-                                    <div class="fw-bold small">${escapeHtml(player.name)}</div>
-                                    <small class="text-muted">${player.dota2id || 'N/A'}</small>
-                                </div>
-                                <span class="badge bg-primary">${player.peakmmr || 0}</span>
-                            </div>
-                        </div>
-                    `).join('')}
+    const playersHtml = sortedPlayers.map((player, index) => `
+        <tr>
+            <td class="ps-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-sm bg-success-subtle text-success rounded-circle me-2">
+                        ${player.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="fw-bold">${escapeHtml(player.name)}</div>
+                        <small class="text-muted">${player.dota2id || 'N/A'}</small>
+                    </div>
                 </div>
-            </div>
-        </div>
-    `;
+            </td>
+            <td class="text-center">
+                <span class="badge bg-primary">${player.peakmmr || 0}</span>
+            </td>
+            <td class="text-end pe-3">
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-success pick-single-player" 
+                            data-id="${player.id}" data-index="${index}" title="Pick This Player">
+                        <i class="bi bi-hand-index"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger exclude-player" 
+                            data-id="${player.id}" data-index="${index}" title="Exclude from Pool">
+                        <i class="bi bi-eye-slash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
 
-    playersContainer.innerHTML = playersHtml;
+    playersList.innerHTML = playersHtml;
+    
+    // Setup action buttons after adding players
+    setupPickerActionButtons();
+}
+
+/**
+ * Setup picker action buttons
+ */
+function setupPickerActionButtons() {
+    // Pick single player buttons
+    document.querySelectorAll('.pick-single-player').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+            pickSpecificPlayer(playerIndex);
+        });
+    });
+
+    // Exclude player buttons
+    document.querySelectorAll('.exclude-player').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+            excludePlayerFromPool(playerIndex);
+        });
+    });
+}
+
+/**
+ * Pick a specific player by index
+ */
+function pickSpecificPlayer(playerIndex) {
+    if (playerIndex >= 0 && playerIndex < availablePlayers.length) {
+        const selectedPlayer = availablePlayers[playerIndex];
+        
+        // Add to history
+        const historyEntry = {
+            type: 'manual',
+            timestamp: new Date().toISOString(),
+            players: [selectedPlayer],
+            tournament: registrationSessions.find(s => s.sessionId === currentSessionId)?.title || 'Unknown Tournament'
+        };
+        
+        pickerHistory.unshift(historyEntry);
+
+        // Display result
+        displayPickerResult([selectedPlayer], 'Manually Selected Player');
+
+        // Update history display
+        updateHistoryDisplay();
+
+        showNotification(`Selected: ${selectedPlayer.name}`, 'success');
+    }
+}
+
+/**
+ * Exclude player from the pool temporarily
+ */
+function excludePlayerFromPool(playerIndex) {
+    if (playerIndex >= 0 && playerIndex < availablePlayers.length) {
+        const player = availablePlayers[playerIndex];
+        
+        if (confirm(`Temporarily exclude ${player.name} from random picker?`)) {
+            // Add to excluded players if not already there
+            if (!excludedPlayers) {
+                excludedPlayers = [];
+            }
+            
+            const alreadyExcluded = excludedPlayers.find(p => p.id === player.id);
+            if (!alreadyExcluded) {
+                excludedPlayers.push(player);
+                
+                // Remove from available players
+                availablePlayers.splice(playerIndex, 1);
+                
+                // Refresh display
+                displayPlayersForPicker(availablePlayers);
+                
+                showNotification(`${player.name} excluded from picker pool`, 'info');
+            } else {
+                showNotification(`${player.name} is already excluded`, 'warning');
+            }
+        }
+    }
 }
 
 /**
@@ -832,6 +943,166 @@ function showNotification(message, type = 'info') {
     });
 }
 
+/**
+ * Show excluded players modal
+ */
+function showExcludedPlayersModal() {
+    if (!excludedPlayers || excludedPlayers.length === 0) {
+        showNotification('No excluded players', 'info');
+        return;
+    }
+
+    const modalHtml = `
+        <div class="modal fade" id="excludedPlayersModal" tabindex="-1" aria-labelledby="excludedPlayersModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="excludedPlayersModalLabel">
+                            <i class="bi bi-eye-slash me-2"></i>Excluded Players (${excludedPlayers.length})
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Name</th>
+                                        <th class="text-center">MMR</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${excludedPlayers.map((player, index) => `
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar avatar-sm bg-warning-subtle text-warning rounded-circle me-2">
+                                                        ${player.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-bold">${escapeHtml(player.name)}</div>
+                                                        <small class="text-muted">${player.dota2id || 'N/A'}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-primary">${player.peakmmr || 0}</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-success restore-player" 
+                                                        data-index="${index}" title="Restore to Pool">
+                                                    <i class="bi bi-arrow-clockwise"></i> Restore
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" id="restore-all-players">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Restore All
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if it exists
+    const existingModal = document.getElementById('excludedPlayersModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Setup restore buttons
+    document.querySelectorAll('.restore-player').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+            restorePlayerFromExcluded(playerIndex);
+        });
+    });
+
+    // Setup restore all button
+    document.getElementById('restore-all-players').addEventListener('click', () => {
+        restoreAllExcludedPlayers();
+    });
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('excludedPlayersModal'));
+    modal.show();
+
+    // Clean up modal when hidden
+    document.getElementById('excludedPlayersModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+    });
+}
+
+/**
+ * Restore a specific player from excluded list
+ */
+function restorePlayerFromExcluded(playerIndex) {
+    if (playerIndex >= 0 && playerIndex < excludedPlayers.length) {
+        const player = excludedPlayers[playerIndex];
+        
+        // Add back to available players
+        availablePlayers.push(player);
+        
+        // Remove from excluded players
+        excludedPlayers.splice(playerIndex, 1);
+        
+        // Refresh displays
+        displayPlayersForPicker(availablePlayers);
+        
+        // Close modal if no more excluded players
+        if (excludedPlayers.length === 0) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('excludedPlayersModal'));
+            if (modal) {
+                modal.hide();
+            }
+        } else {
+            // Refresh modal content
+            showExcludedPlayersModal();
+        }
+        
+        showNotification(`${player.name} restored to picker pool`, 'success');
+    }
+}
+
+/**
+ * Restore all excluded players
+ */
+function restoreAllExcludedPlayers() {
+    if (excludedPlayers.length === 0) {
+        return;
+    }
+    
+    const restoredCount = excludedPlayers.length;
+    
+    // Add all excluded players back to available players
+    availablePlayers.push(...excludedPlayers);
+    
+    // Clear excluded players
+    excludedPlayers = [];
+    
+    // Refresh display
+    displayPlayersForPicker(availablePlayers);
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('excludedPlayersModal'));
+    if (modal) {
+        modal.hide();
+    }
+    
+    showNotification(`Restored ${restoredCount} players to picker pool`, 'success');
+}
+
 // Legacy functions for backward compatibility
 function loadPlayersList() {
     return loadPlayersForPicker();
@@ -875,5 +1146,6 @@ window.pickRandomPlayer = pickRandomPlayer;
 window.pickMultiplePlayers = pickMultiplePlayers;
 window.clearHistory = clearPickerHistory;
 window.exportHistory = exportPickerHistory;
+window.showExcludedPlayersModal = showExcludedPlayersModal;
 
 })(); // Close IIFE

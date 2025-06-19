@@ -34,7 +34,7 @@
                         <button id="refresh-picker-sessions" class="btn btn-outline-primary btn-sm me-2">
                             <i class="bi bi-arrow-clockwise me-1"></i> Refresh
                         </button>
-                        <span id="picker-player-count" class="badge bg-secondary">0 players</span>
+                        <span id="picker-total-count" class="badge bg-secondary">0 players</span>
                     </div>
                 </div>
             </div>
@@ -68,20 +68,36 @@
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h4 class="h6 fw-bold mb-0">
                                 <i class="bi bi-people me-2"></i>Players in Pool
-                                <span id="player-count-picker" class="badge bg-secondary ms-2">0</span>
+                                <span id="picker-player-count" class="badge bg-secondary ms-2">0</span>
                             </h4>
-                            <button id="clear-players-picker" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i> Clear All
-                            </button>
+                            <div class="btn-group">
+                                <button id="show-excluded-picker" class="btn btn-sm btn-outline-warning">
+                                    <i class="bi bi-eye-slash"></i> Show Excluded
+                                </button>
+                                <button id="clear-players-picker" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Clear All
+                                </button>
+                            </div>
                         </div>
                         
-                        <div class="border rounded" style="max-height: 200px; overflow-y: auto;">
-                            <ul id="player-list-picker" class="list-group list-group-flush">
-                                <!-- Players will be added here -->
-                                <li class="list-group-item text-muted text-center py-3">
-                                    No players added yet
-                                </li>
-                            </ul>
+                        <div class="border rounded" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light position-sticky top-0">
+                                    <tr>
+                                        <th class="small text-muted fw-normal ps-3">Name</th>
+                                        <th class="small text-muted fw-normal text-center">MMR</th>
+                                        <th class="small text-muted fw-normal text-end pe-3">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="picker-players-list" class="small">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-4">
+                                            <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                            <span>Select a tournament to load players</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                     
@@ -182,6 +198,16 @@
             clearBtn.addEventListener('click', function() {
                 if (window.randomPickerAPI && window.randomPickerAPI.clearPlayers) {
                     window.randomPickerAPI.clearPlayers();
+                }
+            });
+        }
+        
+        // Set up show excluded button
+        const showExcludedBtn = document.getElementById('show-excluded-picker');
+        if (showExcludedBtn) {
+            showExcludedBtn.addEventListener('click', function() {
+                if (window.showExcludedPlayersModal) {
+                    window.showExcludedPlayersModal();
                 }
             });
         }
