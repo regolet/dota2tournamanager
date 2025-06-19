@@ -476,6 +476,8 @@ function autoBalance() {
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
 
+        console.log('Selected balance method:', balanceMethod);
+
         // Calculate number of teams
         const numTeams = Math.floor(state.availablePlayers.length / teamSize);
         
@@ -487,50 +489,175 @@ function autoBalance() {
         // Clear existing teams
         state.balancedTeams = [];
     
-    // Initialize teams
+        // Initialize teams
         for (let i = 0; i < numTeams; i++) {
             state.balancedTeams.push({
-        players: [],
+                players: [],
                 totalMmr: 0
             });
         }
 
-        // Sort players by MMR (highest first)
-        const sortedPlayers = [...state.availablePlayers].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
-
-        // Distribute players using snake draft method
-        let currentTeam = 0;
-        let direction = 1; // 1 for forward, -1 for backward
-
-        for (let i = 0; i < sortedPlayers.length && i < numTeams * teamSize; i++) {
-            const player = sortedPlayers[i];
-            state.balancedTeams[currentTeam].players.push(player);
-            state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
-
-            // Move to next team using snake pattern
-            if (direction === 1) {
-                currentTeam++;
-                if (currentTeam >= numTeams) {
-                    currentTeam = numTeams - 1;
-                    direction = -1;
-                }
-    } else {
-                currentTeam--;
-                if (currentTeam < 0) {
-                    currentTeam = 0;
-                    direction = 1;
-                }
-            }
-        }
+        // Distribute players based on selected balance method
+        distributePlayersByMethod(state.availablePlayers, balanceMethod, numTeams, teamSize);
 
         // Display balanced teams
         displayBalancedTeams();
 
-        showNotification(`Created ${numTeams} balanced teams!`, 'success');
+        const methodNames = {
+            'highRanked': 'High Ranked Balance',
+            'perfectMmr': 'Perfect MMR Balance', 
+            'highLowShuffle': 'High/Low Shuffle',
+            'random': 'Random Teams'
+        };
+
+        const methodName = methodNames[balanceMethod] || balanceMethod;
+        showNotification(`Created ${numTeams} balanced teams using ${methodName}!`, 'success');
 
     } catch (error) {
         console.error('Error in auto balance:', error);
         showNotification('Error creating balanced teams', 'error');
+    }
+}
+
+/**
+ * Distribute players based on the selected balance method
+ */
+function distributePlayersByMethod(players, method, numTeams, teamSize) {
+    console.log(`Distributing ${players.length} players using method: ${method}`);
+    
+    switch (method) {
+        case 'highRanked':
+            distributeHighRankedBalance(players, numTeams, teamSize);
+            break;
+        case 'perfectMmr':
+            distributePerfectMmrBalance(players, numTeams, teamSize);
+            break;
+        case 'highLowShuffle':
+            distributeHighLowShuffle(players, numTeams, teamSize);
+            break;
+        case 'random':
+            distributeRandomTeams(players, numTeams, teamSize);
+            break;
+        default:
+            console.warn('Unknown balance method, using high ranked balance');
+            distributeHighRankedBalance(players, numTeams, teamSize);
+    }
+}
+
+/**
+ * High Ranked Balance - Snake draft starting with highest MMR
+ */
+function distributeHighRankedBalance(players, numTeams, teamSize) {
+    // Sort players by MMR (highest first)
+    const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+
+    let currentTeam = 0;
+    let direction = 1; // 1 for forward, -1 for backward
+
+    for (let i = 0; i < sortedPlayers.length && i < numTeams * teamSize; i++) {
+        const player = sortedPlayers[i];
+        state.balancedTeams[currentTeam].players.push(player);
+        state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
+
+        // Move to next team using snake pattern
+        if (direction === 1) {
+            currentTeam++;
+            if (currentTeam >= numTeams) {
+                currentTeam = numTeams - 1;
+                direction = -1;
+            }
+        } else {
+            currentTeam--;
+            if (currentTeam < 0) {
+                currentTeam = 0;
+                direction = 1;
+            }
+        }
+    }
+}
+
+/**
+ * Perfect MMR Balance - Try to make team MMR totals as close as possible
+ */
+function distributePerfectMmrBalance(players, numTeams, teamSize) {
+    // Sort players by MMR (highest first)
+    const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+
+    for (const player of sortedPlayers) {
+        if (state.balancedTeams.every(team => team.players.length >= teamSize)) {
+            break; // All teams are full
+        }
+
+        // Find the team with the lowest total MMR that still has space
+        const availableTeams = state.balancedTeams.filter(team => team.players.length < teamSize);
+        const targetTeam = availableTeams.reduce((lowest, current) => 
+            current.totalMmr < lowest.totalMmr ? current : lowest
+        );
+
+        targetTeam.players.push(player);
+        targetTeam.totalMmr += player.peakmmr || 0;
+    }
+}
+
+/**
+ * High/Low Shuffle - Alternate between high and low MMR players
+ */
+function distributeHighLowShuffle(players, numTeams, teamSize) {
+    // Sort players by MMR (highest first)
+    const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+    
+    // Split into high and low MMR groups
+    const midPoint = Math.floor(sortedPlayers.length / 2);
+    const highMmrPlayers = sortedPlayers.slice(0, midPoint);
+    const lowMmrPlayers = sortedPlayers.slice(midPoint).reverse(); // Start with lowest MMR
+
+    let currentTeam = 0;
+    let useHighMmr = true;
+
+    // Alternate between high and low MMR players
+    const maxIterations = numTeams * teamSize;
+    for (let i = 0; i < maxIterations; i++) {
+        const sourceArray = useHighMmr ? highMmrPlayers : lowMmrPlayers;
+        
+        if (sourceArray.length === 0) {
+            // Switch to the other array if current one is empty
+            useHighMmr = !useHighMmr;
+            continue;
+        }
+
+        if (state.balancedTeams[currentTeam].players.length >= teamSize) {
+            currentTeam = (currentTeam + 1) % numTeams;
+            continue;
+        }
+
+        const player = sourceArray.shift();
+        if (player) {
+            state.balancedTeams[currentTeam].players.push(player);
+            state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
+        }
+
+        // Alternate between high and low, and move to next team
+        useHighMmr = !useHighMmr;
+        currentTeam = (currentTeam + 1) % numTeams;
+    }
+}
+
+/**
+ * Random Teams - Completely random distribution
+ */
+function distributeRandomTeams(players, numTeams, teamSize) {
+    // Shuffle players randomly
+    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+
+    let currentTeam = 0;
+
+    for (let i = 0; i < shuffledPlayers.length && i < numTeams * teamSize; i++) {
+        const player = shuffledPlayers[i];
+        state.balancedTeams[currentTeam].players.push(player);
+        state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
+
+        // Move to next team (round-robin)
+        currentTeam = (currentTeam + 1) % numTeams;
     }
 }
 
