@@ -80,6 +80,24 @@ async function initializeDatabase() {
       )
     `;
 
+    // Create registration_sessions table for individual admin registration links
+    await sql`
+      CREATE TABLE IF NOT EXISTS registration_sessions (
+        id SERIAL PRIMARY KEY,
+        session_id VARCHAR(255) UNIQUE NOT NULL,
+        admin_user_id VARCHAR(255) NOT NULL,
+        admin_username VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        max_players INTEGER DEFAULT 100,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        expires_at TIMESTAMP,
+        player_count INTEGER DEFAULT 0
+      )
+    `;
+
     // No default masterlist data - start with empty masterlist for true realtime database
 
     // Insert default registration settings if table is empty
@@ -491,6 +509,183 @@ export async function saveRegistrationSettings(settings) {
   } catch (error) {
     console.error('Error saving registration settings:', error);
     throw error;
+  }
+}
+
+// Registration session operations (for multi-admin registration links)
+export async function createRegistrationSession(adminUserId, adminUsername, sessionData) {
+  try {
+    await initializeDatabase();
+    
+    const sessionId = `reg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    await sql`
+      INSERT INTO registration_sessions (
+        session_id, admin_user_id, admin_username, title, description, 
+        max_players, is_active, expires_at
+      )
+      VALUES (
+        ${sessionId}, 
+        ${adminUserId}, 
+        ${adminUsername}, 
+        ${sessionData.title}, 
+        ${sessionData.description || ''}, 
+        ${sessionData.maxPlayers || 100}, 
+        true,
+        ${sessionData.expiresAt || null}
+      )
+    `;
+    
+    return { success: true, sessionId };
+  } catch (error) {
+    console.error('Error creating registration session:', error);
+    return { success: false, message: 'Error creating registration session' };
+  }
+}
+
+export async function getRegistrationSessions(adminUserId = null) {
+  try {
+    await initializeDatabase();
+    
+    let sessions;
+    if (adminUserId) {
+      sessions = await sql`
+        SELECT * FROM registration_sessions 
+        WHERE admin_user_id = ${adminUserId}
+        ORDER BY created_at DESC
+      `;
+    } else {
+      sessions = await sql`
+        SELECT * FROM registration_sessions 
+        ORDER BY created_at DESC
+      `;
+    }
+    
+    return sessions.map(session => ({
+      id: session.id,
+      sessionId: session.session_id,
+      adminUserId: session.admin_user_id,
+      adminUsername: session.admin_username,
+      title: session.title,
+      description: session.description,
+      maxPlayers: session.max_players,
+      isActive: session.is_active,
+      createdAt: session.created_at,
+      updatedAt: session.updated_at,
+      expiresAt: session.expires_at,
+      playerCount: session.player_count
+    }));
+  } catch (error) {
+    console.error('Error getting registration sessions:', error);
+    throw error;
+  }
+}
+
+export async function getRegistrationSessionBySessionId(sessionId) {
+  try {
+    await initializeDatabase();
+    
+    const sessions = await sql`
+      SELECT * FROM registration_sessions 
+      WHERE session_id = ${sessionId} AND is_active = true
+    `;
+    
+    if (sessions.length === 0) {
+      return null;
+    }
+    
+    const session = sessions[0];
+    return {
+      id: session.id,
+      sessionId: session.session_id,
+      adminUserId: session.admin_user_id,
+      adminUsername: session.admin_username,
+      title: session.title,
+      description: session.description,
+      maxPlayers: session.max_players,
+      isActive: session.is_active,
+      createdAt: session.created_at,
+      updatedAt: session.updated_at,
+      expiresAt: session.expires_at,
+      playerCount: session.player_count
+    };
+  } catch (error) {
+    console.error('Error getting registration session:', error);
+    return null;
+  }
+}
+
+export async function updateRegistrationSession(sessionId, updates) {
+  try {
+    await initializeDatabase();
+    
+    const updateFields = {};
+    if (updates.title !== undefined) updateFields.title = updates.title;
+    if (updates.description !== undefined) updateFields.description = updates.description;
+    if (updates.maxPlayers !== undefined) updateFields.max_players = updates.maxPlayers;
+    if (updates.isActive !== undefined) updateFields.is_active = updates.isActive;
+    if (updates.expiresAt !== undefined) updateFields.expires_at = updates.expiresAt;
+    
+    if (Object.keys(updateFields).length === 0) {
+      return { success: false, message: 'No fields to update' };
+    }
+    
+    // Perform individual updates
+    if (updateFields.title !== undefined) {
+      await sql`UPDATE registration_sessions SET title = ${updateFields.title}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+    }
+    if (updateFields.description !== undefined) {
+      await sql`UPDATE registration_sessions SET description = ${updateFields.description}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+    }
+    if (updateFields.max_players !== undefined) {
+      await sql`UPDATE registration_sessions SET max_players = ${updateFields.max_players}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+    }
+    if (updateFields.is_active !== undefined) {
+      await sql`UPDATE registration_sessions SET is_active = ${updateFields.is_active}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+    }
+    if (updateFields.expires_at !== undefined) {
+      await sql`UPDATE registration_sessions SET expires_at = ${updateFields.expires_at}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating registration session:', error);
+    return { success: false, message: 'Error updating registration session' };
+  }
+}
+
+export async function deleteRegistrationSession(sessionId) {
+  try {
+    await initializeDatabase();
+    
+    // Soft delete - deactivate instead of deleting
+    await sql`
+      UPDATE registration_sessions 
+      SET is_active = false, updated_at = NOW() 
+      WHERE session_id = ${sessionId}
+    `;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting registration session:', error);
+    return { success: false, message: 'Error deleting registration session' };
+  }
+}
+
+export async function incrementRegistrationPlayerCount(sessionId) {
+  try {
+    await initializeDatabase();
+    
+    await sql`
+      UPDATE registration_sessions 
+      SET player_count = player_count + 1, updated_at = NOW() 
+      WHERE session_id = ${sessionId}
+    `;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error incrementing player count:', error);
+    return { success: false, message: 'Error updating player count' };
   }
 }
 

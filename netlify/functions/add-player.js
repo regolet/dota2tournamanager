@@ -1,5 +1,13 @@
 // Public player registration function
-import { addPlayer, getPlayers, getMasterlist, updateMasterlistPlayer, addMasterlistPlayer } from './database.js';
+import { 
+  addPlayer, 
+  getPlayers, 
+  getMasterlist, 
+  updateMasterlistPlayer, 
+  addMasterlistPlayer,
+  getRegistrationSessionBySessionId,
+  incrementRegistrationPlayerCount
+} from './database.js';
 
 export const handler = async (event, context) => {
   try {
@@ -50,7 +58,87 @@ export const handler = async (event, context) => {
       };
     }
     
-    const { name, dota2id, peakmmr } = requestBody;
+    const { name, dota2id, peakmmr, registrationSessionId } = requestBody;
+    
+    // Validate registration session if provided
+    let registrationSession = null;
+    if (registrationSessionId) {
+      try {
+        registrationSession = await getRegistrationSessionBySessionId(registrationSessionId);
+        
+        if (!registrationSession) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: 'Registration session not found or expired'
+            })
+          };
+        }
+        
+        // Check if registration session is active
+        if (!registrationSession.isActive) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: 'Registration is currently closed'
+            })
+          };
+        }
+        
+        // Check if registration session has expired
+        if (registrationSession.expiresAt && new Date() > new Date(registrationSession.expiresAt)) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: 'Registration has expired'
+            })
+          };
+        }
+        
+        // Check if registration session is full
+        if (registrationSession.playerCount >= registrationSession.maxPlayers) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: `Registration is full (${registrationSession.maxPlayers} players maximum)`
+            })
+          };
+        }
+      } catch (error) {
+        console.error('Error validating registration session:', error);
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Error validating registration session'
+          })
+        };
+      }
+    }
     
     // Validate required fields
     if (!name || !dota2id) {
@@ -186,6 +274,16 @@ export const handler = async (event, context) => {
       throw new Error('Failed to retrieve newly added player');
     }
     
+    // Update registration session player count if applicable
+    if (registrationSession) {
+      try {
+        await incrementRegistrationPlayerCount(registrationSessionId);
+      } catch (error) {
+        console.error('Error updating registration session player count:', error);
+        // Don't fail the registration if this fails, just log it
+      }
+    }
+    
     return {
       statusCode: 200,
       headers: {
@@ -204,6 +302,10 @@ export const handler = async (event, context) => {
         },
         verifiedFromMasterlist,
         verifiedMmr,
+        registrationSession: registrationSession ? {
+          title: registrationSession.title,
+          adminUsername: registrationSession.adminUsername
+        } : null,
         timestamp: new Date().toISOString()
       })
     };
