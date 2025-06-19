@@ -625,11 +625,28 @@ function autoBalance() {
         console.log('Balance method element:', balanceMethodSelect);
         console.log('All balance options:', balanceMethodSelect ? Array.from(balanceMethodSelect.options).map(o => o.value) : 'No select found');
 
-        // Calculate number of teams
-        const numTeams = Math.floor(state.availablePlayers.length / teamSize);
+        // Get players available for team generation (exclude reserved players)
+        const reservedPlayerIds = state.reservedPlayers ? state.reservedPlayers.map(p => p.id) : [];
+        const playersForTeams = state.availablePlayers.filter(p => !reservedPlayerIds.includes(p.id));
+        
+        console.log('Total available players:', state.availablePlayers.length);
+        console.log('Reserved players:', reservedPlayerIds.length);
+        console.log('Players for team generation:', playersForTeams.length);
+        
+        if (playersForTeams.length === 0) {
+            showNotification('No players available for team generation. All players are reserved.', 'warning');
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
+            }
+            return;
+        }
+
+        // Calculate number of teams based on non-reserved players
+        const numTeams = Math.floor(playersForTeams.length / teamSize);
         
         if (numTeams < 2) {
-            showNotification(`Not enough players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players.`, 'warning');
+            showNotification(`Not enough non-reserved players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players. (${playersForTeams.length} available, ${reservedPlayerIds.length} reserved)`, 'warning');
             if (generateBtn) {
                 generateBtn.disabled = false;
                 generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
@@ -650,8 +667,8 @@ function autoBalance() {
         }
         console.log(`Initialized ${numTeams} empty teams`);
 
-        // Distribute players based on selected balance method
-        distributePlayersByMethod(state.availablePlayers, balanceMethod, numTeams, teamSize);
+        // Distribute players based on selected balance method (using only non-reserved players)
+        distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
 
         // Display balanced teams with new layout
         console.log('🎯 Displaying teams with new compact table layout...');
