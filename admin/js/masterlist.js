@@ -57,6 +57,20 @@ function setupMasterlistEventListeners() {
         playerForm.addEventListener('submit', handlePlayerFormSubmit);
     }
     
+    // Real-time validation for duplicate checking
+    const dota2idInput = document.getElementById('masterlist-player-dota2id');
+    const nameInput = document.getElementById('masterlist-player-name');
+    
+    if (dota2idInput) {
+        dota2idInput.addEventListener('input', debounce(validateDota2IdUnique, 500));
+        dota2idInput.addEventListener('blur', validateDota2IdUnique);
+    }
+    
+    if (nameInput) {
+        nameInput.addEventListener('input', debounce(validateNameUnique, 500));
+        nameInput.addEventListener('blur', validateNameUnique);
+    }
+    
     // Confirm delete button
     const confirmDeleteBtn = document.getElementById('confirm-delete-masterlist-btn');
     if (confirmDeleteBtn) {
@@ -239,6 +253,9 @@ function showAddPlayerModal() {
     const form = document.getElementById('masterlist-player-form');
     if (form) form.reset();
     
+    // Clear validation states
+    clearValidationState();
+    
     // Update modal title
     const modalTitle = document.getElementById('masterlistPlayerModalLabel');
     if (modalTitle) {
@@ -269,6 +286,9 @@ function editMasterlistPlayer(playerId) {
     document.getElementById('masterlist-player-dota2id').value = player.dota2id;
     document.getElementById('masterlist-player-mmr').value = player.mmr;
     document.getElementById('masterlist-player-notes').value = player.notes || '';
+    
+    // Clear validation states
+    clearValidationState();
     
     // Update modal title
     const modalTitle = document.getElementById('masterlistPlayerModalLabel');
@@ -315,7 +335,7 @@ async function handlePlayerFormSubmit(event) {
     };
     
     // Validate form data
-    if (!formData.name || !formData.dota2id || !formData.mmr) {
+    if (!formData.name || !formData.dota2id || isNaN(formData.mmr)) {
         showModalAlert('Please fill in all required fields', 'danger');
         return;
     }
@@ -323,6 +343,29 @@ async function handlePlayerFormSubmit(event) {
     if (formData.mmr < 0 || formData.mmr > 20000) {
         showModalAlert('MMR must be between 0 and 20,000', 'danger');
         return;
+    }
+    
+    // Check for duplicates in existing masterlist (frontend validation)
+    if (window.masterlistPlayers && Array.isArray(window.masterlistPlayers)) {
+        const duplicateDota2Id = window.masterlistPlayers.find(p => 
+            p.dota2id === formData.dota2id && 
+            (!window.currentEditingPlayer || p.id !== window.currentEditingPlayer.id)
+        );
+        
+        if (duplicateDota2Id) {
+            showModalAlert(`A player with Dota 2 ID "${formData.dota2id}" already exists in the masterlist (${duplicateDota2Id.name}).`, 'danger');
+            return;
+        }
+        
+        const duplicateName = window.masterlistPlayers.find(p => 
+            p.name.toLowerCase() === formData.name.toLowerCase() && 
+            (!window.currentEditingPlayer || p.id !== window.currentEditingPlayer.id)
+        );
+        
+        if (duplicateName) {
+            showModalAlert(`A player with name "${formData.name}" already exists in the masterlist.`, 'danger');
+            return;
+        }
     }
     
     const saveBtn = document.getElementById('save-masterlist-player-btn');
@@ -476,6 +519,99 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+// Clear validation state from form inputs
+function clearValidationState() {
+    const inputs = ['masterlist-player-name', 'masterlist-player-dota2id', 'masterlist-player-mmr'];
+    
+    inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.classList.remove('is-valid', 'is-invalid');
+            
+            // Remove existing feedback
+            const existingFeedback = input.parentNode.querySelector('.invalid-feedback, .valid-feedback');
+            if (existingFeedback) {
+                existingFeedback.remove();
+            }
+        }
+    });
+}
+
+// Real-time validation functions
+function validateDota2IdUnique() {
+    const dota2idInput = document.getElementById('masterlist-player-dota2id');
+    if (!dota2idInput || !dota2idInput.value.trim()) return;
+    
+    const dota2id = dota2idInput.value.trim();
+    
+    // Clear previous validation state
+    dota2idInput.classList.remove('is-valid', 'is-invalid');
+    
+    // Remove existing feedback
+    const existingFeedback = dota2idInput.parentNode.querySelector('.invalid-feedback, .valid-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+    
+    if (window.masterlistPlayers && Array.isArray(window.masterlistPlayers)) {
+        const duplicate = window.masterlistPlayers.find(p => 
+            p.dota2id === dota2id && 
+            (!window.currentEditingPlayer || p.id !== window.currentEditingPlayer.id)
+        );
+        
+        if (duplicate) {
+            dota2idInput.classList.add('is-invalid');
+            const feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            feedback.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>This Dota 2 ID already exists (${duplicate.name})`;
+            dota2idInput.parentNode.appendChild(feedback);
+        } else {
+            dota2idInput.classList.add('is-valid');
+            const feedback = document.createElement('div');
+            feedback.className = 'valid-feedback';
+            feedback.innerHTML = '<i class="bi bi-check-circle me-1"></i>Dota 2 ID is available';
+            dota2idInput.parentNode.appendChild(feedback);
+        }
+    }
+}
+
+function validateNameUnique() {
+    const nameInput = document.getElementById('masterlist-player-name');
+    if (!nameInput || !nameInput.value.trim()) return;
+    
+    const name = nameInput.value.trim();
+    
+    // Clear previous validation state
+    nameInput.classList.remove('is-valid', 'is-invalid');
+    
+    // Remove existing feedback
+    const existingFeedback = nameInput.parentNode.querySelector('.invalid-feedback, .valid-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+    
+    if (window.masterlistPlayers && Array.isArray(window.masterlistPlayers)) {
+        const duplicate = window.masterlistPlayers.find(p => 
+            p.name.toLowerCase() === name.toLowerCase() && 
+            (!window.currentEditingPlayer || p.id !== window.currentEditingPlayer.id)
+        );
+        
+        if (duplicate) {
+            nameInput.classList.add('is-invalid');
+            const feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            feedback.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>This player name already exists in the masterlist';
+            nameInput.parentNode.appendChild(feedback);
+        } else {
+            nameInput.classList.add('is-valid');
+            const feedback = document.createElement('div');
+            feedback.className = 'valid-feedback';
+            feedback.innerHTML = '<i class="bi bi-check-circle me-1"></i>Player name is available';
+            nameInput.parentNode.appendChild(feedback);
+        }
+    }
 }
 
 // Utility function: escape HTML

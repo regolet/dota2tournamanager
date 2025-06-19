@@ -486,6 +486,25 @@ export async function addMasterlistPlayer(player) {
       throw new Error('Player must have a name');
     }
     
+    if (!player.dota2id) {
+      throw new Error('Player must have a Dota 2 ID');
+    }
+    
+    // Check if player already exists
+    const existingPlayer = await sql`
+      SELECT id, name, dota2id FROM masterlist 
+      WHERE dota2id = ${player.dota2id} OR LOWER(name) = LOWER(${player.name})
+    `;
+    
+    if (existingPlayer.length > 0) {
+      const existing = existingPlayer[0];
+      if (existing.dota2id === player.dota2id) {
+        throw new Error(`A player with Dota 2 ID "${player.dota2id}" already exists in the masterlist (${existing.name}).`);
+      } else {
+        throw new Error(`A player with name "${player.name}" already exists in the masterlist.`);
+      }
+    }
+    
     const result = await sql`
       INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes)
       VALUES (${player.name}, ${player.dota2id}, ${player.mmr || 0}, ${player.team || ''}, ${player.achievements || ''}, ${player.notes || ''})
@@ -496,6 +515,18 @@ export async function addMasterlistPlayer(player) {
     return await getMasterlist();
   } catch (error) {
     console.error('Error adding masterlist player:', error);
+    
+    // Handle database constraint errors
+    if (error.message && error.message.includes('unique constraint')) {
+      if (error.message.includes('dota2id')) {
+        throw new Error(`A player with Dota 2 ID "${player.dota2id}" already exists in the masterlist.`);
+      } else if (error.message.includes('name')) {
+        throw new Error(`A player with name "${player.name}" already exists in the masterlist.`);
+      } else {
+        throw new Error('A player with this information already exists in the masterlist.');
+      }
+    }
+    
     throw error;
   }
 }
@@ -508,12 +539,36 @@ export async function updateMasterlistPlayer(playerId, updates) {
     // Get default values from current record if not provided
     const { name, dota2id, mmr, team, achievements, notes } = updates;
     
+    if (!name) {
+      throw new Error('Player must have a name');
+    }
+    
+    if (!dota2id) {
+      throw new Error('Player must have a Dota 2 ID');
+    }
+    
+    // Check if another player already exists with same dota2id or name
+    const existingPlayer = await sql`
+      SELECT id, name, dota2id FROM masterlist 
+      WHERE (dota2id = ${dota2id} OR LOWER(name) = LOWER(${name})) 
+      AND id != ${parseInt(playerId)}
+    `;
+    
+    if (existingPlayer.length > 0) {
+      const existing = existingPlayer[0];
+      if (existing.dota2id === dota2id) {
+        throw new Error(`A different player with Dota 2 ID "${dota2id}" already exists in the masterlist (${existing.name}).`);
+      } else {
+        throw new Error(`A different player with name "${name}" already exists in the masterlist.`);
+      }
+    }
+    
     // Execute update query with all fields
     const result = await sql`
       UPDATE masterlist 
       SET 
-        name = ${name || ''},
-        dota2id = ${dota2id || ''},
+        name = ${name},
+        dota2id = ${dota2id},
         mmr = ${mmr || 0},
         team = ${team || ''},
         achievements = ${achievements || ''},
@@ -532,6 +587,18 @@ export async function updateMasterlistPlayer(playerId, updates) {
     return await getMasterlist();
   } catch (error) {
     console.error('Error updating masterlist player:', error);
+    
+    // Handle database constraint errors
+    if (error.message && error.message.includes('unique constraint')) {
+      if (error.message.includes('dota2id')) {
+        throw new Error(`A player with Dota 2 ID "${dota2id}" already exists in the masterlist.`);
+      } else if (error.message.includes('name')) {
+        throw new Error(`A player with name "${name}" already exists in the masterlist.`);
+      } else {
+        throw new Error('A player with this information already exists in the masterlist.');
+      }
+    }
+    
     throw error;
   }
 }
