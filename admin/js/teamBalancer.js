@@ -803,9 +803,9 @@ function displayBalancedTeams() {
             </div>
             
             <!-- Compact Teams Table -->
-            <div class="row g-2">
+            <div class="row g-3">
                 ${state.balancedTeams.map((team, teamIndex) => `
-                    <div class="col-12">
+                    <div class="col-lg-4 col-md-6 col-12">
                         <div class="card border-primary shadow-sm">
                             <div class="card-header bg-primary text-white py-2">
                                 <div class="row align-items-center">
@@ -827,9 +827,8 @@ function displayBalancedTeams() {
                                     <table class="table table-sm table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
                                         <thead class="table-light">
                                             <tr>
-                                                <th class="fw-semibold" style="width: 35%;">Player</th>
-                                                <th class="fw-semibold text-center" style="width: 25%;">Dota 2 ID</th>
-                                                <th class="fw-semibold text-center" style="width: 20%;">Role</th>
+                                                <th class="fw-semibold" style="width: 45%;">Player</th>
+                                                <th class="fw-semibold text-center" style="width: 35%;">Dota 2 ID</th>
                                                 <th class="fw-semibold text-end" style="width: 20%;">MMR</th>
                                             </tr>
                                         </thead>
@@ -838,13 +837,6 @@ function displayBalancedTeams() {
                                                 <tr class="${playerIndex % 2 === 0 ? 'table-light' : ''}">
                                                     <td class="fw-bold text-primary">${escapeHtml(player.name)}</td>
                                                     <td class="text-center font-monospace small">${player.dota2id || 'N/A'}</td>
-                                                    <td class="text-center text-muted small">
-                                                        ${playerIndex === 0 ? 'Captain' : 
-                                                          playerIndex === 1 ? 'Support' :
-                                                          playerIndex === 2 ? 'Core' :
-                                                          playerIndex === 3 ? 'Offlane' :
-                                                          playerIndex === 4 ? 'Mid' : 'Player'}
-                                                    </td>
                                                     <td class="text-end">
                                                         <span class="badge bg-primary">${player.peakmmr || 0}</span>
                                                     </td>
