@@ -611,17 +611,36 @@ function distributePlayersByMethod(players, method, numTeams, teamSize) {
 }
 
 /**
- * High Ranked Balance - Snake draft starting with highest MMR
+ * High Ranked Balance - Snake draft starting with highest MMR (with shuffling)
  */
 function distributeHighRankedBalance(players, numTeams, teamSize) {
-    // Sort players by MMR (highest first)
+    // Sort players by MMR (highest first), then add randomization
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+    
+    // Group players by MMR tiers to maintain balance while adding variety
+    const mmrTiers = [];
+    const tierSize = Math.max(1, Math.floor(sortedPlayers.length / (numTeams * 2))); // Create reasonable tiers
+    
+    for (let i = 0; i < sortedPlayers.length; i += tierSize) {
+        const tier = sortedPlayers.slice(i, i + tierSize);
+        // Shuffle players within the same MMR tier for variety
+        const shuffledTier = tier.sort(() => Math.random() - 0.5);
+        mmrTiers.push(...shuffledTier);
+    }
+    
+    console.log(`📊 Created MMR tiers with ${tierSize} players per tier for shuffling`);
 
     let currentTeam = 0;
     let direction = 1; // 1 for forward, -1 for backward
+    
+    // Randomly decide starting direction for more variety
+    if (Math.random() < 0.5) {
+        direction = -1;
+        currentTeam = numTeams - 1;
+    }
 
-    for (let i = 0; i < sortedPlayers.length && i < numTeams * teamSize; i++) {
-        const player = sortedPlayers[i];
+    for (let i = 0; i < mmrTiers.length && i < numTeams * teamSize; i++) {
+        const player = mmrTiers[i];
         state.balancedTeams[currentTeam].players.push(player);
         state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
 
@@ -640,16 +659,31 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
             }
         }
     }
+    
+    console.log(`🐍 Snake draft completed with direction: ${direction === 1 ? 'forward' : 'reverse'} start`);
 }
 
 /**
- * Perfect MMR Balance - Try to make team MMR totals as close as possible
+ * Perfect MMR Balance - Try to make team MMR totals as close as possible (with shuffling)
  */
 function distributePerfectMmrBalance(players, numTeams, teamSize) {
-    // Sort players by MMR (highest first)
+    // Sort players by MMR (highest first), then add some shuffling within tiers
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+    
+    // Add slight randomization while maintaining general MMR order
+    const tierSize = Math.max(2, Math.floor(sortedPlayers.length / numTeams)); // Smaller tiers for more precision
+    const shuffledPlayers = [];
+    
+    for (let i = 0; i < sortedPlayers.length; i += tierSize) {
+        const tier = sortedPlayers.slice(i, i + tierSize);
+        // Light shuffle within tier to add variety while keeping balance
+        const shuffledTier = tier.sort(() => (Math.random() - 0.5) * 0.3); // Gentle shuffle
+        shuffledPlayers.push(...shuffledTier);
+    }
+    
+    console.log(`⚖️ Using shuffled tiers of ${tierSize} players for Perfect MMR balance`);
 
-    for (const player of sortedPlayers) {
+    for (const player of shuffledPlayers) {
         if (state.balancedTeams.every(team => team.players.length >= teamSize)) {
             break; // All teams are full
         }
@@ -662,6 +696,8 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
 
         targetTeam.players.push(player);
         targetTeam.totalMmr += player.peakmmr || 0;
+        
+        console.log(`Added ${player.name} (${player.peakmmr}) to team with ${targetTeam.totalMmr - player.peakmmr} MMR`);
     }
 }
 
