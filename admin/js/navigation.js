@@ -387,13 +387,31 @@ async function loadPlayerList() {
  * Loads and displays the registration manager section
  */
 async function loadRegistration() {
-    // Loading Registration Manager
+    try {
+        console.log('Loading Registration Manager');
 
-    // Update active tab immediately
-    updateActiveTab('registration-manager');
+        // Update active tab immediately
+        updateActiveTab('registration-manager');
 
-    // Load registration template and JavaScript
-    return loadTabContent('./registration.html', 'main-content', '/admin/js/registration.js');
+        // Check if registration content is already loaded
+        const mainContent = document.getElementById('main-content');
+        const existingContent = mainContent?.querySelector('#registration-manager, .registration-content');
+        
+        if (existingContent && window.registrationModuleLoaded) {
+            console.log('Registration already loaded, reinitializing...');
+            // Just reinitialize if already loaded
+            if (typeof window.initRegistration === 'function') {
+                await window.initRegistration();
+            }
+            return true;
+        }
+
+        // Load registration template and JavaScript
+        return await loadTabContent('./registration.html', 'main-content', '/admin/js/registration.js');
+    } catch (error) {
+        console.error('Error loading registration:', error);
+        return false;
+    }
 }
 
 /**

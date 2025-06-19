@@ -18,9 +18,12 @@
     // Initialize registration module
     async function initRegistration() {
         try {
-            // Prevent multiple initializations
+            console.log('Registration module initialization starting...');
+            
+            // If already initialized, just refresh data
             if (state.initialized) {
-                console.log('Registration module already initialized');
+                console.log('Registration module already initialized, refreshing data...');
+                await loadRegistrationSessions();
                 return;
             }
             
@@ -40,6 +43,8 @@
         } catch (error) {
             console.error('Error initializing registration module:', error);
             showAlert('Failed to initialize registration module', 'danger');
+            // Reset state on error
+            state.initialized = false;
         }
     }
     
@@ -71,6 +76,21 @@
     
     async function loadRegistrationSessions() {
         try {
+            console.log('Loading registration sessions...');
+            
+            // Show loading state
+            const tableBody = document.getElementById('registration-sessions-table');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Loading registration sessions...
+                        </td>
+                    </tr>
+                `;
+            }
+            
             const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
             
             if (!sessionId) {
@@ -84,17 +104,37 @@
                 }
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
             
             if (data.success && data.sessions) {
                 state.registrationSessions = data.sessions;
                 displayRegistrationSessions();
+                console.log(`Loaded ${data.sessions.length} registration sessions`);
             } else {
+                console.error('Failed to load registration sessions:', data);
                 showAlert(data.message || 'Failed to load registration sessions', 'danger');
             }
         } catch (error) {
             console.error('Error loading registration sessions:', error);
-            showAlert('Error loading registration sessions', 'danger');
+            showAlert(`Error loading registration sessions: ${error.message}`, 'danger');
+            
+            // Show error state in table
+            const tableBody = document.getElementById('registration-sessions-table');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Failed to load registration sessions
+                            <br><small>Please try refreshing or check your connection</small>
+                        </td>
+                    </tr>
+                `;
+            }
         }
     }
     
