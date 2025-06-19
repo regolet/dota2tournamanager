@@ -255,8 +255,9 @@ function setupBalancerButtons() {
         loadPlayersBtn.addEventListener('click', loadPlayersForBalancer);
     }
 
-    // Auto Balance button
-    const autoBalanceBtn = document.getElementById('auto-balance-btn') || 
+    // Auto Balance button (multiple possible IDs)
+    const autoBalanceBtn = document.getElementById('generate-teams') || 
+                          document.getElementById('auto-balance-btn') || 
                           document.querySelector('[onclick="autoBalance()"]');
     if (autoBalanceBtn) {
         autoBalanceBtn.removeAttribute('onclick');
@@ -264,7 +265,8 @@ function setupBalancerButtons() {
     }
 
     // Clear Teams button
-    const clearTeamsBtn = document.getElementById('clear-teams-btn') || 
+    const clearTeamsBtn = document.getElementById('clear-teams') || 
+                         document.getElementById('clear-teams-btn') || 
                          document.querySelector('[onclick="clearTeams()"]');
     if (clearTeamsBtn) {
         clearTeamsBtn.removeAttribute('onclick');
@@ -272,7 +274,8 @@ function setupBalancerButtons() {
     }
 
     // Export Teams button
-    const exportTeamsBtn = document.getElementById('export-teams-btn') || 
+    const exportTeamsBtn = document.getElementById('export-teams') || 
+                          document.getElementById('export-teams-btn') || 
                           document.querySelector('[onclick="exportTeams()"]');
     if (exportTeamsBtn) {
         exportTeamsBtn.removeAttribute('onclick');
