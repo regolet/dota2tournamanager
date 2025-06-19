@@ -374,7 +374,16 @@ function displayPlayersForBalancer(players) {
     const playerCountElement = document.getElementById('player-count');
     
     if (!playersList) {
-        console.error('Players list container not found');
+        console.warn('Players list container not found - DOM may not be fully loaded yet');
+        // Try again after a short delay if DOM isn't ready
+        setTimeout(() => {
+            const retryPlayersList = document.getElementById('player-list');
+            if (retryPlayersList) {
+                displayPlayersForBalancer(players);
+            } else {
+                console.error('Players list container still not found after retry');
+            }
+        }, 100);
         return;
     }
 
@@ -815,7 +824,10 @@ function loadPlayers() {
 }
 
 // Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initTeamBalancer);
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait a bit for full page rendering before initializing
+    setTimeout(initTeamBalancer, 100);
+});
 
 // Expose functions globally for compatibility
 window.teamBalancerModule = {
