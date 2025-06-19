@@ -155,6 +155,39 @@
             color: #333;
         }
         
+        .countdown-timer {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            text-align: center;
+        }
+        
+        .countdown-timer.urgent {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        
+        .countdown-timer.critical {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .countdown-display {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin: 0.25rem 0;
+        }
+        
+        .countdown-label {
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+        
         .progress-bar {
             width: 100%;
             height: 8px;
@@ -216,6 +249,17 @@
             color: white;
             cursor: not-allowed;
             opacity: 0.6;
+        }
+        
+        .urgent-action {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52) !important;
+            animation: urgentPulse 2s infinite;
+        }
+        
+        @keyframes urgentPulse {
+            0% { transform: scale(1); box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3); }
+            50% { transform: scale(1.02); box-shadow: 0 4px 16px rgba(255, 107, 107, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3); }
         }
         
         .loading-state {
@@ -386,6 +430,9 @@
         function displayTournaments() {
             const grid = document.getElementById('tournaments-grid');
             
+            // Clear existing countdown timers
+            clearAllCountdownTimers();
+            
             // Filter only active tournaments
             const activeTournaments = tournaments.filter(tournament => tournament.isActive);
             
@@ -422,6 +469,11 @@
             });
             
             showTournamentsGrid();
+            
+            // Start countdown timers after cards are added to DOM
+            setTimeout(() => {
+                startAllCountdownTimers();
+            }, 100);
         }
 
         function createTournamentCard(tournament) {
@@ -430,6 +482,7 @@
             
             const status = getTournamentStatus(tournament);
             const progress = Math.min((tournament.playerCount / tournament.maxPlayers) * 100, 100);
+            const countdownHtml = createCountdownHtml(tournament);
             
             card.innerHTML = `
                 <div class="tournament-header">
@@ -440,6 +493,8 @@
                 <p class="tournament-description">
                     ${escapeHtml(tournament.description || 'Join this exciting Dota 2 tournament!')}
                 </p>
+                
+                ${countdownHtml}
                 
                 <div class="tournament-details">
                     <div class="detail-item">
@@ -488,7 +543,22 @@
         function createActionButton(tournament, status) {
             if (status.status === 'active') {
                 const registrationUrl = `/register/?session=${tournament.sessionId}`;
-                return `<a href="${registrationUrl}" class="action-btn btn-register">Join Tournament</a>`;
+                
+                // Add urgency indicator for tournaments closing soon
+                let buttonText = 'Join Tournament';
+                let buttonClass = 'action-btn btn-register';
+                
+                if (tournament.expiresAt) {
+                    const timeRemaining = new Date(tournament.expiresAt).getTime() - new Date().getTime();
+                    if (timeRemaining <= 24 * 60 * 60 * 1000 && timeRemaining > 0) { // Less than 1 day
+                        buttonText = '🚨 Join Now - Closing Soon!';
+                        buttonClass += ' urgent-action';
+                    } else if (timeRemaining <= 3 * 24 * 60 * 60 * 1000 && timeRemaining > 0) { // Less than 3 days
+                        buttonText = '⚡ Join Tournament';
+                    }
+                }
+                
+                return `<a href="${registrationUrl}" class="${buttonClass}">${buttonText}</a>`;
             } else if (status.status === 'full') {
                 return `<button class="action-btn btn-disabled" disabled>Tournament Full</button>`;
             } else if (status.status === 'expired') {
@@ -519,6 +589,103 @@
             return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
         }
 
+        function createCountdownHtml(tournament) {
+            if (!tournament.expiresAt || new Date() > new Date(tournament.expiresAt)) {
+                return '';
+            }
+            
+            const expiryTime = new Date(tournament.expiresAt).getTime();
+            const timeRemaining = expiryTime - new Date().getTime();
+            
+            // Don't show countdown if more than 30 days remaining
+            if (timeRemaining > 30 * 24 * 60 * 60 * 1000) {
+                return '';
+            }
+            
+            const countdownId = `countdown-${tournament.sessionId}`;
+            let timerClass = 'countdown-timer';
+            
+            // Add urgency classes based on time remaining
+            if (timeRemaining <= 24 * 60 * 60 * 1000) { // Less than 1 day
+                timerClass += ' critical';
+            } else if (timeRemaining <= 3 * 24 * 60 * 60 * 1000) { // Less than 3 days
+                timerClass += ' urgent';
+            }
+            
+            return `
+                <div class="${timerClass}">
+                    <div class="countdown-label">⏰ Registration closes in:</div>
+                    <div class="countdown-display" id="${countdownId}">Loading...</div>
+                </div>
+            `;
+        }
+        
+        function startCountdownTimer(sessionId, expiryTime) {
+            const countdownElement = document.getElementById(`countdown-${sessionId}`);
+            if (!countdownElement) return;
+            
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const timeRemaining = expiryTime - now;
+                
+                if (timeRemaining <= 0) {
+                    countdownElement.textContent = 'Registration Closed';
+                    countdownElement.parentElement.className = 'countdown-timer critical';
+                    return;
+                }
+                
+                const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+                
+                let countdownText = '';
+                if (days > 0) {
+                    countdownText = `${days}d ${hours}h ${minutes}m`;
+                } else if (hours > 0) {
+                    countdownText = `${hours}h ${minutes}m ${seconds}s`;
+                } else {
+                    countdownText = `${minutes}m ${seconds}s`;
+                }
+                
+                countdownElement.textContent = countdownText;
+            }
+            
+            // Update immediately
+            updateCountdown();
+            
+            // Update every second
+            const interval = setInterval(updateCountdown, 1000);
+            
+            // Store interval for cleanup
+            if (!window.countdownIntervals) {
+                window.countdownIntervals = {};
+            }
+            
+            // Clear existing interval if any
+            if (window.countdownIntervals[sessionId]) {
+                clearInterval(window.countdownIntervals[sessionId]);
+            }
+            
+            window.countdownIntervals[sessionId] = interval;
+        }
+        
+        function startAllCountdownTimers() {
+            tournaments.forEach(tournament => {
+                if (tournament.expiresAt && new Date() <= new Date(tournament.expiresAt)) {
+                    const expiryTime = new Date(tournament.expiresAt).getTime();
+                    startCountdownTimer(tournament.sessionId, expiryTime);
+                }
+            });
+        }
+        
+        function clearAllCountdownTimers() {
+            if (window.countdownIntervals) {
+                Object.values(window.countdownIntervals).forEach(clearInterval);
+                window.countdownIntervals = {};
+            }
+        }
+        
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');

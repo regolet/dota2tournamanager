@@ -10,79 +10,79 @@
         reservedPlayers: []
     };
 
-    // Helper functions for MMR calculations
-    function ensureNumericMmr(mmr) {
-        const numericMmr = parseInt(mmr);
-        return isNaN(numericMmr) ? 0 : numericMmr;
-    }
+// Helper functions for MMR calculations
+function ensureNumericMmr(mmr) {
+    const numericMmr = parseInt(mmr);
+    return isNaN(numericMmr) ? 0 : numericMmr;
+}
 
-    function calculateTotalMmr(players) {
-        return players.reduce((sum, player) => sum + ensureNumericMmr(player.peakmmr), 0);
-    }
+function calculateTotalMmr(players) {
+    return players.reduce((sum, player) => sum + ensureNumericMmr(player.peakmmr), 0);
+}
 
-    function calculateAverageMmr(players) {
-        if (!players || players.length === 0) return 0;
-        return Math.round(calculateTotalMmr(players) / players.length);
-    }
+function calculateAverageMmr(players) {
+    if (!players || players.length === 0) return 0;
+    return Math.round(calculateTotalMmr(players) / players.length);
+}
 
-    // Utility functions
-    function fetchWithAuth(url, options = {}) {
-        const sessionId = localStorage.getItem('adminSessionId');
-        if (sessionId) {
-            if (!options.headers) options.headers = {};
-            options.headers['X-Session-Id'] = sessionId;
-        }
-        return fetch(url, options);
+// Utility functions
+function fetchWithAuth(url, options = {}) {
+    const sessionId = localStorage.getItem('adminSessionId');
+    if (sessionId) {
+        if (!options.headers) options.headers = {};
+        options.headers['X-Session-Id'] = sessionId;
     }
+    return fetch(url, options);
+}
 
-    function showNotification(message, type = 'info') {
-        // Create notification element if it doesn't exist
-        let notification = document.getElementById('notification');
-        if (!notification) {
-            notification = document.createElement('div');
-            notification.id = 'notification';
-            notification.style.position = 'fixed';
-            notification.style.top = '20px';
-            notification.style.right = '20px';
-            notification.style.padding = '15px 20px';
-            notification.style.borderRadius = '4px';
-            notification.style.color = 'white';
-            notification.style.zIndex = '1050';
-            notification.style.maxWidth = '300px';
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateY(-20px)';
-            notification.style.transition = 'opacity 0.3s, transform 0.3s';
-            document.body.appendChild(notification);
-        }
-        
-        // Set notification type
-        notification.className = type;
-        switch (type) {
-            case 'success':
-                notification.style.backgroundColor = '#28a745';
-                break;
-            case 'error':
-                notification.style.backgroundColor = '#dc3545';
-                break;
-            case 'warning':
-                notification.style.backgroundColor = '#ffc107';
-                notification.style.color = '#212529';
-                break;
-            default:
-                notification.style.backgroundColor = '#17a2b8';
-        }
-        
-        // Set message and show
-        notification.textContent = message;
-        notification.style.opacity = '1';
-        notification.style.transform = 'translateY(0)';
-        
-        // Hide after 5 seconds
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateY(-20px)';
-        }, 5000);
+function showNotification(message, type = 'info') {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.right = '20px';
+        notification.style.padding = '15px 20px';
+        notification.style.borderRadius = '4px';
+        notification.style.color = 'white';
+        notification.style.zIndex = '1050';
+        notification.style.maxWidth = '300px';
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateY(-20px)';
+        notification.style.transition = 'opacity 0.3s, transform 0.3s';
+        document.body.appendChild(notification);
     }
+    
+    // Set notification type
+    notification.className = type;
+    switch (type) {
+        case 'success':
+            notification.style.backgroundColor = '#28a745';
+            break;
+        case 'error':
+            notification.style.backgroundColor = '#dc3545';
+            break;
+        case 'warning':
+            notification.style.backgroundColor = '#ffc107';
+            notification.style.color = '#212529';
+            break;
+        default:
+            notification.style.backgroundColor = '#17a2b8';
+    }
+    
+    // Set message and show
+    notification.textContent = message;
+    notification.style.opacity = '1';
+    notification.style.transform = 'translateY(0)';
+    
+    // Hide after 5 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateY(-20px)';
+    }, 5000);
+}
 
 /**
  * Initialize the team balancer
@@ -176,8 +176,8 @@ async function loadRegistrationSessions() {
             updateSessionSelector();
         } else {
             showNotification(data.message || 'Failed to load registration sessions', 'error');
-        }
-    } catch (error) {
+                    }
+                } catch (error) {
         console.error('Error loading registration sessions:', error);
         showNotification('Error loading registration sessions', 'error');
     }
@@ -323,9 +323,9 @@ async function loadPlayersForBalancer() {
                     'x-session-id': sessionId
                 }
             });
-
-            const data = await response.json();
-
+        
+        const data = await response.json();
+        
             if (data.success && Array.isArray(data.players)) {
                 state.availablePlayers = data.players.filter(player => 
                     player.name && 
@@ -422,8 +422,8 @@ function displayPlayersForBalancer(players) {
                     </button>
                     <button type="button" class="btn btn-outline-danger remove-player" 
                             data-id="${player.id}" data-index="${index}" title="Remove Player">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <i class="bi bi-trash"></i>
+                </button>
                 </div>
             </td>
         </tr>
@@ -467,11 +467,11 @@ function autoBalance() {
 
         // Clear existing teams
         state.balancedTeams = [];
-
-        // Initialize teams
+    
+    // Initialize teams
         for (let i = 0; i < numTeams; i++) {
             state.balancedTeams.push({
-                players: [],
+        players: [],
                 totalMmr: 0
             });
         }
@@ -495,7 +495,7 @@ function autoBalance() {
                     currentTeam = numTeams - 1;
                     direction = -1;
                 }
-            } else {
+    } else {
                 currentTeam--;
                 if (currentTeam < 0) {
                     currentTeam = 0;
@@ -526,7 +526,7 @@ function displayBalancedTeams() {
         console.error('Teams container not found');
         return;
     }
-
+    
     if (!state.balancedTeams || state.balancedTeams.length === 0) {
         teamsContainer.innerHTML = `
             <div class="alert alert-info">
@@ -536,7 +536,7 @@ function displayBalancedTeams() {
         `;
         return;
     }
-
+    
     const teamsHtml = `
         <div class="row">
             <div class="col-12 mb-3">
@@ -763,7 +763,7 @@ function exportTeams() {
         showNotification('No teams to export', 'warning');
         return;
     }
-
+    
     // Create export data
     const exportData = {
         tournament: state.registrationSessions.find(s => s.sessionId === state.currentSessionId)?.title || 'Unknown Tournament',
@@ -827,7 +827,7 @@ window.teamBalancerModule = {
 };
 
     // Expose init function globally for navigation system
-    window.initTeamBalancer = initTeamBalancer;
+window.initTeamBalancer = initTeamBalancer;
 
     // Legacy global functions for existing onclick handlers
     window.loadPlayers = loadPlayersForBalancer;

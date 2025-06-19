@@ -315,7 +315,7 @@ function updateSessionSelector() {
         
         // Load players for the selected session
         loadPlayersForPicker();
-    } else {
+                        } else {
         console.log('No tournaments available for Random Picker');
     }
 }
@@ -400,7 +400,7 @@ function setupPickerButtons() {
                 addPlayerManually(playerName);
                 playerNameInput.value = '';
                 playerNameInput.focus();
-            } else {
+    } else {
                 showNotification('Please enter a player name', 'warning');
             }
         });
@@ -412,7 +412,7 @@ function setupPickerButtons() {
                 if (playerName) {
                     addPlayerManually(playerName);
                     this.value = '';
-                } else {
+        } else {
                     showNotification('Please enter a player name', 'warning');
                 }
             }
@@ -455,7 +455,7 @@ function addPlayerManually(playerName) {
     
     if (existingPlayer) {
         showNotification('Player already exists in the pool', 'warning');
-        return;
+            return;
     }
 
     // Create a new player object
@@ -496,7 +496,7 @@ async function loadPlayersForPicker() {
         }
         return;
     }
-
+    
     try {
         // Show loading state
         const playersContainer = document.getElementById('picker-players-container') || 
@@ -548,8 +548,8 @@ async function loadPlayersForPicker() {
             console.log('Filtered players for Random Picker:', availablePlayers); // Debug logging
 
             displayPlayersForPicker(availablePlayers);
-            
-            // Update player count
+    
+    // Update player count
             const playerCountBadge = document.getElementById('picker-player-count');
             if (playerCountBadge) {
                 playerCountBadge.textContent = availablePlayers.length;
@@ -602,7 +602,7 @@ function displayPlayersForPicker(players) {
         console.error('Players list container not found');
         return;
     }
-
+    
     // Update player count badges
     if (playerCountElement) {
         playerCountElement.textContent = players ? players.length : 0;
@@ -634,12 +634,12 @@ function displayPlayersForPicker(players) {
                 <div class="d-flex align-items-center">
                     <div class="avatar avatar-sm bg-success-subtle text-success rounded-circle me-2">
                         ${player.name.charAt(0).toUpperCase()}
-                    </div>
+            </div>
                     <div>
                         <div class="fw-bold">${escapeHtml(player.name)}</div>
                         <small class="text-muted">${player.dota2id || 'N/A'}</small>
-                    </div>
-                </div>
+            </div>
+            </div>
             </td>
             <td class="text-center">
                 <span class="badge bg-primary">${player.peakmmr || 0}</span>
@@ -654,7 +654,7 @@ function displayPlayersForPicker(players) {
                             data-id="${player.id}" data-index="${index}" title="Exclude from Pool">
                         <i class="bi bi-eye-slash"></i>
                     </button>
-                </div>
+        </div>
             </td>
         </tr>
     `).join('');
@@ -881,7 +881,7 @@ function startAnimatedPicking(durationSeconds, callback) {
             // Show confetti effect
             if (progressBar) progressBar.className = 'progress-bar bg-success';
             
-            setTimeout(() => {
+    setTimeout(() => {
                 callback(selectedPlayer);
             }, 1000); // Wait 1 second before showing final result
         }
@@ -908,7 +908,7 @@ function displayPickerResultWithAnimation(players, title) {
                     <i class="bi bi-star-fill me-2"></i>
                     🎉 ${title}
                 </h6>
-            </div>
+                        </div>
             <div class="card-body text-center">
                 <div class="mb-4">
                     <div class="display-4 mb-3">🏆</div>
@@ -921,8 +921,8 @@ function displayPickerResultWithAnimation(players, title) {
                     Selected at ${new Date().toLocaleString()}
                 </div>
             </div>
-        </div>
-    `;
+                    </div>
+                `;
 
     resultContainer.innerHTML = resultHtml;
     
@@ -955,8 +955,8 @@ function displayPickerResultWithAnimation(players, title) {
 function pickMultiplePlayersInternal() {
     if (!currentSessionId) {
         showNotification('Please select a tournament first', 'warning');
-        return;
-    }
+            return;
+        }
 
     if (!availablePlayers || availablePlayers.length === 0) {
         showNotification('Please load players first', 'warning');
@@ -970,8 +970,8 @@ function pickMultiplePlayersInternal() {
 
     if (numberToPick <= 0) {
         showNotification('Please enter a valid number of players to pick', 'warning');
-        return;
-    }
+            return;
+        }
 
     if (numberToPick > availablePlayers.length) {
         showNotification(`Cannot pick ${numberToPick} players. Only ${availablePlayers.length} available.`, 'warning');
@@ -1221,7 +1221,7 @@ function showExcludedPlayersModal() {
                             <i class="bi bi-eye-slash me-2"></i>Excluded Players (${excludedPlayers.length})
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
+                        </div>
                     <div class="modal-body">
                         <div class="table-responsive">
                             <table class="table table-sm table-hover">
@@ -1253,7 +1253,7 @@ function showExcludedPlayersModal() {
                                                 <button type="button" class="btn btn-sm btn-outline-success restore-player" 
                                                         data-index="${index}" title="Restore to Pool">
                                                     <i class="bi bi-arrow-clockwise"></i> Restore
-                                                </button>
+                        </button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -1269,9 +1269,9 @@ function showExcludedPlayersModal() {
                     </div>
                 </div>
             </div>
-        </div>
-    `;
-
+                    </div>
+                `;
+                
     // Remove existing modal if it exists
     const existingModal = document.getElementById('excludedPlayersModal');
     if (existingModal) {

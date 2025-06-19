@@ -66,9 +66,9 @@ async function createSessionSelector() {
     
     if (!playerListContainer) {
         // Create the player list section if it doesn't exist
-        const mainContent = document.getElementById('main-content');
-        if (mainContent) {
-            mainContent.innerHTML = `
+            const mainContent = document.getElementById('main-content');
+            if (mainContent) {
+                mainContent.innerHTML = `
                 <section id="player-list" class="mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h2 class="h3 mb-0">
@@ -81,7 +81,7 @@ async function createSessionSelector() {
                             <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#playerListHelpModal">
                                 <i class="bi bi-question-circle me-1"></i> Help
                             </button>
-                        </div>
+                                    </div>
                     </div>
 
                     <!-- Session Selector -->
@@ -149,7 +149,7 @@ async function createSessionSelector() {
                     <!-- Player List Table -->
                     <div class="card shadow-sm border-0">
                         <div class="card-body p-0">
-                            <div class="table-responsive">
+                                        <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle mb-0">
                                     <thead class="table-dark">
                                         <tr>
@@ -160,8 +160,8 @@ async function createSessionSelector() {
                                             <th>ID</th>
                                             <th>Registered</th>
                                             <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
+                                                    </tr>
+                                                </thead>
                                     <tbody id="player-table-body" class="border-top-0">
                                         <tr>
                                             <td colspan="7" class="text-center py-5">
@@ -172,13 +172,13 @@ async function createSessionSelector() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    </tbody>
-                                </table>
+                                                </tbody>
+                                            </table>
                             </div>
                         </div>
                     </div>
                 </section>
-            `;
+                `;
         }
     }
 }
@@ -194,7 +194,7 @@ async function loadRegistrationSessions() {
             showNotification('Session expired. Please login again.', 'error');
             return;
         }
-
+        
         const response = await fetch('/.netlify/functions/registration-sessions', {
             headers: {
                 'x-session-id': sessionId
@@ -349,8 +349,8 @@ async function loadPlayers(forceRefresh = false) {
         
         if (!sessionId) {
             showNotification('Session expired. Please login again.', 'error');
-            return;
-        }
+                    return;
+                }
 
         // Build API URL with session filter
         let apiUrl = '/.netlify/functions/api-players?includeSessionInfo=true';
@@ -548,9 +548,9 @@ function setupPlayerActionButtons() {
 function showAddPlayerModal() {
     if (!currentSessionId) {
         showNotification('Please select a tournament first', 'warning');
-        return;
-    }
-    
+            return;
+        }
+        
     // Clear the form fields
     document.getElementById('add-player-name').value = '';
     document.getElementById('add-player-dota2id').value = '';
@@ -647,7 +647,7 @@ async function saveNewPlayer() {
         } else {
             showNotification(data.message || 'Failed to add player', 'error');
         }
-
+        
     } catch (error) {
         console.error('Error adding player:', error);
         showNotification('Error adding player: ' + error.message, 'error');
@@ -673,9 +673,9 @@ function editPlayer(playerId, playerIndex) {
     const player = allPlayers.find(p => p.id === playerId);
     if (!player) {
         showNotification('Player not found', 'error');
-        return;
-    }
-    
+            return;
+        }
+        
     // Populate the edit modal with player data
     document.getElementById('edit-player-id').value = player.id;
     document.getElementById('edit-player-index').value = playerIndex;
@@ -712,7 +712,7 @@ async function savePlayerChanges() {
 
     if (!playerDota2id) {
         showNotification('Dota 2 ID is required', 'warning');
-        return;
+            return;
     }
 
     const saveButton = document.getElementById('save-player-changes');
@@ -729,12 +729,12 @@ async function savePlayerChanges() {
         
         if (!sessionId) {
             showNotification('Session expired. Please login again.', 'error');
-            return;
-        }
-
+        return;
+    }
+    
         const updateData = {
             playerId: playerId,
-            name: playerName,
+        name: playerName,
             dota2id: playerDota2id,
             peakmmr: parseInt(playerPeakmmr) || 0
         };
@@ -840,9 +840,9 @@ async function confirmRemoveAllPlayers() {
         
         if (!sessionId) {
             showNotification('Session expired. Please login again.', 'error');
-            return;
-        }
-
+        return;
+    }
+    
         // Show loading notification
         showNotification('Removing all players...', 'info');
 
@@ -852,12 +852,12 @@ async function confirmRemoveAllPlayers() {
                 'Content-Type': 'application/json',
                 'x-session-id': sessionId
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 action: 'removeAll',
                 sessionId: currentSessionId 
             })
         });
-
+        
         const data = await response.json();
 
         if (data.success) {
@@ -879,9 +879,9 @@ async function confirmRemoveAllPlayers() {
 function exportPlayersCSV() {
     if (!allPlayers || allPlayers.length === 0) {
         showNotification('No players to export', 'warning');
-        return;
-    }
-    
+            return;
+        }
+        
     const tournamentName = currentSessionId ? 
         (registrationSessions.find(s => s.sessionId === currentSessionId)?.title || 'Unknown Tournament') :
         'All Tournaments';

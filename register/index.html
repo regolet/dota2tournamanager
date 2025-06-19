@@ -5,6 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tournament Registration</title>
     <link rel="stylesheet" href="../style.css">
+    <style>
+        .countdown-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        
+        .countdown-section.urgent {
+            background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+        }
+        
+        .countdown-section.critical {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .countdown-title {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.9;
+        }
+        
+        .countdown-display {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .countdown-units {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        
+        .countdown-unit {
+            text-align: center;
+        }
+        
+        .countdown-number {
+            display: block;
+            font-size: 1.8rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .countdown-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+        
+        .countdown-message {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            opacity: 0.9;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -33,6 +102,30 @@
                     <div id="status-info" style="margin-top: 1rem; padding: 1rem; border-radius: 6px;">
                         <h3 id="status-title">Registration Open</h3>
                         <p id="status-message">You can register for this tournament</p>
+                    </div>
+                    
+                    <!-- Countdown Timer -->
+                    <div id="countdown-section" class="countdown-section" style="display: none;">
+                        <div class="countdown-title">⏰ Registration closes in:</div>
+                        <div class="countdown-units">
+                            <div class="countdown-unit">
+                                <span id="countdown-days" class="countdown-number">0</span>
+                                <span class="countdown-label">Days</span>
+                            </div>
+                            <div class="countdown-unit">
+                                <span id="countdown-hours" class="countdown-number">0</span>
+                                <span class="countdown-label">Hours</span>
+                            </div>
+                            <div class="countdown-unit">
+                                <span id="countdown-minutes" class="countdown-number">0</span>
+                                <span class="countdown-label">Minutes</span>
+                            </div>
+                            <div class="countdown-unit">
+                                <span id="countdown-seconds" class="countdown-number">0</span>
+                                <span class="countdown-label">Seconds</span>
+                            </div>
+                        </div>
+                        <div id="countdown-message" class="countdown-message"></div>
                     </div>
                 </div>
             </div>
@@ -118,6 +211,13 @@
 
             await loadRegistrationSession();
         });
+        
+        // Clear countdown timer when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+        });
 
         async function loadRegistrationSession() {
             try {
@@ -170,6 +270,7 @@
             const statusTitle = document.getElementById('status-title');
             const statusMessage = document.getElementById('status-message');
             const playerForm = document.getElementById('playerForm');
+            const countdownSection = document.getElementById('countdown-section');
 
             // Check registration status
             if (!currentSession.isActive) {
@@ -178,31 +279,105 @@
                 statusTitle.textContent = 'Registration Closed';
                 statusMessage.textContent = 'This registration session has been deactivated';
                 playerForm.classList.add('hidden');
+                countdownSection.style.display = 'none';
             } else if (currentSession.expiresAt && new Date() > new Date(currentSession.expiresAt)) {
                 statusInfo.style.backgroundColor = '#fff3cd';
                 statusInfo.style.color = '#856404';
                 statusTitle.textContent = 'Registration Expired';
                 statusMessage.textContent = 'The registration deadline has passed';
                 playerForm.classList.add('hidden');
+                countdownSection.style.display = 'none';
             } else if (currentSession.playerCount >= currentSession.maxPlayers) {
                 statusInfo.style.backgroundColor = '#f8d7da';
                 statusInfo.style.color = '#721c24';
                 statusTitle.textContent = 'Registration Full';
                 statusMessage.textContent = `Tournament is full (${currentSession.maxPlayers} players maximum)`;
                 playerForm.classList.add('hidden');
+                countdownSection.style.display = 'none';
             } else {
                 statusInfo.style.backgroundColor = '#d4edda';
                 statusInfo.style.color = '#155724';
                 statusTitle.textContent = 'Registration Open';
-                
-                let message = 'You can register for this tournament';
-                if (currentSession.expiresAt) {
-                    const expiryDate = new Date(currentSession.expiresAt);
-                    message += ` until ${expiryDate.toLocaleDateString()} ${expiryDate.toLocaleTimeString()}`;
-                }
-                statusMessage.textContent = message;
+                statusMessage.textContent = 'You can register for this tournament';
                 playerForm.classList.remove('hidden');
+                
+                // Show countdown timer if there's an expiry date
+                if (currentSession.expiresAt) {
+                    const expiryTime = new Date(currentSession.expiresAt).getTime();
+                    const timeRemaining = expiryTime - new Date().getTime();
+                    
+                    if (timeRemaining > 0) {
+                        countdownSection.style.display = 'block';
+                        startRegistrationCountdown(expiryTime);
+                    } else {
+                        countdownSection.style.display = 'none';
+                    }
+                } else {
+                    countdownSection.style.display = 'none';
+                }
             }
+        }
+        
+        let countdownInterval = null;
+        
+        function startRegistrationCountdown(expiryTime) {
+            // Clear existing interval
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            const countdownSection = document.getElementById('countdown-section');
+            const daysElement = document.getElementById('countdown-days');
+            const hoursElement = document.getElementById('countdown-hours');
+            const minutesElement = document.getElementById('countdown-minutes');
+            const secondsElement = document.getElementById('countdown-seconds');
+            const messageElement = document.getElementById('countdown-message');
+            
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const timeRemaining = expiryTime - now;
+                
+                if (timeRemaining <= 0) {
+                    // Registration has expired
+                    clearInterval(countdownInterval);
+                    countdownSection.style.display = 'none';
+                    
+                    // Reload the session to update status
+                    loadRegistrationSession();
+                    return;
+                }
+                
+                // Calculate time units
+                const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+                
+                // Update display
+                daysElement.textContent = String(days).padStart(2, '0');
+                hoursElement.textContent = String(hours).padStart(2, '0');
+                minutesElement.textContent = String(minutes).padStart(2, '0');
+                secondsElement.textContent = String(seconds).padStart(2, '0');
+                
+                // Update styling and message based on time remaining
+                countdownSection.className = 'countdown-section';
+                
+                if (timeRemaining <= 24 * 60 * 60 * 1000) { // Less than 1 day
+                    countdownSection.classList.add('critical');
+                    messageElement.textContent = '🚨 Hurry! Registration closes soon!';
+                } else if (timeRemaining <= 3 * 24 * 60 * 60 * 1000) { // Less than 3 days
+                    countdownSection.classList.add('urgent');
+                    messageElement.textContent = '⚡ Don\'t wait too long to register!';
+                } else {
+                    messageElement.textContent = '📅 Plenty of time to register';
+                }
+            }
+            
+            // Update immediately
+            updateCountdown();
+            
+            // Update every second
+            countdownInterval = setInterval(updateCountdown, 1000);
         }
 
         // Function to check if player already exists in this tournament

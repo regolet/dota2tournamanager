@@ -14,10 +14,10 @@
         currentUser: null,
         initialized: false
     };
-    
-    // Initialize registration module
-    async function initRegistration() {
-        try {
+
+// Initialize registration module
+async function initRegistration() {
+    try {
             console.log('Registration module initialization starting...');
             
             // If already initialized, just refresh data
@@ -104,10 +104,10 @@
                 }
             });
             
-            if (!response.ok) {
+        if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
+        }
+        
             const data = await response.json();
             
             if (data.success && data.sessions) {
@@ -359,8 +359,8 @@
                 modal.show();
             } else {
                 showAlert(data.message || 'Failed to load registration session', 'danger');
-            }
-        } catch (error) {
+        }
+    } catch (error) {
             console.error('Error loading registration session:', error);
             showAlert('Error loading registration session', 'danger');
         }
@@ -368,15 +368,15 @@
     
     async function deleteSession(sessionId, title) {
         if (!confirm(`Are you sure you want to delete the registration link for "${title}"?`)) {
-            return;
-        }
-        
+        return;
+    }
+    
         try {
             const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
             
             const response = await fetch('/.netlify/functions/registration-sessions', {
                 method: 'DELETE',
-                headers: {
+            headers: {
                     'Content-Type': 'application/json',
                     'x-session-id': adminSessionId
                 },
@@ -388,10 +388,10 @@
             if (data.success) {
                 showAlert(`Registration link "${title}" deleted successfully`, 'success');
                 await loadRegistrationSessions();
-            } else {
+        } else {
                 showAlert(data.message || 'Failed to delete registration link', 'danger');
-            }
-        } catch (error) {
+        }
+    } catch (error) {
             console.error('Error deleting registration session:', error);
             showAlert('Error deleting registration link', 'danger');
         }
@@ -512,7 +512,7 @@
     }
     
     // Expose functions globally that need to be called from HTML
-    window.initRegistration = initRegistration;
+window.initRegistration = initRegistration;
     window.editSession = editSession;
     window.deleteSession = deleteSession;
     window.copySessionLink = copySessionLink;
