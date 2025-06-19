@@ -208,7 +208,7 @@ async function handleCreateSession(event, sessionValidation) {
           success: true,
           message: 'Registration session created successfully',
           sessionId: result.sessionId,
-          registrationUrl: `https://dota2regz.netlify.app/register/${result.sessionId}`
+                      registrationUrl: `https://dota2regz.netlify.app/register/?session=${result.sessionId}`
         })
       };
     } else {

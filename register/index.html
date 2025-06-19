@@ -198,39 +198,49 @@
                 <div id="success-section" class="text-center" style="display: none;">
                     <div class="alert alert-success">
                         <i class="bi bi-check-circle-fill me-2"></i>
-                        <strong>Registration Successful!</strong>
-                        <p class="mb-0 mt-2">You have been successfully registered for the tournament.</p>
+                        <span id="success-message">Registration successful!</span>
                     </div>
-                    <div class="mt-3">
-                        <button class="btn btn-outline-primary" onclick="location.reload()">
-                            <i class="bi bi-arrow-repeat me-2"></i>Register Another Player
-                        </button>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Welcome to the Tournament!</h5>
+                            <p class="card-text">Your registration has been confirmed. Tournament details will be shared closer to the event.</p>
+                            <a href="/" class="btn btn-outline-primary">
+                                <i class="bi bi-house me-2"></i>Back to Homepage
+                            </a>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Alert Area -->
-                <div id="alert-area" style="margin-top: 20px;"></div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Get session ID from URL
-        const urlPath = window.location.pathname;
-        const sessionId = urlPath.split('/').pop();
+        // Extract session ID from URL path
+        function getSessionIdFromUrl() {
+            const pathParts = window.location.pathname.split('/');
+            // URL format: /register/sessionId or /register/?session=sessionId
+            if (pathParts.length >= 3 && pathParts[2]) {
+                return pathParts[2];
+            }
+            // Fallback: check URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('session');
+        }
 
-        let registrationSession = null;
+        let currentSession = null;
+        let sessionId = null;
 
         // Initialize page
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (!sessionId || sessionId === 'register') {
-                showError('Invalid registration link');
+        document.addEventListener('DOMContentLoaded', async function() {
+            sessionId = getSessionIdFromUrl();
+            
+            if (!sessionId) {
+                showError('No registration session specified in URL');
                 return;
             }
 
             await loadRegistrationSession();
-            setupForm();
         });
 
         async function loadRegistrationSession() {
@@ -238,12 +248,14 @@
                 const response = await fetch(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`);
                 const data = await response.json();
 
-                if (data.success && data.session) {
-                    registrationSession = data.session;
-                    displayRegistrationSession();
-                } else {
+                if (!data.success || !data.session) {
                     showError(data.message || 'Registration session not found');
+                    return;
                 }
+
+                currentSession = data.session;
+                displayRegistrationSession();
+                
             } catch (error) {
                 console.error('Error loading registration session:', error);
                 showError('Failed to load registration session');
@@ -251,22 +263,33 @@
         }
 
         function displayRegistrationSession() {
+            // Hide loading, show registration section
             document.getElementById('loading-section').style.display = 'none';
             document.getElementById('registration-section').style.display = 'block';
 
             // Update session info
-            document.getElementById('session-title').textContent = registrationSession.title;
-            document.getElementById('session-description').textContent = registrationSession.description || '';
-            document.getElementById('admin-username').textContent = registrationSession.adminUsername;
-            document.getElementById('current-players').textContent = registrationSession.playerCount;
-            document.getElementById('max-players').textContent = registrationSession.maxPlayers;
+            document.getElementById('session-title').textContent = currentSession.title;
+            document.getElementById('session-description').textContent = currentSession.description || 'Join this Dota 2 tournament!';
+            document.getElementById('admin-username').textContent = currentSession.adminUsername;
 
-            // Update progress bar
-            const progress = (registrationSession.playerCount / registrationSession.maxPlayers) * 100;
-            document.getElementById('progress-bar').style.width = `${progress}%`;
+            // Update progress
+            document.getElementById('current-players').textContent = currentSession.playerCount;
+            document.getElementById('max-players').textContent = currentSession.maxPlayers;
+            
+            const progress = Math.min((currentSession.playerCount / currentSession.maxPlayers) * 100, 100);
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = progress + '%';
+            
+            if (progress >= 100) {
+                progressBar.classList.remove('bg-primary');
+                progressBar.classList.add('bg-danger');
+            }
 
-            // Check registration status
+            // Update status
             updateRegistrationStatus();
+
+            // Update page title
+            document.title = `Register for ${currentSession.title}`;
         }
 
         function updateRegistrationStatus() {
@@ -274,68 +297,66 @@
             const statusIcon = document.getElementById('status-icon');
             const statusTitle = document.getElementById('status-title');
             const statusMessage = document.getElementById('status-message');
-            const form = document.getElementById('registration-form');
+            const registrationForm = document.getElementById('registration-form');
 
-            // Check if expired
-            if (registrationSession.expiresAt && new Date() > new Date(registrationSession.expiresAt)) {
-                statusCard.className = 'status-card status-expired';
-                statusIcon.className = 'bi bi-clock-fill me-3';
-                statusTitle.textContent = 'Registration Expired';
-                statusMessage.textContent = 'This registration session has expired';
-                form.style.display = 'none';
-                return;
-            }
+            // Reset classes
+            statusCard.className = 'status-card';
 
-            // Check if full
-            if (registrationSession.playerCount >= registrationSession.maxPlayers) {
-                statusCard.className = 'status-card status-full';
-                statusIcon.className = 'bi bi-people-fill me-3';
-                statusTitle.textContent = 'Registration Full';
-                statusMessage.textContent = `Maximum ${registrationSession.maxPlayers} players reached`;
-                form.style.display = 'none';
-                return;
-            }
-
-            // Check if inactive
-            if (!registrationSession.isActive) {
-                statusCard.className = 'status-card status-closed';
+            // Check registration status
+            if (!currentSession.isActive) {
+                statusCard.classList.add('status-closed');
                 statusIcon.className = 'bi bi-x-circle-fill me-3';
                 statusTitle.textContent = 'Registration Closed';
-                statusMessage.textContent = 'Registration has been closed by the organizer';
-                form.style.display = 'none';
-                return;
+                statusMessage.textContent = 'This registration session has been deactivated';
+                registrationForm.style.display = 'none';
+            } else if (currentSession.expiresAt && new Date() > new Date(currentSession.expiresAt)) {
+                statusCard.classList.add('status-expired');
+                statusIcon.className = 'bi bi-clock-fill me-3';
+                statusTitle.textContent = 'Registration Expired';
+                statusMessage.textContent = 'The registration deadline has passed';
+                registrationForm.style.display = 'none';
+            } else if (currentSession.playerCount >= currentSession.maxPlayers) {
+                statusCard.classList.add('status-full');
+                statusIcon.className = 'bi bi-people-fill me-3';
+                statusTitle.textContent = 'Registration Full';
+                statusMessage.textContent = `Tournament is full (${currentSession.maxPlayers} players maximum)`;
+                registrationForm.style.display = 'none';
+            } else {
+                statusCard.classList.add('status-open');
+                statusIcon.className = 'bi bi-check-circle-fill me-3';
+                statusTitle.textContent = 'Registration Open';
+                
+                let message = 'You can register for this tournament';
+                if (currentSession.expiresAt) {
+                    const expiryDate = new Date(currentSession.expiresAt);
+                    message += ` until ${expiryDate.toLocaleDateString()} ${expiryDate.toLocaleTimeString()}`;
+                }
+                statusMessage.textContent = message;
+                registrationForm.style.display = 'block';
             }
-
-            // Registration is open
-            statusCard.className = 'status-card status-open';
-            statusIcon.className = 'bi bi-check-circle-fill me-3';
-            statusTitle.textContent = 'Registration Open';
-            statusMessage.textContent = 'You can register for this tournament';
-            form.style.display = 'block';
         }
 
-        function setupForm() {
-            document.getElementById('registration-form').addEventListener('submit', handleRegistration);
-        }
-
-        async function handleRegistration(e) {
+        // Handle registration form submission
+        document.getElementById('registration-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const registerBtn = document.getElementById('register-btn');
-            const originalText = registerBtn.innerHTML;
+            const submitBtn = document.getElementById('register-btn');
+            const originalText = submitBtn.innerHTML;
 
             try {
                 // Disable button and show loading
-                registerBtn.disabled = true;
-                registerBtn.innerHTML = '<span class="loading-spinner me-2"></span>Registering...';
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="loading-spinner me-2"></div>Registering...';
 
+                // Get form data
                 const formData = {
                     name: document.getElementById('player-name').value.trim(),
                     dota2id: document.getElementById('dota2-id').value.trim(),
-                    peakmmr: parseInt(document.getElementById('peak-mmr').value) || 0,
+                    peakmmr: document.getElementById('peak-mmr').value || 0,
                     registrationSessionId: sessionId
                 };
 
+                // Submit registration
                 const response = await fetch('/.netlify/functions/add-player', {
                     method: 'POST',
                     headers: {
@@ -347,31 +368,23 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Update player count
-                    registrationSession.playerCount++;
-                    document.getElementById('current-players').textContent = registrationSession.playerCount;
-                    
-                    // Update progress bar
-                    const progress = (registrationSession.playerCount / registrationSession.maxPlayers) * 100;
-                    document.getElementById('progress-bar').style.width = `${progress}%`;
-
-                    // Show success
-                    document.getElementById('registration-form').style.display = 'none';
+                    // Show success message
+                    document.getElementById('success-message').textContent = data.message;
+                    document.getElementById('registration-section').style.display = 'none';
                     document.getElementById('success-section').style.display = 'block';
-                    
-                    // Update status if now full
-                    updateRegistrationStatus();
                 } else {
                     showAlert(data.message || 'Registration failed', 'danger');
                 }
+
             } catch (error) {
                 console.error('Registration error:', error);
                 showAlert('Registration failed. Please try again.', 'danger');
             } finally {
-                registerBtn.disabled = false;
-                registerBtn.innerHTML = originalText;
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
-        }
+        });
 
         function showError(message) {
             document.getElementById('loading-section').style.display = 'none';
@@ -380,16 +393,18 @@
         }
 
         function showAlert(message, type = 'info') {
-            const alertArea = document.getElementById('alert-area');
+            // Create alert element
             const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+            alertDiv.style.zIndex = '9999';
             alertDiv.innerHTML = `
                 <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'}-fill me-2"></i>
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            alertArea.appendChild(alertDiv);
-
+            
+            document.body.appendChild(alertDiv);
+            
             // Auto-remove after 5 seconds
             setTimeout(() => {
                 if (alertDiv.parentNode) {

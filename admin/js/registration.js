@@ -172,7 +172,7 @@
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="editSession('${session.sessionId}')" title="Copy Link">
+                        <button class="btn btn-outline-primary" onclick="copySessionLink('${session.sessionId}')" title="Copy Link">
                             <i class="bi bi-clipboard"></i>
                         </button>
                         <button class="btn btn-outline-secondary" onclick="openSessionLink('${session.sessionId}')" title="Open Link">
@@ -358,13 +358,13 @@
     }
     
     function copySessionLink(sessionId) {
-        const url = `${window.location.origin}/register/${sessionId}`;
+        const url = `${window.location.origin}/register/?session=${sessionId}`;
         copyToClipboard(url);
         showAlert('Registration link copied to clipboard!', 'success');
     }
     
     function openSessionLink(sessionId) {
-        const url = `${window.location.origin}/register/${sessionId}`;
+        const url = `${window.location.origin}/register/?session=${sessionId}`;
         window.open(url, '_blank');
     }
     
