@@ -191,7 +191,12 @@ function updateSessionSelector() {
 
     selector.innerHTML = '<option value="">Choose a tournament...</option>';
 
-    state.registrationSessions.forEach(session => {
+    // Sort sessions by creation date (newest first)
+    const sortedSessions = [...state.registrationSessions].sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    sortedSessions.forEach(session => {
         const option = document.createElement('option');
         option.value = session.sessionId;
         option.textContent = `${session.title} (${session.playerCount} players)`;
@@ -200,6 +205,16 @@ function updateSessionSelector() {
         }
         selector.appendChild(option);
     });
+
+    // Auto-select the latest (most recent) tournament if available
+    if (sortedSessions.length > 0) {
+        const latestSession = sortedSessions[0];
+        selector.value = latestSession.sessionId;
+        state.currentSessionId = latestSession.sessionId;
+        
+        // Load players for the selected session
+        loadPlayersForBalancer();
+    }
 }
 
 /**
