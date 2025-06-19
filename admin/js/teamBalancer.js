@@ -261,6 +261,73 @@ function setupBalancerButtons() {
         loadPlayersBtn.addEventListener('click', loadPlayersForBalancer);
     }
 
+    // Add Player button
+    const addPlayerBtn = document.getElementById('add-player');
+    const playerNameInput = document.getElementById('player-name');
+    const playerMmrInput = document.getElementById('player-mmr');
+    
+    if (addPlayerBtn && playerNameInput && playerMmrInput) {
+        addPlayerBtn.addEventListener('click', function() {
+            const playerName = playerNameInput.value.trim();
+            const playerMmr = parseInt(playerMmrInput.value) || 0;
+            
+            if (playerName) {
+                addPlayerManuallyToBalancer(playerName, playerMmr);
+                playerNameInput.value = '';
+                playerMmrInput.value = '';
+                playerNameInput.focus();
+            } else {
+                showNotification('Please enter a player name', 'warning');
+            }
+        });
+
+        // Add on Enter key for both inputs
+        playerNameInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                const playerName = this.value.trim();
+                const playerMmr = parseInt(playerMmrInput.value) || 0;
+                if (playerName) {
+                    addPlayerManuallyToBalancer(playerName, playerMmr);
+                    this.value = '';
+                    playerMmrInput.value = '';
+                    this.focus();
+                } else {
+                    showNotification('Please enter a player name', 'warning');
+                }
+            }
+        });
+
+        playerMmrInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                const playerName = playerNameInput.value.trim();
+                const playerMmr = parseInt(this.value) || 0;
+                if (playerName) {
+                    addPlayerManuallyToBalancer(playerName, playerMmr);
+                    playerNameInput.value = '';
+                    this.value = '';
+                    playerNameInput.focus();
+                } else {
+                    showNotification('Please enter a player name', 'warning');
+                }
+            }
+        });
+    }
+
+    // Clear Players button
+    const clearPlayersBtn = document.getElementById('clear-players');
+    if (clearPlayersBtn) {
+        clearPlayersBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all players?')) {
+                state.availablePlayers = [];
+                state.reservedPlayers = [];
+                displayPlayersForBalancer([]);
+                displayReservedPlayers();
+                clearTeams();
+                showNotification('All players cleared', 'success');
+            }
+        });
+    }
+
     // Auto Balance button (multiple possible IDs)
     const autoBalanceBtn = document.getElementById('generate-teams') || 
                           document.getElementById('auto-balance-btn') || 
@@ -293,6 +360,49 @@ function setupBalancerButtons() {
         exportTeamsBtn.removeAttribute('onclick');
         exportTeamsBtn.addEventListener('click', exportTeams);
     }
+}
+
+/**
+ * Add a player manually to the team balancer
+ */
+function addPlayerManuallyToBalancer(playerName, playerMmr) {
+    if (!playerName || !playerName.trim()) {
+        showNotification('Please enter a valid player name', 'warning');
+        return;
+    }
+
+    // Check if player already exists
+    const existingPlayer = state.availablePlayers.find(p => 
+        p.name.toLowerCase() === playerName.toLowerCase()
+    );
+    
+    if (existingPlayer) {
+        showNotification('Player already exists in the list', 'warning');
+        return;
+    }
+
+    // Create a new player object
+    const newPlayer = {
+        id: `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: playerName.trim(),
+        dota2id: 'Manual',
+        peakmmr: Math.max(0, playerMmr || 0),
+        isManual: true
+    };
+
+    // Add to available players
+    state.availablePlayers.push(newPlayer);
+    
+    // Update display
+    displayPlayersForBalancer(state.availablePlayers);
+    
+    // Update player count badge
+    const countBadge = document.getElementById('balancer-player-count');
+    if (countBadge) {
+        countBadge.textContent = `${state.availablePlayers.length} players`;
+    }
+    
+    showNotification(`Added "${playerName}" (${playerMmr} MMR) to team balancer`, 'success');
 }
 
 /**
