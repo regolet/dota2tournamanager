@@ -308,7 +308,13 @@ async function loadPlayersForBalancer() {
         }
 
         try {
-            const response = await fetch(`/.netlify/functions/api-players?sessionId=${state.currentSessionId}`, {
+            // Build API URL exactly like Player List does
+            let apiUrl = '/.netlify/functions/api-players?includeSessionInfo=true';
+            if (state.currentSessionId) {
+                apiUrl += `&sessionId=${state.currentSessionId}`;
+            }
+
+            const response = await fetch(apiUrl, {
                 headers: {
                     'x-session-id': sessionId
                 }
@@ -316,11 +322,10 @@ async function loadPlayersForBalancer() {
 
             const data = await response.json();
 
-            if (data.success && data.players) {
+            if (data.success && Array.isArray(data.players)) {
                 state.availablePlayers = data.players.filter(player => 
                     player.name && 
-                    player.name.trim() !== '' && 
-                    player.registration_session_id === state.currentSessionId
+                    player.name.trim() !== ''
                 );
                 
                 displayPlayersForBalancer(state.availablePlayers);
@@ -339,6 +344,8 @@ async function loadPlayersForBalancer() {
             } else {
                 console.error('Failed to load players:', data.message || 'Unknown error');
                 showNotification(data.message || 'Failed to load players', 'error');
+                state.availablePlayers = [];
+                displayPlayersForBalancer([]);
             }
         } catch (fetchError) {
             console.error('Network error loading players:', fetchError);
