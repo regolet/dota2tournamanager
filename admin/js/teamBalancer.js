@@ -6,7 +6,8 @@
         currentSessionId: null,
         registrationSessions: [],
         availablePlayers: [],
-        balancedTeams: []
+        balancedTeams: [],
+        reservedPlayers: []
     };
 
     // Helper functions for MMR calculations
@@ -382,7 +383,7 @@ function displayPlayersForBalancer(players) {
     if (!players || players.length === 0) {
         playersList.innerHTML = `
             <tr>
-                <td colspan="2" class="text-center text-muted py-4">
+                <td colspan="3" class="text-center text-muted py-4">
                     <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
                     <span>${state.currentSessionId ? 'No players found in this tournament.' : 'Please select a tournament to load players.'}</span>
                 </td>
@@ -394,19 +395,41 @@ function displayPlayersForBalancer(players) {
     // Sort players by MMR (highest first) for better display
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
 
-    const playersHtml = sortedPlayers.map(player => `
+    const playersHtml = sortedPlayers.map((player, index) => `
         <tr>
             <td class="ps-3">
-                <div class="fw-bold">${escapeHtml(player.name)}</div>
-                <small class="text-muted">${player.dota2id || 'N/A'}</small>
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle me-2">
+                        ${player.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="fw-bold">${escapeHtml(player.name)}</div>
+                        <small class="text-muted">${player.dota2id || 'N/A'}</small>
+                    </div>
+                </div>
+            </td>
+            <td class="text-center">
+                <span class="badge bg-primary">${player.peakmmr || 0}</span>
             </td>
             <td class="text-end pe-3">
-                <span class="badge bg-primary">${player.peakmmr || 0}</span>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary move-to-reserved" 
+                            data-id="${player.id}" data-index="${index}" title="Move to Reserved">
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger remove-player" 
+                            data-id="${player.id}" data-index="${index}" title="Remove Player">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             </td>
         </tr>
     `).join('');
 
     playersList.innerHTML = playersHtml;
+    
+    // Setup action buttons after adding players
+    setupPlayerActionButtons();
 }
 
 /**
@@ -553,6 +576,159 @@ function displayBalancedTeams() {
     `;
 
     teamsContainer.innerHTML = teamsHtml;
+}
+
+/**
+ * Setup player action buttons
+ */
+function setupPlayerActionButtons() {
+    // Move to reserved buttons
+    document.querySelectorAll('.move-to-reserved').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const playerId = e.currentTarget.getAttribute('data-id');
+            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+            movePlayerToReserved(playerId, playerIndex);
+        });
+    });
+
+    // Remove player buttons
+    document.querySelectorAll('.remove-player').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const playerId = e.currentTarget.getAttribute('data-id');
+            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+            removePlayerFromList(playerId, playerIndex);
+        });
+    });
+}
+
+/**
+ * Move player to reserved list
+ */
+function movePlayerToReserved(playerId, playerIndex) {
+    if (playerIndex >= 0 && playerIndex < state.availablePlayers.length) {
+        const player = state.availablePlayers[playerIndex];
+        
+        // Add to reserved players if not already there
+        if (!state.reservedPlayers) {
+            state.reservedPlayers = [];
+        }
+        
+        const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
+        if (!alreadyReserved) {
+            state.reservedPlayers.push(player);
+            
+            // Remove from available players
+            state.availablePlayers.splice(playerIndex, 1);
+            
+            // Refresh displays
+            displayPlayersForBalancer(state.availablePlayers);
+            displayReservedPlayers();
+            
+            showNotification(`${player.name} moved to reserved players`, 'success');
+        } else {
+            showNotification(`${player.name} is already in reserved players`, 'warning');
+        }
+    }
+}
+
+/**
+ * Remove player from list
+ */
+function removePlayerFromList(playerId, playerIndex) {
+    if (playerIndex >= 0 && playerIndex < state.availablePlayers.length) {
+        const player = state.availablePlayers[playerIndex];
+        
+        if (confirm(`Are you sure you want to remove ${player.name} from the team balancer?`)) {
+            // Remove from available players
+            state.availablePlayers.splice(playerIndex, 1);
+            
+            // Refresh display
+            displayPlayersForBalancer(state.availablePlayers);
+            
+            showNotification(`${player.name} removed from team balancer`, 'info');
+        }
+    }
+}
+
+/**
+ * Display reserved players
+ */
+function displayReservedPlayers() {
+    const reservedList = document.getElementById('reserved-players-list');
+    const reservedCountElement = document.getElementById('reserved-count');
+    
+    if (!reservedList) return;
+    
+    // Update reserved count badge
+    if (reservedCountElement) {
+        reservedCountElement.textContent = state.reservedPlayers ? state.reservedPlayers.length : 0;
+    }
+    
+    if (!state.reservedPlayers || state.reservedPlayers.length === 0) {
+        reservedList.innerHTML = `
+            <tr>
+                <td colspan="2" class="text-center text-muted py-4">
+                    <i class="bi bi-person-x fs-4 d-block mb-2"></i>
+                    <span>No reserved players</span>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const reservedHtml = state.reservedPlayers.map((player, index) => `
+        <tr>
+            <td class="ps-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-sm bg-warning-subtle text-warning rounded-circle me-2">
+                        ${player.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="fw-bold">${escapeHtml(player.name)}</div>
+                        <small class="text-muted">${player.dota2id || 'N/A'}</small>
+                    </div>
+                </div>
+            </td>
+            <td class="text-end pe-3">
+                <span class="badge bg-warning text-dark">${player.peakmmr || 0}</span>
+                <button type="button" class="btn btn-sm btn-outline-primary ms-1 restore-player" 
+                        data-index="${index}" title="Restore to Available">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    reservedList.innerHTML = reservedHtml;
+    
+    // Setup restore buttons
+    document.querySelectorAll('.restore-player').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+            restorePlayerFromReserved(playerIndex);
+        });
+    });
+}
+
+/**
+ * Restore player from reserved list
+ */
+function restorePlayerFromReserved(playerIndex) {
+    if (state.reservedPlayers && playerIndex >= 0 && playerIndex < state.reservedPlayers.length) {
+        const player = state.reservedPlayers[playerIndex];
+        
+        // Remove from reserved
+        state.reservedPlayers.splice(playerIndex, 1);
+        
+        // Add back to available
+        state.availablePlayers.push(player);
+        
+        // Refresh displays
+        displayPlayersForBalancer(state.availablePlayers);
+        displayReservedPlayers();
+        
+        showNotification(`${player.name} restored to available players`, 'success');
+    }
 }
 
 /**
