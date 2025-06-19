@@ -120,7 +120,7 @@
 
         async function loadRegistrationSession() {
             try {
-                const apiUrl = `/.netlify/functions/registration-sessions?sessionId=${sessionId}`;
+                const apiUrl = `/.netlify/functions/get-registration-session?sessionId=${sessionId}`;
                 console.log('Fetching from:', apiUrl);
                 
                 const response = await fetch(apiUrl);
