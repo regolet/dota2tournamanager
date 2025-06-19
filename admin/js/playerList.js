@@ -319,7 +319,7 @@ async function loadPlayers(forceRefresh = false) {
             `;
             
             // Load players from API endpoint that uses Neon DB
-            const response = await fetch('/admin/api/players');
+            const response = await fetch('/.netlify/functions/api-players');
             
             if (!response.ok) {
                 // If error, assume no players yet or issue with the database
@@ -649,11 +649,11 @@ async function savePlayerChanges() {
         window.playerData[playerIndex] = updatedPlayer;
         
         // Save to server using Neon DB API endpoint
-        const response = await fetch('/admin/api/players', {
+        const response = await fetch('/.netlify/functions/save-players', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Session-Id': localStorage.getItem('adminSessionId')
+                'x-session-id': localStorage.getItem('adminSessionId')
             },
             body: JSON.stringify({
                 action: 'edit',
@@ -721,12 +721,16 @@ async function deletePlayer(player, index) {
         };
         
         // Send DELETE request to server using correct API endpoint
-        const response = await fetch(`/admin/api/players?id=${player.id}`, {
-            method: 'DELETE',
+        const response = await fetch(`/.netlify/functions/save-players`, {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Session-Id': localStorage.getItem('adminSessionId')
-            }
+                'x-session-id': localStorage.getItem('adminSessionId')
+            },
+            body: JSON.stringify({
+                action: 'delete',
+                playerId: player.id
+            })
         });
         
         // Check response
@@ -844,11 +848,11 @@ async function saveNewPlayer() {
     
     try {
         // Add player using API endpoint
-        const response = await fetch('/admin/api/players', {
+        const response = await fetch('/.netlify/functions/save-players', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Session-Id': localStorage.getItem('adminSessionId')
+                'x-session-id': localStorage.getItem('adminSessionId')
             },
             body: JSON.stringify({
                 action: 'add',
@@ -1153,11 +1157,11 @@ async function removeAllPlayers() {
     
     try {
         // Send request to server using API endpoint
-        const response = await fetch('../admin/save-players', {
+        const response = await fetch('/.netlify/functions/save-players', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Session-Id': localStorage.getItem('adminSessionId')
+                'x-session-id': localStorage.getItem('adminSessionId')
             },
             body: JSON.stringify({
                 action: 'removeAll'
