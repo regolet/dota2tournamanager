@@ -4,233 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tournament Registration</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .registration-container {
-            max-width: 600px;
-            margin: 50px auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-        }
-        .tournament-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .tournament-title {
-            color: #2c3e50;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        .tournament-subtitle {
-            color: #7f8c8d;
-            font-size: 1.1rem;
-        }
-        .form-floating {
-            margin-bottom: 20px;
-        }
-        .btn-register {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 50px;
-            padding: 15px 40px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-        }
-        .btn-register:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-        .status-card {
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: none;
-        }
-        .status-open {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-        }
-        .status-closed {
-            background: linear-gradient(135deg, #f44336, #d32f2f);
-            color: white;
-        }
-        .status-full {
-            background: linear-gradient(135deg, #ff9800, #f57c00);
-            color: white;
-        }
-        .status-expired {
-            background: linear-gradient(135deg, #9e9e9e, #757575);
-            color: white;
-        }
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .session-info {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-        .progress-container {
-            margin-top: 15px;
-        }
-        .admin-badge {
-            display: inline-block;
-            background: #6c757d;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 15px;
-            font-size: 0.85rem;
-            margin-top: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="../style.css">
 </head>
 <body>
     <div class="container">
-        <div class="registration-container">
-            <!-- Loading State -->
-            <div id="loading-section" class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-3">Loading registration session...</p>
-            </div>
+        <!-- Loading State -->
+        <div id="loading-section">
+            <h1>Loading Tournament...</h1>
+            <div class="version-badge">Loading registration session...</div>
+        </div>
 
-            <!-- Error State -->
-            <div id="error-section" class="text-center" style="display: none;">
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <span id="error-message">Registration session not found or expired.</span>
-                </div>
-                <a href="/" class="btn btn-outline-primary">
-                    <i class="bi bi-house me-2"></i>Go to Homepage
-                </a>
+        <!-- Main Registration Content -->
+        <div id="registration-section" class="hidden">
+            <h1 id="session-title">Tournament Registration</h1>
+            <div class="version-badge" id="admin-info">
+                Organized by: <span id="admin-username">Admin</span>
             </div>
-
-            <!-- Registration Form -->
-            <div id="registration-section" style="display: none;">
-                <!-- Session Info -->
-                <div class="session-info">
-                    <h2 id="session-title" class="tournament-title">Tournament Registration</h2>
-                    <p id="session-description" class="tournament-subtitle"></p>
-                    <div class="admin-badge">
-                        <i class="bi bi-person-badge me-1"></i>
-                        Organized by: <span id="admin-username"></span>
+            
+            <div id="registration-status">
+                <div id="session-info">
+                    <p id="session-description" style="margin-bottom: 1rem; font-size: 1.1rem; color: #6c757d;">Join this Dota 2 tournament!</p>
+                    
+                    <div class="player-count-container">
+                        <span id="current-players">0</span> / <span id="max-players">100</span> players registered
                     </div>
                     
-                    <!-- Progress Bar -->
-                    <div class="progress-container">
-                        <div class="d-flex justify-content-between mb-2">
-                            <small class="text-muted">Registration Progress</small>
-                            <small class="text-muted">
-                                <span id="current-players">0</span> / <span id="max-players">100</span> players
-                            </small>
-                        </div>
-                        <div class="progress">
-                            <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                        </div>
+                    <!-- Status Card -->
+                    <div id="status-info" style="margin-top: 1rem; padding: 1rem; border-radius: 6px;">
+                        <h3 id="status-title">Registration Open</h3>
+                        <p id="status-message">You can register for this tournament</p>
                     </div>
                 </div>
+            </div>
 
-                <!-- Status Card -->
-                <div id="status-card" class="status-card">
-                    <div class="d-flex align-items-center">
-                        <i id="status-icon" class="bi bi-check-circle-fill me-3" style="font-size: 1.5rem;"></i>
-                        <div>
-                            <h5 id="status-title" class="mb-1">Registration Open</h5>
-                            <p id="status-message" class="mb-0">You can register for this tournament</p>
-                        </div>
-                    </div>
+            <form id="playerForm">
+                <div class="form-group">
+                    <label for="name">Player Name:</label>
+                    <input type="text" id="name" name="name" required minlength="2" maxlength="50" placeholder="Your player name">
                 </div>
-
-                <!-- Registration Form -->
-                <form id="registration-form">
-                    <div class="form-floating">
-                        <input type="text" class="form-control" id="player-name" placeholder="Your Name" required minlength="2" maxlength="50">
-                        <label for="player-name">
-                            <i class="bi bi-person me-2"></i>Player Name
-                        </label>
-                    </div>
-
-                    <div class="form-floating">
-                        <input type="text" class="form-control" id="dota2-id" placeholder="Dota 2 ID" required pattern="[0-9]+" title="Please enter a valid numeric Dota 2 ID">
-                        <label for="dota2-id">
-                            <i class="bi bi-controller me-2"></i>Dota 2 ID
-                        </label>
-                        <div class="form-text">Your numeric Steam ID for Dota 2</div>
-                    </div>
-
-                    <div class="form-floating">
-                        <input type="number" class="form-control" id="peak-mmr" placeholder="Peak MMR" min="0" max="15000">
-                        <label for="peak-mmr">
-                            <i class="bi bi-trophy me-2"></i>Peak MMR (Optional)
-                        </label>
-                        <div class="form-text">Your highest achieved MMR</div>
-                    </div>
-
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-register" id="register-btn">
-                            <i class="bi bi-person-plus me-2"></i>Register for Tournament
-                        </button>
-                    </div>
-                </form>
-
-                <!-- Success Message -->
-                <div id="success-section" class="text-center" style="display: none;">
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        <span id="success-message">Registration successful!</span>
-                    </div>
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Welcome to the Tournament!</h5>
-                            <p class="card-text">Your registration has been confirmed. Tournament details will be shared closer to the event.</p>
-                            <a href="/" class="btn btn-outline-primary">
-                                <i class="bi bi-house me-2"></i>Back to Homepage
-                            </a>
-                        </div>
-                    </div>
+                
+                <div class="form-group">
+                    <label for="dota2id">Dota 2 ID:</label>
+                    <input type="text" id="dota2id" name="dota2id" required pattern="[0-9]+" placeholder="Your numeric Steam ID for Dota 2">
+                    <div class="note">Each Dota 2 ID can only register once.</div>
                 </div>
+                
+                <div class="form-row">
+                    <div class="form-group mmr-group">
+                        <label for="peakmmr">Peak MMR (Optional):</label>
+                        <input type="number" id="peakmmr" name="peakmmr" min="0" max="15000" placeholder="Your highest MMR">
+                    </div>
+                    
+                    <button type="submit" id="submit-btn">Register for Tournament</button>
+                </div>
+            </form>
+            
+            <div id="message" class="hidden"></div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-section" class="hidden">
+            <h1>Registration Error</h1>
+            <div id="registration-status">
+                <div id="registration-closed">
+                    <h3 id="error-title">Session Not Found</h3>
+                    <p id="error-message">Registration session not found or expired.</p>
+                </div>
+            </div>
+            <div class="admin-link">
+                <a href="/">Go to Homepage</a>
+            </div>
+        </div>
+
+        <!-- Success State -->
+        <div id="success-section" class="hidden">
+            <h1>Registration Successful!</h1>
+            <div id="registration-status">
+                <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 6px;">
+                    <h3>Welcome to the Tournament!</h3>
+                    <p id="success-message">Your registration has been confirmed. Tournament details will be shared closer to the event.</p>
+                </div>
+            </div>
+            <div class="admin-link">
+                <a href="/">Back to Homepage</a>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Extract session ID from URL path
+        // Extract session ID from URL
         function getSessionIdFromUrl() {
-            const pathParts = window.location.pathname.split('/');
-            console.log('Path parts:', pathParts);
-            console.log('Search params:', window.location.search);
-            
-            // URL format: /register/sessionId or /register/?session=sessionId
-            if (pathParts.length >= 3 && pathParts[2]) {
-                console.log('Found session ID in path:', pathParts[2]);
-                return pathParts[2];
-            }
-            // Fallback: check URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const sessionFromParams = urlParams.get('session');
-            console.log('Found session ID in params:', sessionFromParams);
+            console.log('Session ID from URL:', sessionFromParams);
             return sessionFromParams;
         }
 
@@ -245,7 +111,7 @@
             console.log('Extracted session ID:', sessionId);
             
             if (!sessionId) {
-                showError('Session ID required');
+                showError('Session ID required', 'No registration session specified in URL');
                 return;
             }
 
@@ -264,7 +130,7 @@
                 console.log('Response data:', data);
 
                 if (!data.success || !data.session) {
-                    showError(data.message || 'Registration session not found');
+                    showError('Registration session not found', data.message || 'Registration session not found or expired');
                     return;
                 }
 
@@ -273,14 +139,14 @@
                 
             } catch (error) {
                 console.error('Error loading registration session:', error);
-                showError('Failed to load registration session');
+                showError('Failed to load registration session', 'There was an error loading the registration session. Please try again later.');
             }
         }
 
         function displayRegistrationSession() {
             // Hide loading, show registration section
-            document.getElementById('loading-section').style.display = 'none';
-            document.getElementById('registration-section').style.display = 'block';
+            document.getElementById('loading-section').classList.add('hidden');
+            document.getElementById('registration-section').classList.remove('hidden');
 
             // Update session info
             document.getElementById('session-title').textContent = currentSession.title;
@@ -290,15 +156,6 @@
             // Update progress
             document.getElementById('current-players').textContent = currentSession.playerCount;
             document.getElementById('max-players').textContent = currentSession.maxPlayers;
-            
-            const progress = Math.min((currentSession.playerCount / currentSession.maxPlayers) * 100, 100);
-            const progressBar = document.getElementById('progress-bar');
-            progressBar.style.width = progress + '%';
-            
-            if (progress >= 100) {
-                progressBar.classList.remove('bg-primary');
-                progressBar.classList.add('bg-danger');
-            }
 
             // Update status
             updateRegistrationStatus();
@@ -308,37 +165,33 @@
         }
 
         function updateRegistrationStatus() {
-            const statusCard = document.getElementById('status-card');
-            const statusIcon = document.getElementById('status-icon');
+            const statusInfo = document.getElementById('status-info');
             const statusTitle = document.getElementById('status-title');
             const statusMessage = document.getElementById('status-message');
-            const registrationForm = document.getElementById('registration-form');
-
-            // Reset classes
-            statusCard.className = 'status-card';
+            const playerForm = document.getElementById('playerForm');
 
             // Check registration status
             if (!currentSession.isActive) {
-                statusCard.classList.add('status-closed');
-                statusIcon.className = 'bi bi-x-circle-fill me-3';
+                statusInfo.style.backgroundColor = '#f8d7da';
+                statusInfo.style.color = '#721c24';
                 statusTitle.textContent = 'Registration Closed';
                 statusMessage.textContent = 'This registration session has been deactivated';
-                registrationForm.style.display = 'none';
+                playerForm.classList.add('hidden');
             } else if (currentSession.expiresAt && new Date() > new Date(currentSession.expiresAt)) {
-                statusCard.classList.add('status-expired');
-                statusIcon.className = 'bi bi-clock-fill me-3';
+                statusInfo.style.backgroundColor = '#fff3cd';
+                statusInfo.style.color = '#856404';
                 statusTitle.textContent = 'Registration Expired';
                 statusMessage.textContent = 'The registration deadline has passed';
-                registrationForm.style.display = 'none';
+                playerForm.classList.add('hidden');
             } else if (currentSession.playerCount >= currentSession.maxPlayers) {
-                statusCard.classList.add('status-full');
-                statusIcon.className = 'bi bi-people-fill me-3';
+                statusInfo.style.backgroundColor = '#f8d7da';
+                statusInfo.style.color = '#721c24';
                 statusTitle.textContent = 'Registration Full';
                 statusMessage.textContent = `Tournament is full (${currentSession.maxPlayers} players maximum)`;
-                registrationForm.style.display = 'none';
+                playerForm.classList.add('hidden');
             } else {
-                statusCard.classList.add('status-open');
-                statusIcon.className = 'bi bi-check-circle-fill me-3';
+                statusInfo.style.backgroundColor = '#d4edda';
+                statusInfo.style.color = '#155724';
                 statusTitle.textContent = 'Registration Open';
                 
                 let message = 'You can register for this tournament';
@@ -347,27 +200,28 @@
                     message += ` until ${expiryDate.toLocaleDateString()} ${expiryDate.toLocaleTimeString()}`;
                 }
                 statusMessage.textContent = message;
-                registrationForm.style.display = 'block';
+                playerForm.classList.remove('hidden');
             }
         }
 
         // Handle registration form submission
-        document.getElementById('registration-form').addEventListener('submit', async function(e) {
+        document.getElementById('playerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const submitBtn = document.getElementById('register-btn');
-            const originalText = submitBtn.innerHTML;
+            const submitBtn = document.getElementById('submit-btn');
+            const originalText = submitBtn.textContent;
+            const messageDiv = document.getElementById('message');
 
             try {
                 // Disable button and show loading
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<div class="loading-spinner me-2"></div>Registering...';
+                submitBtn.textContent = 'Registering...';
 
                 // Get form data
                 const formData = {
-                    name: document.getElementById('player-name').value.trim(),
-                    dota2id: document.getElementById('dota2-id').value.trim(),
-                    peakmmr: document.getElementById('peak-mmr').value || 0,
+                    name: document.getElementById('name').value.trim(),
+                    dota2id: document.getElementById('dota2id').value.trim(),
+                    peakmmr: document.getElementById('peakmmr').value || 0,
                     registrationSessionId: sessionId
                 };
 
@@ -383,49 +237,34 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Show success message
+                    // Show success section
                     document.getElementById('success-message').textContent = data.message;
-                    document.getElementById('registration-section').style.display = 'none';
-                    document.getElementById('success-section').style.display = 'block';
+                    document.getElementById('registration-section').classList.add('hidden');
+                    document.getElementById('success-section').classList.remove('hidden');
                 } else {
-                    showAlert(data.message || 'Registration failed', 'danger');
+                    // Show error message
+                    messageDiv.textContent = data.message || 'Registration failed';
+                    messageDiv.className = 'error';
+                    messageDiv.classList.remove('hidden');
                 }
 
             } catch (error) {
                 console.error('Registration error:', error);
-                showAlert('Registration failed. Please try again.', 'danger');
+                messageDiv.textContent = 'Registration failed. Please try again.';
+                messageDiv.className = 'error';
+                messageDiv.classList.remove('hidden');
             } finally {
                 // Re-enable button
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
+                submitBtn.textContent = originalText;
             }
         });
 
-        function showError(message) {
-            document.getElementById('loading-section').style.display = 'none';
+        function showError(title, message) {
+            document.getElementById('loading-section').classList.add('hidden');
+            document.getElementById('error-title').textContent = title;
             document.getElementById('error-message').textContent = message;
-            document.getElementById('error-section').style.display = 'block';
-        }
-
-        function showAlert(message, type = 'info') {
-            // Create alert element
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
-            alertDiv.style.zIndex = '9999';
-            alertDiv.innerHTML = `
-                <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'}-fill me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            document.body.appendChild(alertDiv);
-            
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.remove();
-                }
-            }, 5000);
+            document.getElementById('error-section').classList.remove('hidden');
         }
     </script>
 </body>
