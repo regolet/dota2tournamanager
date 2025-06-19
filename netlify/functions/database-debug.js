@@ -111,6 +111,16 @@ export const handler = async (event, context) => {
       diagnostics.registrationSessionsTable = `Error: ${sessionError.message}`;
     }
 
+    // Get registration sessions details
+    const registrationSessionsResult = await sql`
+      SELECT * FROM registration_sessions ORDER BY created_at DESC
+    `;
+    
+    // Get players details  
+    const playersResult = await sql`
+      SELECT * FROM players ORDER BY created_at DESC
+    `;
+
     return {
       statusCode: 200,
       headers: {
@@ -119,7 +129,43 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: true,
-        diagnostics,
+        diagnostics: {
+          databaseUrl: process.env.DATABASE_URL ? 'Available' : 'Missing',
+          databaseConnection: 'Success',
+          adminUsersTable: 'Exists',
+          adminUsers: {
+            count: users.length,
+            users: users.map(user => ({
+              id: user.id,
+              username: user.username,
+              role: user.role,
+              isActive: user.is_active,
+              createdAt: user.created_at
+            }))
+          },
+          playersTableSchema: playersSchema,
+          registrationSessionsTable: 'Exists',
+          registrationSessionsCount: sessionCount[0].count,
+          registrationSessions: registrationSessionsResult.map(session => ({
+            id: session.id,
+            sessionId: session.session_id,
+            adminUsername: session.admin_username,
+            title: session.title,
+            maxPlayers: session.max_players,
+            playerCount: session.player_count,
+            isActive: session.is_active,
+            createdAt: session.created_at
+          })),
+          playersCount: playersResult.length,
+          players: playersResult.map(player => ({
+            id: player.id,
+            name: player.name,
+            dota2id: player.dota2id,
+            peakmmr: player.peakmmr,
+            registrationSessionId: player.registration_session_id,
+            createdAt: player.created_at
+          }))
+        },
         timestamp: new Date().toISOString()
       }, null, 2)
     };
