@@ -802,18 +802,18 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     
     console.log(`👑 Selected top ${topPlayers.length} players for teams (MMR range: ${topPlayers[topPlayers.length - 1]?.peakmmr || 0} - ${topPlayers[0]?.peakmmr || 0})`);
     
-    // Group players into MMR tiers for controlled randomization while maintaining high MMR priority
+    // Create VERY small MMR tiers (max 2 players) to maintain strict MMR priority
     const mmrTiers = [];
-    const tierSize = Math.max(2, Math.ceil(topPlayers.length / (numTeams * 1.5))); // Create reasonable sized tiers
+    const tierSize = 2; // Fixed small tier size to prevent low MMR players jumping ahead
     
     for (let i = 0; i < topPlayers.length; i += tierSize) {
         const tier = topPlayers.slice(i, i + tierSize);
-        // Shuffle within each tier to add variety while maintaining overall MMR priority
+        // Only shuffle within very small tiers (2 players max) to maintain MMR priority
         const shuffledTier = tier.sort(() => Math.random() - 0.5);
         mmrTiers.push(...shuffledTier);
     }
     
-    console.log(`📊 Created MMR tiers with ~${tierSize} players per tier for balanced randomization`);
+    console.log(`📊 Created small MMR tiers (${tierSize} players max) to maintain strict MMR priority`);
 
     let currentTeam = 0;
     let direction = 1; // 1 for forward, -1 for backward
