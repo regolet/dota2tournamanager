@@ -767,7 +767,7 @@ function distributeRandomTeams(players, numTeams, teamSize) {
 }
 
 /**
- * Display balanced teams
+ * Display balanced teams in compact horizontal layout
  */
 function displayBalancedTeams() {
     const teamsContainer = document.getElementById('teams-display') || // Fixed ID to match HTML
@@ -790,47 +790,83 @@ function displayBalancedTeams() {
     }
     
     const teamsHtml = `
-        <div class="row">
-            <div class="col-12 mb-3">
-                <h5>
+        <div class="col-12">
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
                     <i class="bi bi-people-fill me-2"></i>
                     Balanced Teams (${state.balancedTeams.length})
                 </h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportTeams()">
+                    <i class="bi bi-download me-1"></i>Export Teams
+                </button>
             </div>
-            ${state.balancedTeams.map((team, teamIndex) => `
-                <div class="col-lg-6 mb-4">
-                    <div class="card border-primary">
-                        <div class="card-header bg-primary text-white">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0">Team ${teamIndex + 1}</h6>
-                                <div>
-                                    <span class="badge bg-light text-dark">
-                                        Avg MMR: ${Math.round(team.totalMmr / team.players.length)}
-                                    </span>
-                                    <span class="badge bg-light text-dark ms-1">
-                                        Total: ${team.totalMmr}
-                                    </span>
+            
+            <!-- Compact Teams Table -->
+            <div class="row g-2">
+                ${state.balancedTeams.map((team, teamIndex) => `
+                    <div class="col-12">
+                        <div class="card border-primary shadow-sm">
+                            <div class="card-header bg-primary text-white py-2">
+                                <div class="row align-items-center">
+                                    <div class="col-auto">
+                                        <h6 class="mb-0 fw-bold">Team ${teamIndex + 1}</h6>
+                                    </div>
+                                    <div class="col text-end">
+                                        <span class="badge bg-light text-dark me-1">
+                                            Avg MMR: ${Math.round(team.totalMmr / team.players.length)}
+                                        </span>
+                                        <span class="badge bg-light text-dark">
+                                            Total: ${team.totalMmr}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="fw-semibold" style="width: 35%;">Player</th>
+                                                <th class="fw-semibold" style="width: 30%;">Dota 2 ID</th>
+                                                <th class="fw-semibold text-center" style="width: 15%;">MMR</th>
+                                                <th class="fw-semibold text-center" style="width: 20%;">Role</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${team.players.map((player, playerIndex) => `
+                                                <tr class="${playerIndex % 2 === 0 ? 'table-light' : ''}">
+                                                    <td class="fw-bold text-primary">${escapeHtml(player.name)}</td>
+                                                    <td class="text-muted font-monospace small">${player.dota2id || 'N/A'}</td>
+                                                    <td class="text-center">
+                                                        <span class="badge bg-primary">${player.peakmmr || 0}</span>
+                                                    </td>
+                                                    <td class="text-center text-muted small">
+                                                        ${playerIndex === 0 ? 'Captain' : 
+                                                          playerIndex === 1 ? 'Support' :
+                                                          playerIndex === 2 ? 'Core' :
+                                                          playerIndex === 3 ? 'Offlane' :
+                                                          playerIndex === 4 ? 'Mid' : 'Player'}
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
-                        <div class="card-body p-0">
-                            ${team.players.map((player, playerIndex) => `
-                                <div class="d-flex justify-content-between align-items-center p-2 ${playerIndex % 2 === 0 ? 'bg-light' : ''}">
-                                    <div>
-                                        <div class="fw-bold">${escapeHtml(player.name)}</div>
-                                        <small class="text-muted">${player.dota2id || 'N/A'}</small>
-                                    </div>
-                                    <span class="badge bg-primary">${player.peakmmr || 0}</span>
-                                </div>
-                            `).join('')}
-                        </div>
                     </div>
-                </div>
-            `).join('')}
+                `).join('')}
+            </div>
         </div>
     `;
 
     teamsContainer.innerHTML = teamsHtml;
+    
+    // Enable export button if teams exist
+    const exportBtn = document.getElementById('export-teams');
+    if (exportBtn) {
+        exportBtn.disabled = false;
+    }
 }
 
 /**
