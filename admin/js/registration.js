@@ -48,8 +48,6 @@ function setupEventListeners() {
 }
 
 async function loadRegistrationSessions() {
-    const tableBody = document.getElementById('registration-sessions-table');
-    
     try {
         const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
         
