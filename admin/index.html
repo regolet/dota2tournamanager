@@ -12,7 +12,70 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Animate.css for picker animations -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     
+    <style>
+        /* Random Picker Animation Styles */
+        .winner-animation {
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+        
+        .animate__bounceIn {
+            animation-duration: 1s;
+        }
+        
+        /* Enhanced progress bar animation */
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        /* Smooth transitions for buttons */
+        .btn {
+            transition: all 0.2s ease;
+        }
+        
+        .btn:disabled {
+            opacity: 0.7;
+        }
+        
+        /* Trophy animation */
+        @keyframes trophy-glow {
+            0% { text-shadow: 0 0 5px #ffd700; }
+            50% { text-shadow: 0 0 20px #ffd700, 0 0 30px #ffd700; }
+            100% { text-shadow: 0 0 5px #ffd700; }
+        }
+        
+        .display-4 {
+            animation: trophy-glow 2s ease-in-out infinite;
+        }
+        
+        /* Smooth spinner rotation */
+        .spinner-border {
+            animation: spinner-border .75s linear infinite;
+        }
+        
+        /* Footer fix - ensure it stays at bottom */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        main {
+            flex: 1;
+        }
+        
+        /* Ensure history section doesn't overlap footer */
+        .card-body {
+            overflow-y: auto;
+        }
+    </style>
 
     
 

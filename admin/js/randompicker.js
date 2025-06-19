@@ -673,27 +673,182 @@ function pickRandomPlayerInternal() {
         return;
     }
 
-    // Pick a random player
-    const randomIndex = Math.floor(Math.random() * availablePlayers.length);
-    const selectedPlayer = availablePlayers[randomIndex];
-
-    // Add to history
-    const historyEntry = {
-        type: 'single',
-        timestamp: new Date().toISOString(),
-        players: [selectedPlayer],
-        tournament: registrationSessions.find(s => s.sessionId === currentSessionId)?.title || 'Unknown Tournament'
-    };
+    // Get timer duration from input
+    const timerInput = document.getElementById('timer-input');
+    const timerSeconds = timerInput ? parseInt(timerInput.value) || 3 : 3;
     
-    pickerHistory.unshift(historyEntry);
+    // Disable the pick button during animation
+    const pickButton = document.getElementById('pick-random');
+    if (pickButton) {
+        pickButton.disabled = true;
+        pickButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Picking...';
+    }
 
-    // Display result
-    displayPickerResult([selectedPlayer], 'Random Player Selected');
+    // Start the animated picking process
+    startAnimatedPicking(timerSeconds, (selectedPlayer) => {
+        // Add to history
+        const historyEntry = {
+            type: 'single',
+            timestamp: new Date().toISOString(),
+            players: [selectedPlayer],
+            tournament: registrationSessions.find(s => s.sessionId === currentSessionId)?.title || 'Unknown Tournament'
+        };
+        
+        pickerHistory.unshift(historyEntry);
 
-    // Update history display
-    updateHistoryDisplay();
+        // Display result with animation
+        displayPickerResultWithAnimation([selectedPlayer], 'Random Player Selected');
 
-    showNotification(`Selected: ${selectedPlayer.name}`, 'success');
+        // Update history display
+        updateHistoryDisplay();
+
+        // Re-enable the pick button
+        if (pickButton) {
+            pickButton.disabled = false;
+            pickButton.innerHTML = '<i class="bi bi-shuffle me-2"></i>Pick Random Player';
+        }
+
+        showNotification(`Selected: ${selectedPlayer.name}`, 'success');
+    });
+}
+
+/**
+ * Start animated picking process
+ */
+function startAnimatedPicking(durationSeconds, callback) {
+    const resultContainer = document.getElementById('picker-result-container');
+    if (!resultContainer) {
+        console.error('Result container not found');
+        return;
+    }
+
+    // Show animation container
+    resultContainer.innerHTML = `
+        <div class="text-center py-4">
+            <div class="mb-4">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Picking...</span>
+                </div>
+                <h4 id="animated-player-name" class="display-6 text-primary fw-bold mb-3">
+                    🎲 Picking...
+                </h4>
+                <div class="progress mb-3" style="height: 10px;">
+                    <div id="pick-progress" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="countdown-timer" class="h5 text-muted">
+                    <i class="bi bi-stopwatch me-2"></i><span id="countdown-seconds">${durationSeconds}</span>s
+                </div>
+            </div>
+        </div>
+    `;
+
+    const animatedNameElement = document.getElementById('animated-player-name');
+    const progressBar = document.getElementById('pick-progress');
+    const countdownElement = document.getElementById('countdown-seconds');
+    
+    let timeLeft = durationSeconds;
+    let animationInterval;
+    let countdownInterval;
+    
+    // Start name cycling animation
+    animationInterval = setInterval(() => {
+        if (availablePlayers.length > 0) {
+            const randomPlayer = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
+            animatedNameElement.textContent = randomPlayer.name;
+            animatedNameElement.className = 'display-6 text-primary fw-bold mb-3 winner-animation';
+        }
+    }, 100); // Change name every 100ms
+    
+    // Start countdown and progress
+    countdownInterval = setInterval(() => {
+        timeLeft--;
+        const progress = ((durationSeconds - timeLeft) / durationSeconds) * 100;
+        
+        if (progressBar) progressBar.style.width = `${progress}%`;
+        if (countdownElement) countdownElement.textContent = Math.max(0, timeLeft);
+        
+        if (timeLeft <= 0) {
+            clearInterval(animationInterval);
+            clearInterval(countdownInterval);
+            
+            // Pick the final player
+            const finalIndex = Math.floor(Math.random() * availablePlayers.length);
+            const selectedPlayer = availablePlayers[finalIndex];
+            
+            // Final animation
+            animatedNameElement.textContent = selectedPlayer.name;
+            animatedNameElement.className = 'display-6 text-success fw-bold mb-3 winner-animation';
+            
+            // Show confetti effect
+            if (progressBar) progressBar.className = 'progress-bar bg-success';
+            
+            setTimeout(() => {
+                callback(selectedPlayer);
+            }, 1000); // Wait 1 second before showing final result
+        }
+    }, 1000);
+}
+
+/**
+ * Display picker result with animation
+ */
+function displayPickerResultWithAnimation(players, title) {
+    const resultContainer = document.getElementById('picker-result-container');
+    
+    if (!resultContainer) {
+        console.error('Result container not found');
+        return;
+    }
+
+    const player = players[0]; // For single player selection
+    
+    const resultHtml = `
+        <div class="card border-success animate__animated animate__bounceIn">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-star-fill me-2"></i>
+                    🎉 ${title}
+                </h6>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <div class="display-4 mb-3">🏆</div>
+                    <h3 class="text-success fw-bold winner-animation">${escapeHtml(player.name)}</h3>
+                    <p class="text-muted mb-3">Dota 2 ID: ${player.dota2id || 'N/A'}</p>
+                    <span class="badge bg-primary fs-6 px-3 py-2">${player.peakmmr || 0} MMR</span>
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-clock me-1"></i>
+                    Selected at ${new Date().toLocaleString()}
+                </div>
+            </div>
+        </div>
+    `;
+
+    resultContainer.innerHTML = resultHtml;
+    
+    // Add celebration sound effect (optional)
+    try {
+        // Create a simple beep sound using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.1);
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+        // Audio API not supported, continue without sound
+    }
 }
 
 /**
