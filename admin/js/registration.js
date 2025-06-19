@@ -1,18 +1,38 @@
 // Registration Sessions Manager
-let registrationSessions = [];
-let currentUser = null;
+// Prevent redeclaration errors when script is reloaded
+if (!window.registrationModule) {
+    window.registrationModule = {
+        registrationSessions: [],
+        currentUser: null,
+        initialized: false
+    };
+}
+
+// Use global references to prevent redeclaration
+let registrationSessions = window.registrationModule.registrationSessions;
+let currentUser = window.registrationModule.currentUser;
 
 // Initialize registration module
 async function initRegistration() {
     try {
+        // Prevent multiple initializations
+        if (window.registrationModule.initialized) {
+            console.log('Registration module already initialized');
+            return;
+        }
+        
         // Get current user info from session manager
         currentUser = window.sessionManager?.getUserInfo();
+        window.registrationModule.currentUser = currentUser;
         
         // Setup event listeners
         setupEventListeners();
         
         // Load registration sessions
         await loadRegistrationSessions();
+        
+        // Mark as initialized
+        window.registrationModule.initialized = true;
         
         console.log('Registration module initialized successfully');
     } catch (error) {
@@ -66,6 +86,7 @@ async function loadRegistrationSessions() {
         
         if (data.success && data.sessions) {
             registrationSessions = data.sessions;
+            window.registrationModule.registrationSessions = data.sessions;
             displayRegistrationSessions();
         } else {
             showAlert(data.message || 'Failed to load registration sessions', 'danger');
@@ -447,7 +468,19 @@ window.deleteSession = deleteSession;
 window.copySessionLink = copySessionLink;
 window.openSessionLink = openSessionLink;
 
+// Function to reset registration module (for cleanup)
+function resetRegistrationModule() {
+    if (window.registrationModule) {
+        window.registrationModule.initialized = false;
+        window.registrationModule.registrationSessions = [];
+        window.registrationModule.currentUser = null;
+    }
+}
+
+// Make reset function globally available
+window.resetRegistrationModule = resetRegistrationModule;
+
 // Export for module loading
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { initRegistration };
+    module.exports = { initRegistration, resetRegistrationModule };
 } 
