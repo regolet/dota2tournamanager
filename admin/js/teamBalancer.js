@@ -802,18 +802,18 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     
     console.log(`👑 Selected top ${topPlayers.length} players for teams (MMR range: ${topPlayers[topPlayers.length - 1]?.peakmmr || 0} - ${topPlayers[0]?.peakmmr || 0})`);
     
-    // Group top players by MMR tiers for balanced distribution while maintaining priority
+    // Group players into MMR tiers for controlled randomization while maintaining high MMR priority
     const mmrTiers = [];
-    const tierSize = Math.max(1, Math.floor(topPlayers.length / (numTeams * 2))); // Create reasonable tiers
+    const tierSize = Math.max(2, Math.ceil(topPlayers.length / (numTeams * 1.5))); // Create reasonable sized tiers
     
     for (let i = 0; i < topPlayers.length; i += tierSize) {
         const tier = topPlayers.slice(i, i + tierSize);
-        // Light shuffle within tier to add variety while keeping MMR priority
+        // Shuffle within each tier to add variety while maintaining overall MMR priority
         const shuffledTier = tier.sort(() => Math.random() - 0.5);
         mmrTiers.push(...shuffledTier);
     }
     
-    console.log(`📊 Created MMR tiers with ${tierSize} players per tier for balanced distribution`);
+    console.log(`📊 Created MMR tiers with ~${tierSize} players per tier for balanced randomization`);
 
     let currentTeam = 0;
     let direction = 1; // 1 for forward, -1 for backward
@@ -824,13 +824,13 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
         currentTeam = numTeams - 1;
     }
 
-    // Distribute the top players using snake draft
+    // Distribute the top players using snake draft with controlled randomization
     for (let i = 0; i < mmrTiers.length; i++) {
         const player = mmrTiers[i];
         state.balancedTeams[currentTeam].players.push(player);
         state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
 
-        console.log(`👑 Added ${player.name} (${player.peakmmr} MMR) to Team ${currentTeam + 1}`);
+        console.log(`👑 Added ${player.name} (${player.peakmmr} MMR) to Team ${currentTeam + 1} [Pick ${i + 1}]`);
 
         // Move to next team using snake pattern
         if (direction === 1) {
@@ -848,13 +848,16 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
         }
     }
     
-    // Note: Lower MMR players will be handled as leftovers and moved to reserves automatically
+    // Lower MMR players will be handled as leftovers and moved to reserves automatically
     const leftoverCount = sortedPlayers.length - topPlayers.length;
     if (leftoverCount > 0) {
-        console.log(`👑 High Ranked Balance: ${leftoverCount} lowest MMR players will be moved to reserves`);
+        const leftoverPlayers = sortedPlayers.slice(maxPlayersForTeams);
+        const leftoverMmrRange = leftoverPlayers.length > 0 ? 
+            `${leftoverPlayers[0]?.peakmmr || 0} - ${leftoverPlayers[leftoverPlayers.length - 1]?.peakmmr || 0}` : 'N/A';
+        console.log(`👑 High Ranked Balance: ${leftoverCount} lowest MMR players (${leftoverMmrRange}) will be moved to reserves`);
     }
     
-    console.log(`🐍 Snake draft completed with direction: ${direction === 1 ? 'forward' : 'reverse'} start`);
+    console.log(`🐍 Snake draft completed with randomized high MMR distribution`);
 }
 
 /**
