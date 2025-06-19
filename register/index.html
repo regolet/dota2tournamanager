@@ -39,20 +39,21 @@
 
             <form id="playerForm">
                 <div class="form-group">
-                    <label for="name">Player Name:</label>
-                    <input type="text" id="name" name="name" required minlength="2" maxlength="50" placeholder="Your player name">
+                    <label for="name">Name (Discord):</label>
+                    <input type="text" id="name" name="name" required minlength="2" maxlength="50" placeholder="Your discord name with tag e.g. Player#1234">
                 </div>
                 
                 <div class="form-group">
                     <label for="dota2id">Dota 2 ID:</label>
-                    <input type="text" id="dota2id" name="dota2id" required pattern="[0-9]+" placeholder="Your numeric Steam ID for Dota 2">
-                    <div class="note">Each Dota 2 ID can only register once.</div>
+                    <input type="text" id="dota2id" name="dota2id" required pattern="[0-9]+" placeholder="Friend ID number">
+                    <div class="note">Each Dota 2 ID can only register once per tournament.</div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group mmr-group">
-                        <label for="peakmmr">Peak MMR (Optional):</label>
-                        <input type="number" id="peakmmr" name="peakmmr" min="0" max="15000" placeholder="Your highest MMR">
+                        <label for="peakmmr">Peak MMR:</label>
+                        <input type="number" id="peakmmr" name="peakmmr" required min="0" max="15000" placeholder="Your highest MMR">
+                        <div class="note">MMR will be verified against masterlist if available.</div>
                     </div>
                     
                     <button type="submit" id="submit-btn">Register for Tournament</button>
@@ -204,6 +205,63 @@
             }
         }
 
+        // Function to check if player already exists in this tournament
+        async function checkDuplicatePlayer(name, dota2id, sessionId) {
+            try {
+                const response = await fetch(`/.netlify/functions/api-players?sessionId=${sessionId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch player data');
+                }
+                
+                const data = await response.json();
+                const players = data.players || [];
+                
+                // Check for duplicate name or Dota 2 ID in this tournament
+                const duplicateName = players.find(player => 
+                    player.name && player.name.toLowerCase() === name.toLowerCase());
+                    
+                const duplicateDota2Id = players.find(player => 
+                    player.dota2id && player.dota2id === dota2id);
+                
+                if (duplicateName) {
+                    return { type: 'name', player: duplicateName };
+                }
+                
+                if (duplicateDota2Id) {
+                    return { type: 'dota2id', player: duplicateDota2Id };
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Error checking duplicates:', error);
+                throw error;
+            }
+        }
+
+        // Function to fetch masterlist data for verification
+        async function getMasterlistPlayer(name, dota2id) {
+            try {
+                const response = await fetch('/.netlify/functions/masterlist');
+                if (!response.ok) {
+                    return null; // Masterlist not available, proceed without verification
+                }
+                
+                const data = await response.json();
+                const masterlist = data.masterlist || [];
+                
+                // Look for player in masterlist by exact name or dota2id
+                const masterlistPlayer = masterlist.find(player => 
+                    (player.dota2id && player.dota2id === dota2id) ||
+                    (player.name && player.name.toLowerCase() === name.toLowerCase())
+                );
+                
+                return masterlistPlayer;
+            } catch (error) {
+                console.error('Error fetching masterlist:', error);
+                return null; // Allow registration to proceed if masterlist unavailable
+            }
+        }
+
         // Handle registration form submission
         document.getElementById('playerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -218,12 +276,66 @@
                 submitBtn.textContent = 'Registering...';
 
                 // Get form data
+                const name = document.getElementById('name').value.trim();
+                const dota2id = document.getElementById('dota2id').value.trim();
+                const peakmmrInput = document.getElementById('peakmmr').value.trim();
+                const peakmmr = parseInt(peakmmrInput) || 0;
+
+                // Validate input
+                if (!name || !dota2id || !peakmmrInput) {
+                    throw new Error('Please fill in all required fields.');
+                }
+
+                // Validate name length
+                if (name.length < 2 || name.length > 50) {
+                    throw new Error('Player name must be between 2 and 50 characters.');
+                }
+
+                // Validate Dota 2 ID format (should be a number)
+                if (!/^\d+$/.test(dota2id)) {
+                    throw new Error('Dota 2 ID should be a numeric Friend ID.');
+                }
+
+                // Validate MMR range
+                if (peakmmr < 0 || peakmmr > 15000) {
+                    throw new Error('Peak MMR must be between 0 and 15000.');
+                }
+
+                // Check for duplicates in this tournament
+                const duplicate = await checkDuplicatePlayer(name, dota2id, sessionId);
+                if (duplicate) {
+                    if (duplicate.type === 'name') {
+                        throw new Error(`Player name "${name}" is already registered in this tournament.`);
+                    } else {
+                        throw new Error(`Dota 2 ID "${dota2id}" is already registered in this tournament.`);
+                    }
+                }
+
+                // Check masterlist for verification
+                let masterlistPlayer = null;
+                let verifiedMMR = peakmmr;
+                let verifiedFromMasterlist = false;
+
+                try {
+                    masterlistPlayer = await getMasterlistPlayer(name, dota2id);
+                    if (masterlistPlayer) {
+                        verifiedFromMasterlist = true;
+                        verifiedMMR = masterlistPlayer.mmr;
+                        console.log('Player found in masterlist:', masterlistPlayer);
+                    }
+                } catch (error) {
+                    console.log('Masterlist verification failed, proceeding with submitted MMR');
+                }
+
+                // Prepare form data
                 const formData = {
-                    name: document.getElementById('name').value.trim(),
-                    dota2id: document.getElementById('dota2id').value.trim(),
-                    peakmmr: document.getElementById('peakmmr').value || 0,
+                    name: name,
+                    dota2id: dota2id,
+                    peakmmr: verifiedMMR, // Use verified MMR if available
                     registrationSessionId: sessionId
                 };
+
+                console.log('Submitting registration:', formData);
 
                 // Submit registration
                 const response = await fetch('/.netlify/functions/add-player', {
@@ -237,22 +349,42 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // Prepare enhanced success message
+                    let successMessage = 'Registration successful! ';
+                    
+                    if (data.verifiedFromMasterlist || verifiedFromMasterlist) {
+                        successMessage += `Your MMR was verified from the masterlist (${verifiedMMR} MMR). `;
+                    } else if (peakmmr > 0) {
+                        successMessage += `Your MMR (${peakmmr}) has been recorded. `;
+                    }
+                    
+                    successMessage += 'Tournament details will be shared closer to the event.';
+
                     // Show success section
-                    document.getElementById('success-message').textContent = data.message;
+                    document.getElementById('success-message').textContent = successMessage;
                     document.getElementById('registration-section').classList.add('hidden');
                     document.getElementById('success-section').classList.remove('hidden');
+
+                    // Update player count in current session display
+                    currentSession.playerCount = (currentSession.playerCount || 0) + 1;
+                    document.getElementById('current-players').textContent = currentSession.playerCount;
+                    
                 } else {
                     // Show error message
-                    messageDiv.textContent = data.message || 'Registration failed';
-                    messageDiv.className = 'error';
-                    messageDiv.classList.remove('hidden');
+                    throw new Error(data.message || 'Registration failed');
                 }
 
             } catch (error) {
                 console.error('Registration error:', error);
-                messageDiv.textContent = 'Registration failed. Please try again.';
+                messageDiv.textContent = error.message || 'Registration failed. Please try again.';
                 messageDiv.className = 'error';
                 messageDiv.classList.remove('hidden');
+
+                // Hide error message after 8 seconds
+                setTimeout(() => {
+                    messageDiv.classList.add('hidden');
+                }, 8000);
+                
             } finally {
                 // Re-enable button
                 submitBtn.disabled = false;
