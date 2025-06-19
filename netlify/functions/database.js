@@ -737,15 +737,33 @@ export async function getRegistrationSessions(adminUserId = null) {
     
     let sessions;
     if (adminUserId) {
+      // Get sessions with actual player count from players table
       sessions = await sql`
-        SELECT * FROM registration_sessions 
-        WHERE admin_user_id = ${adminUserId}
-        ORDER BY created_at DESC
+        SELECT rs.*, 
+               COALESCE(player_counts.actual_count, 0) as actual_player_count
+        FROM registration_sessions rs
+        LEFT JOIN (
+          SELECT registration_session_id, COUNT(*) as actual_count
+          FROM players 
+          WHERE registration_session_id IS NOT NULL
+          GROUP BY registration_session_id
+        ) player_counts ON rs.session_id = player_counts.registration_session_id
+        WHERE rs.admin_user_id = ${adminUserId}
+        ORDER BY rs.created_at DESC
       `;
     } else {
+      // Get all sessions with actual player count from players table
       sessions = await sql`
-        SELECT * FROM registration_sessions 
-        ORDER BY created_at DESC
+        SELECT rs.*, 
+               COALESCE(player_counts.actual_count, 0) as actual_player_count
+        FROM registration_sessions rs
+        LEFT JOIN (
+          SELECT registration_session_id, COUNT(*) as actual_count
+          FROM players 
+          WHERE registration_session_id IS NOT NULL
+          GROUP BY registration_session_id
+        ) player_counts ON rs.session_id = player_counts.registration_session_id
+        ORDER BY rs.created_at DESC
       `;
     }
     
@@ -761,7 +779,7 @@ export async function getRegistrationSessions(adminUserId = null) {
       createdAt: session.created_at,
       updatedAt: session.updated_at,
       expiresAt: session.expires_at,
-      playerCount: session.player_count
+      playerCount: session.actual_player_count // Use actual count from players table
     }));
   } catch (error) {
     console.error('Error getting registration sessions:', error);
@@ -773,9 +791,18 @@ export async function getRegistrationSessionBySessionId(sessionId) {
   try {
     await initializeDatabase();
     
+    // Get session with actual player count from players table
     const sessions = await sql`
-      SELECT * FROM registration_sessions 
-      WHERE session_id = ${sessionId} AND is_active = true
+      SELECT rs.*, 
+             COALESCE(player_counts.actual_count, 0) as actual_player_count
+      FROM registration_sessions rs
+      LEFT JOIN (
+        SELECT registration_session_id, COUNT(*) as actual_count
+        FROM players 
+        WHERE registration_session_id = ${sessionId}
+        GROUP BY registration_session_id
+      ) player_counts ON rs.session_id = player_counts.registration_session_id
+      WHERE rs.session_id = ${sessionId} AND rs.is_active = true
     `;
     
     if (sessions.length === 0) {
@@ -795,7 +822,7 @@ export async function getRegistrationSessionBySessionId(sessionId) {
       createdAt: session.created_at,
       updatedAt: session.updated_at,
       expiresAt: session.expires_at,
-      playerCount: session.player_count
+      playerCount: session.actual_player_count // Use actual count from players table
     };
   } catch (error) {
     console.error('Error getting registration session:', error);
