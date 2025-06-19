@@ -302,6 +302,10 @@ async function initRegistration() {
                 
                 // Reload sessions list
                 await loadRegistrationSessions();
+                
+                // Notify other components to refresh their player lists
+                // This ensures Player List, Team Balancer, and Random Picker get updated data
+                notifyPlayerListsToRefresh(isEdit ? 'updated' : 'created');
             } else {
                 showSessionAlert(data.message || `Failed to ${isEdit ? 'update' : 'create'} registration link`, 'danger');
             }
@@ -388,6 +392,9 @@ async function initRegistration() {
             if (data.success) {
                 showAlert(`Registration link "${title}" deleted successfully`, 'success');
                 await loadRegistrationSessions();
+                
+                // Notify other components about the deletion
+                notifyPlayerListsToRefresh('deleted');
         } else {
                 showAlert(data.message || 'Failed to delete registration link', 'danger');
         }
@@ -511,6 +518,75 @@ async function initRegistration() {
         window.registrationModuleLoaded = false;
     }
     
+    /**
+     * Notify other admin components to refresh their player lists
+     * This ensures all player-related components stay in sync when registration settings change
+     */
+    function notifyPlayerListsToRefresh(actionType = 'updated') {
+        console.log(`🔄 Registration ${actionType}: Notifying player list components to refresh`);
+        
+        // Create a custom event for player list refresh
+        const refreshEvent = new CustomEvent('registrationUpdated', {
+            detail: {
+                action: actionType,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+        // Dispatch the event globally
+        window.dispatchEvent(refreshEvent);
+        
+        // Also try direct function calls for immediate refresh
+        setTimeout(() => {
+            // Refresh Player List if loaded
+            if (typeof window.loadPlayers === 'function') {
+                console.log('📋 Refreshing Player List...');
+                window.loadPlayers(true);
+            } else if (window.playerListModule && typeof window.playerListModule.loadPlayers === 'function') {
+                console.log('📋 Refreshing Player List module...');
+                window.playerListModule.loadPlayers(true);
+            }
+            
+            // Refresh Team Balancer if loaded
+            if (typeof window.loadPlayersForBalancer === 'function') {
+                console.log('⚖️ Refreshing Team Balancer...');
+                window.loadPlayersForBalancer();
+            } else if (window.teamBalancerModule && typeof window.teamBalancerModule.loadPlayersForBalancer === 'function') {
+                console.log('⚖️ Refreshing Team Balancer module...');
+                window.teamBalancerModule.loadPlayersForBalancer();
+            }
+            
+            // Refresh Random Picker if loaded
+            if (typeof window.loadPlayersForPicker === 'function') {
+                console.log('🎲 Refreshing Random Picker...');
+                window.loadPlayersForPicker();
+            } else if (window.randomPickerModule && typeof window.randomPickerModule.loadPlayersForPicker === 'function') {
+                console.log('🎲 Refreshing Random Picker module...');
+                window.randomPickerModule.loadPlayersForPicker();
+            }
+            
+            // Refresh main tournament index page if it's open (for public users)
+            if (typeof window.loadTournaments === 'function') {
+                console.log('🏠 Refreshing main tournament index...');
+                window.loadTournaments();
+            }
+            
+            // Refresh navigation tournament counter if available
+            if (typeof window.updateNavigationStats === 'function') {
+                console.log('📊 Updating navigation statistics...');
+                window.updateNavigationStats();
+            }
+            
+            // Show success notification
+            if (window.showNotification) {
+                window.showNotification(
+                    `Registration ${actionType} - All player lists and tournament data refreshed`, 
+                    'info'
+                );
+            }
+        }, 500); // Small delay to ensure registration changes are processed
+    }
+    
     // Expose functions globally that need to be called from HTML
 window.initRegistration = initRegistration;
     window.editSession = editSession;
@@ -518,5 +594,6 @@ window.initRegistration = initRegistration;
     window.copySessionLink = copySessionLink;
     window.openSessionLink = openSessionLink;
     window.resetRegistrationModule = resetRegistrationModule;
+    window.notifyPlayerListsToRefresh = notifyPlayerListsToRefresh;
     
 })(); 

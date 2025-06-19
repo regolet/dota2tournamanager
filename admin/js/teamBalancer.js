@@ -101,6 +101,9 @@ async function initTeamBalancer() {
         // Initialize reserved players display
         displayReservedPlayers();
         
+        // Listen for registration updates to refresh player data
+        setupTeamBalancerRegistrationListener();
+        
         console.log('Team balancer initialized successfully');
     } catch (error) {
         console.error('Error initializing team balancer:', error);
@@ -1083,6 +1086,36 @@ function exportTeams() {
     URL.revokeObjectURL(url);
 
     showNotification('Teams exported successfully', 'success');
+}
+
+/**
+ * Setup listener for registration updates
+ * This allows the team balancer to refresh when registration settings change
+ */
+function setupTeamBalancerRegistrationListener() {
+    // Listen for custom registration update events
+    window.addEventListener('registrationUpdated', function(event) {
+        console.log('⚖️ Team Balancer received registration update event:', event.detail);
+        
+        // Reload registration sessions to get updated limits and status
+        loadRegistrationSessions().then(() => {
+            // Reload players to reflect any new availability
+            if (state.currentSessionId) {
+                loadPlayersForBalancer();
+                showNotification('Team balancer refreshed due to registration changes', 'info');
+            }
+        });
+    });
+    
+    // Also expose refresh function globally for direct calls
+    window.refreshTeamBalancerData = function() {
+        console.log('⚖️ Direct refresh requested for Team Balancer');
+        loadRegistrationSessions().then(() => {
+            if (state.currentSessionId) {
+                loadPlayersForBalancer();
+            }
+        });
+    };
 }
 
 /**

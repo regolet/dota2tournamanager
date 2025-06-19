@@ -189,6 +189,9 @@ async function initRandomPicker() {
         setupRandomPickerEventListeners();
         console.log('Event listeners setup complete');
         
+        // Listen for registration updates to refresh player data
+        setupRandomPickerRegistrationListener();
+        
         console.log('Random picker initialized successfully');
     } catch (error) {
         console.error('Error initializing random picker:', error);
@@ -1163,6 +1166,36 @@ function exportPickerHistory() {
     URL.revokeObjectURL(url);
 
     showNotification('Pick history exported successfully', 'success');
+}
+
+/**
+ * Setup listener for registration updates
+ * This allows the random picker to refresh when registration settings change
+ */
+function setupRandomPickerRegistrationListener() {
+    // Listen for custom registration update events
+    window.addEventListener('registrationUpdated', function(event) {
+        console.log('🎲 Random Picker received registration update event:', event.detail);
+        
+        // Reload registration sessions to get updated limits and status
+        loadRegistrationSessions().then(() => {
+            // Reload players to reflect any new availability
+            if (currentSessionId) {
+                loadPlayersForPicker();
+                showNotification('Random picker refreshed due to registration changes', 'info');
+            }
+        });
+    });
+    
+    // Also expose refresh function globally for direct calls
+    window.refreshRandomPickerData = function() {
+        console.log('🎲 Direct refresh requested for Random Picker');
+        loadRegistrationSessions().then(() => {
+            if (currentSessionId) {
+                loadPlayersForPicker();
+            }
+        });
+    };
 }
 
 /**

@@ -50,6 +50,9 @@ async function initPlayerList() {
         // Setup event listeners
         setupEventListeners();
         
+        // Listen for registration updates to refresh player data
+        setupRegistrationUpdateListener();
+        
         console.log('Player list module initialized successfully');
     } catch (error) {
         console.error('Error initializing player list:', error);
@@ -977,6 +980,83 @@ function exportPlayersJSON() {
     document.body.removeChild(link);
     
     showNotification('JSON export completed', 'success');
+}
+
+/**
+ * Add CSS for refresh animations
+ */
+function addRefreshAnimationCSS() {
+    if (!document.getElementById('refresh-animation-css')) {
+        const style = document.createElement('style');
+        style.id = 'refresh-animation-css';
+        style.textContent = `
+            .spin {
+                animation: spin 1s linear infinite;
+            }
+            
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            
+            .sync-indicator {
+                color: #198754 !important;
+                background-color: rgba(25, 135, 84, 0.1) !important;
+                border-color: #198754 !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+/**
+ * Setup listener for registration updates
+ * This allows the player list to refresh when registration settings change
+ */
+function setupRegistrationUpdateListener() {
+    // Add CSS for animations
+    addRefreshAnimationCSS();
+    // Listen for custom registration update events
+    window.addEventListener('registrationUpdated', function(event) {
+        console.log('📋 Player List received registration update event:', event.detail);
+        
+        // Show visual indicator that refresh is happening
+        const refreshBtn = document.getElementById('refresh-player-list');
+        if (refreshBtn) {
+            const originalText = refreshBtn.innerHTML;
+            const originalClasses = refreshBtn.className;
+            
+            refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i> Syncing...';
+            refreshBtn.disabled = true;
+            refreshBtn.className = refreshBtn.className.replace('btn-outline-primary', 'btn-outline-success sync-indicator');
+            
+            // Restore button after refresh
+            setTimeout(() => {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+                refreshBtn.className = originalClasses;
+            }, 2000);
+        }
+        
+        // Reload registration sessions to get updated limits and status
+        loadRegistrationSessions().then(() => {
+            // Reload players to reflect any new availability
+            if (currentSessionId) {
+                loadPlayers(true);
+                showNotification(`Player list updated - registration ${event.detail.action}`, 'success');
+            }
+        });
+    });
+    
+    // Also expose refresh function globally for direct calls
+    window.refreshPlayerListData = function() {
+        console.log('📋 Direct refresh requested for Player List');
+        loadRegistrationSessions().then(() => {
+            if (currentSessionId) {
+                loadPlayers(true);
+            }
+        });
+    };
 }
 
 /**
