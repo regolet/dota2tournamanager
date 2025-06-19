@@ -648,6 +648,9 @@ window.teamBalancerModule = {
     exportTeams
 };
 
+    // Expose init function globally for navigation system
+    window.initTeamBalancer = initTeamBalancer;
+
     // Legacy global functions for existing onclick handlers
     window.loadPlayers = loadPlayersForBalancer;
     window.autoBalance = autoBalance;

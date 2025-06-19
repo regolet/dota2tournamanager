@@ -650,3 +650,6 @@ window.playerListModule = {
     handlePlayerSearch
 };
 
+// Expose init function globally for navigation system
+window.initPlayerList = initPlayerList;
+

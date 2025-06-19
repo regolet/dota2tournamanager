@@ -866,6 +866,9 @@ window.randomPickerModule = {
     exportPickerHistory
 };
 
+// Expose init function globally for navigation system
+window.initRandomPicker = initRandomPicker;
+
 // Legacy global functions for existing onclick handlers
 window.loadPlayersList = loadPlayersForPicker;
 window.pickRandomPlayer = pickRandomPlayer;
