@@ -532,7 +532,8 @@ function autoBalance() {
         // Distribute players based on selected balance method
         distributePlayersByMethod(state.availablePlayers, balanceMethod, numTeams, teamSize);
 
-        // Display balanced teams
+        // Display balanced teams with new layout
+        console.log('🎯 Displaying teams with new compact table layout...');
         displayBalancedTeams();
 
         const methodNames = {
@@ -823,7 +824,7 @@ function displayBalancedTeams() {
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-hover align-middle mb-0">
+                                    <table class="table table-sm table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
                                         <thead class="table-light">
                                             <tr>
                                                 <th class="fw-semibold" style="width: 35%;">Player</th>
@@ -837,8 +838,8 @@ function displayBalancedTeams() {
                                                 <tr class="${playerIndex % 2 === 0 ? 'table-light' : ''}">
                                                     <td class="fw-bold text-primary">${escapeHtml(player.name)}</td>
                                                     <td class="text-muted font-monospace small">${player.dota2id || 'N/A'}</td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-primary">${player.peakmmr || 0}</span>
+                                                    <td class="text-center fw-bold">
+                                                        ${player.peakmmr || 0}
                                                     </td>
                                                     <td class="text-center text-muted small">
                                                         ${playerIndex === 0 ? 'Captain' : 
@@ -860,13 +861,21 @@ function displayBalancedTeams() {
         </div>
     `;
 
-    teamsContainer.innerHTML = teamsHtml;
+    // Clear container first to avoid caching issues
+    teamsContainer.innerHTML = '';
     
-    // Enable export button if teams exist
-    const exportBtn = document.getElementById('export-teams');
-    if (exportBtn) {
-        exportBtn.disabled = false;
-    }
+    // Force a brief delay to ensure DOM update
+    setTimeout(() => {
+        teamsContainer.innerHTML = teamsHtml;
+        
+        // Enable export button if teams exist
+        const exportBtn = document.getElementById('export-teams');
+        if (exportBtn) {
+            exportBtn.disabled = false;
+        }
+        
+        console.log('✅ Teams displayed with new compact table layout');
+    }, 10);
 }
 
 /**
