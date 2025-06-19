@@ -33,10 +33,11 @@ export const handler = async (event, context) => {
     
     const { username, password } = JSON.parse(event.body);
     
-    
+    console.log('Login attempt for username:', username);
     
     // Authenticate user using database
     const authResult = await authenticateUser(username, password);
+    console.log('Authentication result:', authResult);
     
     if (authResult.success) {
       // Generate session ID

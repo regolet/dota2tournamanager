@@ -7,7 +7,7 @@ const sql = neon(process.env.DATABASE_URL);
 // Database schema initialization
 async function initializeDatabase() {
   try {
-
+    console.log('Starting database initialization...');
     
     // Create players table
     await sql`
@@ -126,6 +126,7 @@ async function initializeDatabase() {
       `;
     }
 
+    console.log('Database initialization completed successfully');
 
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -652,7 +653,10 @@ export const masterlistDb = {
 // Admin user management functions
 export async function authenticateUser(username, password) {
   try {
+    console.log('Authenticating user:', username);
+    
     await initializeDatabase();
+    console.log('Database initialized successfully');
     
     const users = await sql`
       SELECT id, username, password_hash, role, full_name, email, is_active
@@ -660,8 +664,11 @@ export async function authenticateUser(username, password) {
       WHERE username = ${username} AND password_hash = ${password} AND is_active = true
     `;
     
+    console.log('Query result:', users);
+    
     if (users.length > 0) {
       const user = users[0];
+      console.log('User found:', user.username, 'Role:', user.role);
       return {
         success: true,
         user: {
@@ -674,10 +681,11 @@ export async function authenticateUser(username, password) {
       };
     }
     
+    console.log('No user found with provided credentials');
     return { success: false, message: 'Invalid username or password' };
   } catch (error) {
     console.error('Error authenticating user:', error);
-    return { success: false, message: 'Authentication error' };
+    return { success: false, message: 'Authentication error: ' + error.message };
   }
 }
 
