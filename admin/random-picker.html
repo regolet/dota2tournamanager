@@ -14,6 +14,33 @@
         </div>
     </div>
 
+    <!-- Tournament Selector -->
+    <div class="picker-session-selector-container mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-funnel me-2 text-primary"></i>
+                            <label for="picker-session-selector" class="form-label mb-0 me-3">
+                                Select Tournament:
+                            </label>
+                            <select id="picker-session-selector" class="form-select" style="max-width: 400px;">
+                                <option value="">Loading tournaments...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button id="refresh-picker-sessions" class="btn btn-outline-primary btn-sm me-2">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                        <span id="picker-player-count" class="badge bg-secondary">0 players</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
         <!-- Controls Column -->
         <div class="col-lg-5">
