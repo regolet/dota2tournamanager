@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             // Send login request
-            const response = await fetch('/admin/api/login', {
+            const response = await fetch('/.netlify/functions/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -136,12 +136,12 @@ async function checkLoginStatus() {
         if (!sessionId) return false;
         
         // Include session ID both as header and as URL parameter
-        const url = new URL('/admin/api/check-session', window.location.origin);
+        const url = new URL('/.netlify/functions/check-session', window.location.origin);
         url.searchParams.append('sessionId', sessionId);
         
         const response = await fetch(url, {
             headers: {
-                'X-Session-Id': sessionId
+                'x-session-id': sessionId
             }
         });
         

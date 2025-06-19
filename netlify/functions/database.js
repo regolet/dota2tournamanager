@@ -2,7 +2,7 @@
 import { neon } from '@netlify/neon';
 
 // Initialize Neon database connection
-const sql = neon();
+const sql = neon(process.env.DATABASE_URL);
 
 // Database schema initialization
 async function initializeDatabase() {
