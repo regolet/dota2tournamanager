@@ -58,8 +58,25 @@ async function initializeDatabase() {
     await sql`
       CREATE TABLE IF NOT EXISTS admin_sessions (
         id VARCHAR(255) PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'admin',
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Create admin_users table
+    await sql`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id VARCHAR(255) PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'admin',
+        full_name VARCHAR(255),
+        email VARCHAR(255),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `;
 
@@ -76,6 +93,38 @@ async function initializeDatabase() {
     }
 
     // No default player data - start with empty players table for true realtime database
+
+    // Create default admin users if table is empty
+    const usersCount = await sql`SELECT COUNT(*) as count FROM admin_users`;
+    if (usersCount[0].count == 0) {
+      // Create default super admin
+      await sql`
+        INSERT INTO admin_users (id, username, password_hash, role, full_name, email, is_active) 
+        VALUES (
+          'user_superadmin_001', 
+          'superadmin', 
+          'superadmin123', 
+          'superadmin', 
+          'Super Administrator', 
+          'superadmin@tournament.local', 
+          true
+        )
+      `;
+      
+      // Create default admin
+      await sql`
+        INSERT INTO admin_users (id, username, password_hash, role, full_name, email, is_active) 
+        VALUES (
+          'user_admin_001', 
+          'admin', 
+          'admin123', 
+          'admin', 
+          'Administrator', 
+          'admin@tournament.local', 
+          true
+        )
+      `;
+    }
 
 
   } catch (error) {
@@ -445,14 +494,14 @@ export async function saveRegistrationSettings(settings) {
 }
 
 // Session management operations
-export async function createSession(sessionId, expiresAt) {
+export async function createSession(sessionId, userId, role, expiresAt) {
   try {
     await initializeDatabase();
     
     await sql`
-      INSERT INTO admin_sessions (id, expires_at)
-      VALUES (${sessionId}, ${expiresAt})
-      ON CONFLICT (id) DO UPDATE SET expires_at = ${expiresAt}
+      INSERT INTO admin_sessions (id, user_id, role, expires_at)
+      VALUES (${sessionId}, ${userId}, ${role}, ${expiresAt})
+      ON CONFLICT (id) DO UPDATE SET user_id = ${userId}, role = ${role}, expires_at = ${expiresAt}
     `;
     
 
@@ -468,14 +517,27 @@ export async function validateSession(sessionId) {
     await initializeDatabase();
     
     const sessions = await sql`
-      SELECT id FROM admin_sessions 
-      WHERE id = ${sessionId} AND expires_at > NOW()
+      SELECT s.id, s.user_id, s.role, u.username, u.full_name, u.is_active
+      FROM admin_sessions s
+      JOIN admin_users u ON s.user_id = u.id
+      WHERE s.id = ${sessionId} AND s.expires_at > NOW() AND u.is_active = true
     `;
     
-    return sessions.length > 0;
+    if (sessions.length > 0) {
+      return {
+        valid: true,
+        sessionId: sessions[0].id,
+        userId: sessions[0].user_id,
+        role: sessions[0].role,
+        username: sessions[0].username,
+        fullName: sessions[0].full_name
+      };
+    }
+    
+    return { valid: false };
   } catch (error) {
     console.error('Error validating session:', error);
-    return false;
+    return { valid: false };
   }
 }
 
@@ -585,4 +647,164 @@ export const masterlistDb = {
       return { success: false, error: error.message };
     }
   }
-}; 
+};
+
+// Admin user management functions
+export async function authenticateUser(username, password) {
+  try {
+    await initializeDatabase();
+    
+    const users = await sql`
+      SELECT id, username, password_hash, role, full_name, email, is_active
+      FROM admin_users 
+      WHERE username = ${username} AND password_hash = ${password} AND is_active = true
+    `;
+    
+    if (users.length > 0) {
+      const user = users[0];
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          fullName: user.full_name,
+          email: user.email
+        }
+      };
+    }
+    
+    return { success: false, message: 'Invalid username or password' };
+  } catch (error) {
+    console.error('Error authenticating user:', error);
+    return { success: false, message: 'Authentication error' };
+  }
+}
+
+export async function getAdminUsers() {
+  try {
+    await initializeDatabase();
+    
+    const users = await sql`
+      SELECT id, username, role, full_name, email, is_active, created_at
+      FROM admin_users 
+      ORDER BY created_at DESC
+    `;
+    
+    return users.map(user => ({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      fullName: user.full_name,
+      email: user.email,
+      isActive: user.is_active,
+      createdAt: user.created_at
+    }));
+  } catch (error) {
+    console.error('Error getting admin users:', error);
+    throw error;
+  }
+}
+
+export async function createAdminUser(userData) {
+  try {
+    await initializeDatabase();
+    
+    const userId = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    
+    await sql`
+      INSERT INTO admin_users (id, username, password_hash, role, full_name, email, is_active)
+      VALUES (${userId}, ${userData.username}, ${userData.password}, ${userData.role}, ${userData.fullName}, ${userData.email}, ${userData.isActive !== false})
+    `;
+    
+    return { success: true, userId };
+  } catch (error) {
+    console.error('Error creating admin user:', error);
+    if (error.message.includes('duplicate key')) {
+      return { success: false, message: 'Username already exists' };
+    }
+    return { success: false, message: 'Error creating user' };
+  }
+}
+
+export async function updateAdminUser(userId, updates) {
+  try {
+    await initializeDatabase();
+    
+    const setClause = [];
+    const values = [];
+    
+    if (updates.username) {
+      setClause.push('username = $' + (values.length + 1));
+      values.push(updates.username);
+    }
+    if (updates.password) {
+      setClause.push('password_hash = $' + (values.length + 1));
+      values.push(updates.password);
+    }
+    if (updates.role) {
+      setClause.push('role = $' + (values.length + 1));
+      values.push(updates.role);
+    }
+    if (updates.fullName !== undefined) {
+      setClause.push('full_name = $' + (values.length + 1));
+      values.push(updates.fullName);
+    }
+    if (updates.email !== undefined) {
+      setClause.push('email = $' + (values.length + 1));
+      values.push(updates.email);
+    }
+    if (updates.isActive !== undefined) {
+      setClause.push('is_active = $' + (values.length + 1));
+      values.push(updates.isActive);
+    }
+    
+    if (setClause.length === 0) {
+      return { success: false, message: 'No fields to update' };
+    }
+    
+    setClause.push('updated_at = NOW()');
+    values.push(userId);
+    
+    await sql`UPDATE admin_users SET ${sql.raw(setClause.join(', '))} WHERE id = $${values.length}`.apply(null, values);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating admin user:', error);
+    return { success: false, message: 'Error updating user' };
+  }
+}
+
+export async function deleteAdminUser(userId) {
+  try {
+    await initializeDatabase();
+    
+    // Don't allow deleting the last super admin
+    const superAdmins = await sql`
+      SELECT COUNT(*) as count FROM admin_users WHERE role = 'superadmin' AND is_active = true
+    `;
+    
+    const userToDelete = await sql`
+      SELECT role FROM admin_users WHERE id = ${userId}
+    `;
+    
+    if (userToDelete.length > 0 && userToDelete[0].role === 'superadmin' && superAdmins[0].count <= 1) {
+      return { success: false, message: 'Cannot delete the last super admin' };
+    }
+    
+    // Deactivate user instead of deleting to maintain referential integrity
+    await sql`
+      UPDATE admin_users SET is_active = false, updated_at = NOW() WHERE id = ${userId}
+    `;
+    
+    // Also invalidate all sessions for this user
+    await sql`
+      DELETE FROM admin_sessions WHERE user_id = ${userId}
+    `;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting admin user:', error);
+    return { success: false, message: 'Error deleting user' };
+  }
+} 

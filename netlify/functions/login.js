@@ -1,5 +1,5 @@
 // Admin login function
-import { createSession } from './database.js';
+import { createSession, authenticateUser } from './database.js';
 
 export const handler = async (event, context) => {
   // Handle CORS
@@ -35,10 +35,10 @@ export const handler = async (event, context) => {
     
     
     
-    // Simple authentication (in production, use proper password hashing)
-    if (username === 'admin' && password === 'admin123') {
-      
-      
+    // Authenticate user using database
+    const authResult = await authenticateUser(username, password);
+    
+    if (authResult.success) {
       // Generate session ID
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
@@ -47,7 +47,7 @@ export const handler = async (event, context) => {
       expiresAt.setHours(expiresAt.getHours() + 24);
       
       // Create session in database
-      await createSession(sessionId, expiresAt.toISOString());
+      await createSession(sessionId, authResult.user.id, authResult.user.role, expiresAt.toISOString());
       
       return {
         statusCode: 200,
@@ -59,11 +59,16 @@ export const handler = async (event, context) => {
           success: true,
           sessionId: sessionId,
           expiresAt: expiresAt.toISOString(),
+          user: {
+            username: authResult.user.username,
+            role: authResult.user.role,
+            fullName: authResult.user.fullName,
+            email: authResult.user.email
+          },
           message: 'Login successful'
         })
       };
     } else {
-      
       return {
         statusCode: 401,
         headers: {
@@ -72,7 +77,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          error: 'Invalid username or password'
+          error: authResult.message || 'Invalid username or password'
         })
       };
     }

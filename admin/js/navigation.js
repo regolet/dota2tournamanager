@@ -40,6 +40,91 @@ if (typeof cleanupRegistration !== 'function') {
 }
 
 /**
+ * Set up role-based access control for navigation tabs
+ */
+async function setupRoleBasedAccess() {
+    try {
+        // Get user info from session manager
+        const userInfo = await window.sessionManager?.getUserInfo();
+        
+        if (!userInfo || !userInfo.role) {
+            console.warn('No user role information available');
+            return;
+        }
+        
+        // Update profile dropdown with user info
+        const profileDropdown = document.querySelector('#profileDropdown');
+        if (profileDropdown) {
+            profileDropdown.innerHTML = `
+                <i class="bi bi-person-circle me-1"></i> ${userInfo.fullName || userInfo.username}
+                <small class="text-muted ms-1">(${userInfo.role})</small>
+            `;
+        }
+        
+        // Update footer with user info
+        const footer = document.querySelector('footer small');
+        if (footer) {
+            footer.textContent = `Logged in as ${userInfo.fullName || userInfo.username} (${userInfo.role})`;
+        }
+        
+        // Role-based tab visibility
+        if (userInfo.role === 'admin') {
+            // Regular admin - hide masterlist tab
+            const masterlistTab = document.getElementById('masterlist-tab');
+            if (masterlistTab) {
+                masterlistTab.closest('li').style.display = 'none';
+            }
+            
+            // If currently on masterlist tab, redirect to team balancer
+            const currentTab = document.querySelector('.nav-link.active');
+            if (currentTab && currentTab.id === 'masterlist-tab') {
+                const teamBalancerTab = document.getElementById('team-balancer-tab');
+                if (teamBalancerTab) {
+                    teamBalancerTab.click();
+                }
+            }
+        } else if (userInfo.role === 'superadmin') {
+            // Super admin - show all tabs (default behavior)
+            const masterlistTab = document.getElementById('masterlist-tab');
+            if (masterlistTab) {
+                masterlistTab.closest('li').style.display = 'block';
+            }
+            
+            // Add user management option to profile dropdown for super admins
+            const profileDropdownMenu = document.querySelector('#profileDropdown').nextElementSibling;
+            if (profileDropdownMenu && !document.getElementById('user-management-btn')) {
+                const userManagementItem = document.createElement('li');
+                userManagementItem.innerHTML = `
+                    <a class="dropdown-item" href="#" id="user-management-btn">
+                        <i class="bi bi-people me-2"></i>User Management
+                    </a>
+                `;
+                
+                // Insert before the divider
+                const divider = profileDropdownMenu.querySelector('.dropdown-divider');
+                if (divider) {
+                    profileDropdownMenu.insertBefore(userManagementItem, divider);
+                } else {
+                    profileDropdownMenu.appendChild(userManagementItem);
+                }
+                
+                // Set up user management functionality
+                const userManagementBtn = document.getElementById('user-management-btn');
+                if (userManagementBtn) {
+                    userManagementBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showUserManagementModal();
+                    });
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error setting up role-based access:', error);
+    }
+}
+
+/**
  * Helper function to wait for an element to be present in the DOM
  */
 async function waitForElement(selector, maxAttempts = 10, interval = 100) {
@@ -467,6 +552,9 @@ function initNavigation() {
         }
     }
     
+    // Set up role-based access control
+    setupRoleBasedAccess();
+    
     // Set up navigation tabs
     const teamBalancerTab = document.getElementById('team-balancer-tab');
     const randomPickerTab = document.getElementById('random-picker-tab');
@@ -855,4 +943,107 @@ function showPasswordAlert(message, type) {
             }, 3000);
         }
     }
+}
+
+/**
+ * Show user management modal (Super Admin only)
+ */
+function showUserManagementModal() {
+    // Create user management modal if it doesn't exist
+    if (!document.getElementById('user-management-modal')) {
+        const modalHTML = `
+            <!-- User Management Modal -->
+            <div class="modal fade" id="user-management-modal" tabindex="-1" aria-labelledby="userManagementModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="userManagementModalLabel">
+                                <i class="bi bi-people me-2"></i>User Management
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Admin Users</h6>
+                                <button class="btn btn-primary btn-sm" id="add-user-btn">
+                                    <i class="bi bi-person-plus me-1"></i>Add User
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>Full Name</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="users-table-body">
+                                        <tr>
+                                            <td colspan="6" class="text-center py-3">
+                                                <div class="spinner-border spinner-border-sm me-2"></div>
+                                                Loading users...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Set up event handlers
+        document.getElementById('add-user-btn').addEventListener('click', () => {
+            alert('User management functionality will be implemented in the next update!');
+        });
+    }
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('user-management-modal'));
+    modal.show();
+    
+    // Load users (placeholder for now)
+    const tbody = document.getElementById('users-table-body');
+    tbody.innerHTML = `
+        <tr>
+            <td>superadmin</td>
+            <td>Super Administrator</td>
+            <td>superadmin@tournament.local</td>
+            <td><span class="badge bg-danger">Super Admin</span></td>
+            <td><span class="badge bg-success">Active</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary me-1" disabled>
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" disabled>
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+        <tr>
+            <td>admin</td>
+            <td>Administrator</td>
+            <td>admin@tournament.local</td>
+            <td><span class="badge bg-primary">Admin</span></td>
+            <td><span class="badge bg-success">Active</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary me-1" disabled>
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" disabled>
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
 }

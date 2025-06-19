@@ -38,9 +38,9 @@ export const handler = async (event, context) => {
     
     
     // Validate session using database
-    const isValid = await validateSession(sessionId);
+    const sessionData = await validateSession(sessionId);
     
-    if (isValid) {
+    if (sessionData.valid) {
       
       return {
         statusCode: 200,
@@ -50,7 +50,13 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: true,
-          message: 'Session is valid'
+          message: 'Session is valid',
+          user: {
+            userId: sessionData.userId,
+            username: sessionData.username,
+            role: sessionData.role,
+            fullName: sessionData.fullName
+          }
         })
       };
     } else {

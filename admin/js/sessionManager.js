@@ -6,6 +6,7 @@
 class SessionManager {
     constructor() {
         this.sessionId = null;
+        this.userInfo = null;
         this.isAuthenticated = false;
         this.isInitialized = false;
         this.initPromise = null;
@@ -57,10 +58,11 @@ class SessionManager {
             }
 
             // Verify session with server
-            const isValid = await this._verifySession(sessionId);
+            const sessionData = await this._verifySession(sessionId);
             
-            if (isValid) {
+            if (sessionData.valid) {
                 this.sessionId = sessionId;
+                this.userInfo = sessionData.user;
                 this.isAuthenticated = true;
                 this.isInitialized = true;
                 
@@ -95,28 +97,35 @@ class SessionManager {
     /**
      * Verify session with server
      * @param {string} sessionId 
-     * @returns {Promise<boolean>}
+     * @returns {Promise<object>}
      */
     async _verifySession(sessionId) {
         try {
-            const url = new URL('/admin/api/check-session', window.location.origin);
+            const url = new URL('/.netlify/functions/check-session', window.location.origin);
             url.searchParams.append('sessionId', sessionId);
             
             const response = await fetch(url, {
                 headers: {
-                    'X-Session-Id': sessionId
+                    'x-session-id': sessionId
                 }
             });
             
             if (!response.ok) {
-                return false;
+                return { valid: false };
             }
             
             const data = await response.json();
-            return data.success === true;
+            if (data.success === true && data.user) {
+                return { 
+                    valid: true, 
+                    user: data.user 
+                };
+            }
+            
+            return { valid: false };
         } catch (error) {
             // SessionManager: Error verifying session
-            return false;
+            return { valid: false };
         }
     }
 
@@ -134,6 +143,14 @@ class SessionManager {
      */
     isAuth() {
         return this.isAuthenticated;
+    }
+
+    /**
+     * Get current user information
+     * @returns {object|null}
+     */
+    getUserInfo() {
+        return this.userInfo;
     }
 
     /**
@@ -190,6 +207,7 @@ class SessionManager {
     _clearAuthData() {
         // SessionManager: Clearing all authentication data
         this.sessionId = null;
+        this.userInfo = null;
         this.isAuthenticated = false;
         this.isInitialized = false;
         this.initPromise = null;
