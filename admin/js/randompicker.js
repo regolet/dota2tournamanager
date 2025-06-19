@@ -358,11 +358,12 @@ function setupPickerButtons() {
     }
 
     // Pick Random Player button
-    const pickRandomBtn = document.getElementById('pick-random-btn') || 
+    const pickRandomBtn = document.getElementById('pick-random') || 
+                         document.getElementById('pick-random-btn') || 
                          document.querySelector('[onclick="pickRandomPlayer()"]');
     if (pickRandomBtn) {
         pickRandomBtn.removeAttribute('onclick');
-        pickRandomBtn.addEventListener('click', pickRandomPlayer);
+        pickRandomBtn.addEventListener('click', pickRandomPlayerInternal);
     }
 
     // Pick Multiple Players button
@@ -370,7 +371,7 @@ function setupPickerButtons() {
                            document.querySelector('[onclick="pickMultiplePlayers()"]');
     if (pickMultipleBtn) {
         pickMultipleBtn.removeAttribute('onclick');
-        pickMultipleBtn.addEventListener('click', pickMultiplePlayers);
+        pickMultipleBtn.addEventListener('click', pickMultiplePlayersInternal);
     }
 
     // Clear History button
@@ -661,7 +662,7 @@ function excludePlayerFromPool(playerIndex) {
 /**
  * Pick a random player from the available players
  */
-function pickRandomPlayer() {
+function pickRandomPlayerInternal() {
     if (!currentSessionId) {
         showNotification('Please select a tournament first', 'warning');
         return;
@@ -698,7 +699,7 @@ function pickRandomPlayer() {
 /**
  * Pick multiple random players
  */
-function pickMultiplePlayers() {
+function pickMultiplePlayersInternal() {
     if (!currentSessionId) {
         showNotification('Please select a tournament first', 'warning');
         return;
@@ -1130,11 +1131,11 @@ function loadPlayersList() {
 }
 
 function pickRandomPlayer() {
-    return pickRandomPlayer();
+    return pickRandomPlayerInternal();
 }
 
 function pickMultiplePlayers() {
-    return pickMultiplePlayers();
+    return pickMultiplePlayersInternal();
 }
 
 function clearHistory() {
@@ -1152,8 +1153,8 @@ document.addEventListener('DOMContentLoaded', initRandomPicker);
 window.randomPickerModule = {
     initRandomPicker,
     loadPlayersForPicker,
-    pickRandomPlayer,
-    pickMultiplePlayers,
+    pickRandomPlayerInternal,
+    pickMultiplePlayersInternal,
     clearPickerHistory,
     exportPickerHistory
 };
