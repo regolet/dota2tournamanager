@@ -40,35 +40,44 @@ export const handler = async (event, context) => {
     console.log('Authentication result:', authResult);
     
     if (authResult.success) {
-      // Generate session ID
-      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Set session expiration (24 hours from now)
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-      
-      // Create session in database
-      await createSession(sessionId, authResult.user.id, authResult.user.role, expiresAt.toISOString());
-      
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          sessionId: sessionId,
-          expiresAt: expiresAt.toISOString(),
-          user: {
-            username: authResult.user.username,
-            role: authResult.user.role,
-            fullName: authResult.user.fullName,
-            email: authResult.user.email
+      try {
+        // Generate session ID
+        const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Set session expiration (24 hours from now)
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        
+        console.log('Creating session for user:', authResult.user.id, 'Role:', authResult.user.role);
+        
+        // Create session in database
+        await createSession(sessionId, authResult.user.id, authResult.user.role, expiresAt.toISOString());
+        
+        console.log('Session created successfully:', sessionId);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
           },
-          message: 'Login successful'
-        })
-      };
+          body: JSON.stringify({
+            success: true,
+            sessionId: sessionId,
+            expiresAt: expiresAt.toISOString(),
+            user: {
+              username: authResult.user.username,
+              role: authResult.user.role,
+              fullName: authResult.user.fullName,
+              email: authResult.user.email
+            },
+            message: 'Login successful'
+          })
+        };
+      } catch (sessionError) {
+        console.error('Session creation error:', sessionError);
+        throw new Error('Session creation failed: ' + sessionError.message);
+      }
     } else {
       return {
         statusCode: 401,
