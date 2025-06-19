@@ -828,25 +828,25 @@ function displayBalancedTeams() {
                                         <thead class="table-light">
                                             <tr>
                                                 <th class="fw-semibold" style="width: 35%;">Player</th>
-                                                <th class="fw-semibold" style="width: 30%;">Dota 2 ID</th>
-                                                <th class="fw-semibold text-center" style="width: 15%;">MMR</th>
+                                                <th class="fw-semibold text-center" style="width: 25%;">Dota 2 ID</th>
                                                 <th class="fw-semibold text-center" style="width: 20%;">Role</th>
+                                                <th class="fw-semibold text-end" style="width: 20%;">MMR</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             ${team.players.map((player, playerIndex) => `
                                                 <tr class="${playerIndex % 2 === 0 ? 'table-light' : ''}">
                                                     <td class="fw-bold text-primary">${escapeHtml(player.name)}</td>
-                                                    <td class="text-muted font-monospace small">${player.dota2id || 'N/A'}</td>
-                                                    <td class="text-center fw-bold">
-                                                        ${player.peakmmr || 0}
-                                                    </td>
+                                                    <td class="text-center font-monospace small">${player.dota2id || 'N/A'}</td>
                                                     <td class="text-center text-muted small">
                                                         ${playerIndex === 0 ? 'Captain' : 
                                                           playerIndex === 1 ? 'Support' :
                                                           playerIndex === 2 ? 'Core' :
                                                           playerIndex === 3 ? 'Offlane' :
                                                           playerIndex === 4 ? 'Mid' : 'Player'}
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <span class="badge bg-primary">${player.peakmmr || 0}</span>
                                                     </td>
                                                 </tr>
                                             `).join('')}
