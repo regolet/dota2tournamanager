@@ -541,6 +541,16 @@ export const playerDb = {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+  
+  async deleteAllPlayers() {
+    try {
+      await initializeDatabase();
+      await sql`DELETE FROM players`;
+      return { success: true, message: 'All players deleted successfully' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 };
 
