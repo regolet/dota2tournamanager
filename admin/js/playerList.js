@@ -309,6 +309,18 @@ function setupEventListeners() {
     if (exportJsonBtn) {
         exportJsonBtn.addEventListener('click', exportPlayersJSON);
     }
+
+    // Save player changes button
+    const savePlayerChangesBtn = document.getElementById('save-player-changes');
+    if (savePlayerChangesBtn) {
+        savePlayerChangesBtn.addEventListener('click', savePlayerChanges);
+    }
+
+    // Save new player button
+    const saveNewPlayerBtn = document.getElementById('save-new-player-button');
+    if (saveNewPlayerBtn) {
+        saveNewPlayerBtn.addEventListener('click', saveNewPlayer);
+    }
 }
 
 /**
@@ -539,17 +551,233 @@ function showAddPlayerModal() {
         return;
     }
     
-    // Implementation for add player modal
-    // This would show a modal to add a new player to the current session
-    console.log('Show add player modal for session:', currentSessionId);
+    // Clear the form fields
+    document.getElementById('add-player-name').value = '';
+    document.getElementById('add-player-dota2id').value = '';
+    document.getElementById('add-player-peakmmr').value = '';
+    
+    // Show the modal
+    const addModal = document.getElementById('add-player-modal');
+    if (addModal) {
+        const modal = new bootstrap.Modal(addModal);
+        modal.show();
+    } else {
+        showNotification('Add player modal not found', 'error');
+    }
+}
+
+/**
+ * Save new player
+ */
+async function saveNewPlayer() {
+    const playerName = document.getElementById('add-player-name').value?.trim();
+    const playerDota2id = document.getElementById('add-player-dota2id').value?.trim();
+    const playerPeakmmr = document.getElementById('add-player-peakmmr').value;
+
+    // Validate required fields
+    if (!playerName) {
+        showNotification('Player name is required', 'warning');
+        return;
+    }
+
+    if (!playerDota2id) {
+        showNotification('Dota 2 ID is required', 'warning');
+        return;
+    }
+
+    if (!currentSessionId) {
+        showNotification('Please select a tournament first', 'warning');
+        return;
+    }
+
+    const saveButton = document.getElementById('save-new-player-button');
+    const originalText = saveButton ? saveButton.innerHTML : '';
+
+    try {
+        // Show loading state
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Adding...';
+        }
+
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        if (!sessionId) {
+            showNotification('Session expired. Please login again.', 'error');
+            return;
+        }
+
+        const newPlayerData = {
+            name: playerName,
+            dota2id: playerDota2id,
+            peakmmr: parseInt(playerPeakmmr) || 0,
+            registrationSessionId: currentSessionId
+        };
+
+        const response = await fetch('/.netlify/functions/add-player', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-session-id': sessionId
+            },
+            body: JSON.stringify(newPlayerData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification('Player added successfully', 'success');
+            
+            // Close the modal
+            const addModal = document.getElementById('add-player-modal');
+            if (addModal) {
+                const modal = bootstrap.Modal.getInstance(addModal);
+                if (modal) {
+                    modal.hide();
+                }
+            }
+            
+            // Clear the form
+            document.getElementById('add-player-name').value = '';
+            document.getElementById('add-player-dota2id').value = '';
+            document.getElementById('add-player-peakmmr').value = '';
+            
+            // Reload the player list
+            await loadPlayers(true);
+        } else {
+            showNotification(data.message || 'Failed to add player', 'error');
+        }
+
+    } catch (error) {
+        console.error('Error adding player:', error);
+        showNotification('Error adding player: ' + error.message, 'error');
+    } finally {
+        // Restore button state
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.innerHTML = originalText;
+        }
+    }
 }
 
 /**
  * Edit player
  */
 function editPlayer(playerId, playerIndex) {
-    // Implementation for edit player
-    console.log('Edit player:', playerId, playerIndex);
+    if (!allPlayers || !Array.isArray(allPlayers)) {
+        showNotification('No player data available', 'error');
+        return;
+    }
+    
+    // Find the player by ID
+    const player = allPlayers.find(p => p.id === playerId);
+    if (!player) {
+        showNotification('Player not found', 'error');
+        return;
+    }
+    
+    // Populate the edit modal with player data
+    document.getElementById('edit-player-id').value = player.id;
+    document.getElementById('edit-player-index').value = playerIndex;
+    document.getElementById('edit-player-name').value = player.name || '';
+    document.getElementById('edit-player-dota2id').value = player.dota2id || '';
+    document.getElementById('edit-player-peakmmr').value = player.peakmmr || '';
+    document.getElementById('edit-player-registration-date').value = 
+        player.registrationDate ? new Date(player.registrationDate).toLocaleString() : 'N/A';
+    
+    // Show the edit modal
+    const editModal = document.getElementById('edit-player-modal');
+    if (editModal) {
+        const modal = new bootstrap.Modal(editModal);
+        modal.show();
+    } else {
+        showNotification('Edit modal not found', 'error');
+    }
+}
+
+/**
+ * Save player changes
+ */
+async function savePlayerChanges() {
+    const playerId = document.getElementById('edit-player-id').value;
+    const playerName = document.getElementById('edit-player-name').value?.trim();
+    const playerDota2id = document.getElementById('edit-player-dota2id').value?.trim();
+    const playerPeakmmr = document.getElementById('edit-player-peakmmr').value;
+
+    // Validate required fields
+    if (!playerName) {
+        showNotification('Player name is required', 'warning');
+        return;
+    }
+
+    if (!playerDota2id) {
+        showNotification('Dota 2 ID is required', 'warning');
+        return;
+    }
+
+    const saveButton = document.getElementById('save-player-changes');
+    const originalText = saveButton ? saveButton.innerHTML : '';
+
+    try {
+        // Show loading state
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
+        }
+
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        if (!sessionId) {
+            showNotification('Session expired. Please login again.', 'error');
+            return;
+        }
+
+        const updateData = {
+            playerId: playerId,
+            name: playerName,
+            dota2id: playerDota2id,
+            peakmmr: parseInt(playerPeakmmr) || 0
+        };
+
+        const response = await fetch('/.netlify/functions/api-players', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-session-id': sessionId
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification('Player updated successfully', 'success');
+            
+            // Close the modal
+            const editModal = document.getElementById('edit-player-modal');
+            if (editModal) {
+                const modal = bootstrap.Modal.getInstance(editModal);
+                if (modal) {
+                    modal.hide();
+                }
+            }
+            
+            // Reload the player list
+            await loadPlayers(true);
+        } else {
+            showNotification(data.message || 'Failed to update player', 'error');
+        }
+
+    } catch (error) {
+        console.error('Error updating player:', error);
+        showNotification('Error updating player: ' + error.message, 'error');
+    } finally {
+        // Restore button state
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.innerHTML = originalText;
+        }
+    }
 }
 
 /**
@@ -589,18 +817,60 @@ async function deletePlayer(playerId) {
 /**
  * Confirm remove all players
  */
-function confirmRemoveAllPlayers() {
+async function confirmRemoveAllPlayers() {
     if (!currentSessionId) {
         showNotification('Please select a tournament first', 'warning');
         return;
     }
     
-    if (!confirm('Are you sure you want to remove ALL players from this tournament? This action cannot be undone.')) {
+    if (!allPlayers || allPlayers.length === 0) {
+        showNotification('No players to remove in this tournament', 'info');
         return;
     }
     
-    // Implementation for removing all players from current session
-    console.log('Remove all players from session:', currentSessionId);
+    const playerCount = allPlayers.length;
+    const confirmed = confirm(`Are you sure you want to remove ALL ${playerCount} players from this tournament? This action cannot be undone.`);
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    try {
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        if (!sessionId) {
+            showNotification('Session expired. Please login again.', 'error');
+            return;
+        }
+
+        // Show loading notification
+        showNotification('Removing all players...', 'info');
+
+        const response = await fetch('/.netlify/functions/api-players', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-session-id': sessionId
+            },
+            body: JSON.stringify({ 
+                action: 'removeAll',
+                sessionId: currentSessionId 
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification(`Successfully removed ${playerCount} players`, 'success');
+            await loadPlayers(true);
+        } else {
+            showNotification(data.message || 'Failed to remove players', 'error');
+        }
+
+    } catch (error) {
+        console.error('Error removing all players:', error);
+        showNotification('Error removing players: ' + error.message, 'error');
+    }
 }
 
 /**
@@ -612,8 +882,42 @@ function exportPlayersCSV() {
         return;
     }
     
-    // Implementation for CSV export
-    console.log('Export CSV');
+    const tournamentName = currentSessionId ? 
+        (registrationSessions.find(s => s.sessionId === currentSessionId)?.title || 'Unknown Tournament') :
+        'All Tournaments';
+    
+    // Create CSV headers
+    const headers = ['Name', 'Dota 2 ID', 'Peak MMR', 'Tournament', 'Player ID', 'Registration Date'];
+    
+    // Create CSV rows
+    const rows = allPlayers.map(player => [
+        player.name || '',
+        player.dota2id || '',
+        player.peakmmr || 0,
+        player.sessionTitle || 'Legacy',
+        player.id || '',
+        player.registrationDate ? new Date(player.registrationDate).toLocaleString() : ''
+    ]);
+    
+    // Combine headers and rows
+    const csvContent = [headers, ...rows]
+        .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+    
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `players-${tournamentName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('CSV export completed', 'success');
 }
 
 /**
@@ -625,8 +929,40 @@ function exportPlayersJSON() {
         return;
     }
     
-    // Implementation for JSON export
-    console.log('Export JSON');
+    const tournamentName = currentSessionId ? 
+        (registrationSessions.find(s => s.sessionId === currentSessionId)?.title || 'Unknown Tournament') :
+        'All Tournaments';
+    
+    // Create export data structure
+    const exportData = {
+        tournament: tournamentName,
+        exportDate: new Date().toISOString(),
+        playerCount: allPlayers.length,
+        players: allPlayers.map(player => ({
+            name: player.name || '',
+            dota2id: player.dota2id || '',
+            peakmmr: player.peakmmr || 0,
+            tournament: player.sessionTitle || 'Legacy',
+            playerId: player.id || '',
+            registrationDate: player.registrationDate || null,
+            ipAddress: player.ipAddress || null
+        }))
+    };
+    
+    // Create and download the file
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `players-${tournamentName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('JSON export completed', 'success');
 }
 
 /**
