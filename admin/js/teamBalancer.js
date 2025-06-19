@@ -359,21 +359,27 @@ async function loadPlayersForBalancer() {
  * Display players for the team balancer
  */
 function displayPlayersForBalancer(players) {
-    const playersList = document.getElementById('players-list') || 
-                       document.querySelector('.players-list') ||
-                       document.querySelector('#player-list');
+    const playersList = document.getElementById('player-list');
+    const playerCountElement = document.getElementById('player-count');
     
     if (!playersList) {
         console.error('Players list container not found');
         return;
     }
 
+    // Update player count badge
+    if (playerCountElement) {
+        playerCountElement.textContent = players ? players.length : 0;
+    }
+
     if (!players || players.length === 0) {
         playersList.innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                ${state.currentSessionId ? 'No players found in this tournament.' : 'Please select a tournament to load players.'}
-            </div>
+            <tr>
+                <td colspan="2" class="text-center text-muted py-4">
+                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                    <span>${state.currentSessionId ? 'No players found in this tournament.' : 'Please select a tournament to load players.'}</span>
+                </td>
+            </tr>
         `;
         return;
     }
@@ -381,31 +387,17 @@ function displayPlayersForBalancer(players) {
     // Sort players by MMR (highest first) for better display
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
 
-    const playersHtml = `
-        <div class="row">
-            <div class="col-12 mb-3">
-                <h5>
-                    <i class="bi bi-people me-2"></i>
-                    Available Players (${players.length})
-                </h5>
-            </div>
-            ${sortedPlayers.map(player => `
-                <div class="col-lg-6 mb-2">
-                    <div class="card border-left-primary shadow-sm">
-                        <div class="card-body py-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="fw-bold">${escapeHtml(player.name)}</div>
-                                    <small class="text-muted">${player.dota2id || 'N/A'}</small>
-                                </div>
-                                <span class="badge bg-primary">${player.peakmmr || 0}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
+    const playersHtml = sortedPlayers.map(player => `
+        <tr>
+            <td class="ps-3">
+                <div class="fw-bold">${escapeHtml(player.name)}</div>
+                <small class="text-muted">${player.dota2id || 'N/A'}</small>
+            </td>
+            <td class="text-end pe-3">
+                <span class="badge bg-primary">${player.peakmmr || 0}</span>
+            </td>
+        </tr>
+    `).join('');
 
     playersList.innerHTML = playersHtml;
 }
