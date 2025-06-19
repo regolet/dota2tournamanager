@@ -219,13 +219,19 @@
         // Extract session ID from URL path
         function getSessionIdFromUrl() {
             const pathParts = window.location.pathname.split('/');
+            console.log('Path parts:', pathParts);
+            console.log('Search params:', window.location.search);
+            
             // URL format: /register/sessionId or /register/?session=sessionId
             if (pathParts.length >= 3 && pathParts[2]) {
+                console.log('Found session ID in path:', pathParts[2]);
                 return pathParts[2];
             }
             // Fallback: check URL parameters
             const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('session');
+            const sessionFromParams = urlParams.get('session');
+            console.log('Found session ID in params:', sessionFromParams);
+            return sessionFromParams;
         }
 
         let currentSession = null;
@@ -235,8 +241,11 @@
         document.addEventListener('DOMContentLoaded', async function() {
             sessionId = getSessionIdFromUrl();
             
+            console.log('Current URL:', window.location.href);
+            console.log('Extracted session ID:', sessionId);
+            
             if (!sessionId) {
-                showError('No registration session specified in URL');
+                showError('Session ID required');
                 return;
             }
 
@@ -245,8 +254,14 @@
 
         async function loadRegistrationSession() {
             try {
-                const response = await fetch(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`);
+                const apiUrl = `/.netlify/functions/registration-sessions?sessionId=${sessionId}`;
+                console.log('Fetching from:', apiUrl);
+                
+                const response = await fetch(apiUrl);
+                console.log('Response status:', response.status);
+                
                 const data = await response.json();
+                console.log('Response data:', data);
 
                 if (!data.success || !data.session) {
                     showError(data.message || 'Registration session not found');
