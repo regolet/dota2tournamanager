@@ -91,30 +91,50 @@ async function setupRoleBasedAccess() {
             }
             
             // Add user management option to profile dropdown for super admins
-            const profileDropdownMenu = document.querySelector('#profileDropdown').nextElementSibling;
-            if (profileDropdownMenu && !document.getElementById('user-management-btn')) {
-                const userManagementItem = document.createElement('li');
-                userManagementItem.innerHTML = `
-                    <a class="dropdown-item" href="#" id="user-management-btn">
-                        <i class="bi bi-people me-2"></i>User Management
-                    </a>
-                `;
+            const profileDropdown = document.querySelector('#profileDropdown');
+            if (profileDropdown && !document.getElementById('user-management-btn')) {
+                const profileDropdownMenu = profileDropdown.nextElementSibling;
                 
-                // Insert before the divider
-                const divider = profileDropdownMenu.querySelector('.dropdown-divider');
-                if (divider) {
-                    profileDropdownMenu.insertBefore(userManagementItem, divider);
-                } else {
-                    profileDropdownMenu.appendChild(userManagementItem);
-                }
-                
-                // Set up user management functionality
-                const userManagementBtn = document.getElementById('user-management-btn');
-                if (userManagementBtn) {
-                    userManagementBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        showUserManagementModal();
-                    });
+                if (profileDropdownMenu && profileDropdownMenu.classList.contains('dropdown-menu')) {
+                    const userManagementItem = document.createElement('li');
+                    userManagementItem.innerHTML = `
+                        <a class="dropdown-item" href="#" id="user-management-btn">
+                            <i class="bi bi-people me-2"></i>User Management
+                        </a>
+                    `;
+                    
+                    // Find the divider (hr element with dropdown-divider class)
+                    const dividerItems = profileDropdownMenu.querySelectorAll('li');
+                    let dividerLi = null;
+                    
+                    for (const li of dividerItems) {
+                        if (li.querySelector('.dropdown-divider')) {
+                            dividerLi = li;
+                            break;
+                        }
+                    }
+                    
+                    // Insert before the divider if found, otherwise append
+                    if (dividerLi) {
+                        profileDropdownMenu.insertBefore(userManagementItem, dividerLi);
+                    } else {
+                        // If no divider found, insert before the last item (logout)
+                        const lastItem = profileDropdownMenu.lastElementChild;
+                        if (lastItem) {
+                            profileDropdownMenu.insertBefore(userManagementItem, lastItem);
+                        } else {
+                            profileDropdownMenu.appendChild(userManagementItem);
+                        }
+                    }
+                    
+                    // Set up user management functionality
+                    const userManagementBtn = document.getElementById('user-management-btn');
+                    if (userManagementBtn) {
+                        userManagementBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            showUserManagementModal();
+                        });
+                    }
                 }
             }
         }
