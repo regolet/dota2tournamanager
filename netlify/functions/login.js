@@ -85,6 +85,7 @@ export const handler = async (event, context) => {
 
   } catch (error) {
     console.error('Login error:', error);
+    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers: {
@@ -93,7 +94,9 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error',
+        details: error.message,
+        stack: error.stack
       })
     };
   }
