@@ -629,19 +629,36 @@ function autoBalance() {
         // Other methods exclude already reserved players
         let playersForTeams, numTeams;
         
+        // For methods that handle their own reserve logic, restore all reserved players first
+        // This ensures fresh randomization every time
+        if (balanceMethod === 'highRanked' || balanceMethod === 'perfectMmr' || balanceMethod === 'highLowShuffle') {
+            console.log(`🔄 Restoring all reserved players for fresh ${balanceMethod} randomization...`);
+            
+            // Restore all reserved players back to available players for fresh randomization
+            if (state.reservedPlayers && state.reservedPlayers.length > 0) {
+                console.log(`   Restoring ${state.reservedPlayers.length} reserved players: ${state.reservedPlayers.map(p => p.name).join(', ')}`);
+                state.availablePlayers.push(...state.reservedPlayers);
+                state.reservedPlayers = []; // Clear reserved list
+                
+                // Update displays immediately to show all players available
+                displayPlayersForBalancer(state.availablePlayers);
+                displayReservedPlayers();
+            }
+        }
+        
         if (balanceMethod === 'highRanked') {
             // High Ranked Balance handles its own reserve logic
-            playersForTeams = [...state.availablePlayers]; // Use ALL available players
+            playersForTeams = [...state.availablePlayers]; // Use ALL available players (now restored)
             numTeams = Math.floor(state.availablePlayers.length / teamSize);
             console.log(`High Ranked Balance: ${state.availablePlayers.length} total players → ${numTeams} teams of ${teamSize} (${numTeams * teamSize} in teams, ${state.availablePlayers.length - (numTeams * teamSize)} to reserves)`);
         } else if (balanceMethod === 'perfectMmr') {
             // Perfect MMR Balance handles its own reserve logic
-            playersForTeams = [...state.availablePlayers]; // Use ALL available players
+            playersForTeams = [...state.availablePlayers]; // Use ALL available players (now restored)
             numTeams = Math.floor(state.availablePlayers.length / teamSize);
             console.log(`Perfect MMR Balance: ${state.availablePlayers.length} total players → ${numTeams} teams of ${teamSize} (${numTeams * teamSize} in teams, ${state.availablePlayers.length - (numTeams * teamSize)} to reserves)`);
         } else if (balanceMethod === 'highLowShuffle') {
             // High/Low Shuffle handles its own reserve logic
-            playersForTeams = [...state.availablePlayers]; // Use ALL available players
+            playersForTeams = [...state.availablePlayers]; // Use ALL available players (now restored)
             numTeams = Math.floor(state.availablePlayers.length / teamSize);
             console.log(`High/Low Shuffle: ${state.availablePlayers.length} total players → ${numTeams} teams of ${teamSize} (${numTeams * teamSize} in teams, ${state.availablePlayers.length - (numTeams * teamSize)} to reserves)`);
         } else {
