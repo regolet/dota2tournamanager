@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     if (!loginForm) return;
     
-            // Login page loaded - no session checks, just login form
+    // Login page loaded - no session checks, just login form
 
     // Handle form submission
     loginForm.addEventListener('submit', async (e) => {
@@ -39,16 +39,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             
             if (data.success && data.sessionId) {
+                // Store session ID in localStorage
+                localStorage.setItem('adminSessionId', data.sessionId);
+                
+                // Store user info if available
+                if (data.user) {
+                    localStorage.setItem('adminUser', JSON.stringify(data.user));
+                }
+                
+                // Store session expiration
+                if (data.expiresAt) {
+                    localStorage.setItem('adminSessionExpires', data.expiresAt);
+                }
+                
                 // Show success message
                 showAlert(alertContainer, 'success', 'Login successful! Redirecting...');
                 
-                // Simple redirect to admin panel with session ID
+                // Redirect to admin panel (no sessionId in URL needed)
                 setTimeout(() => {
-                    window.location.href = `/admin/index.html?sessionId=${data.sessionId}`;
+                    window.location.href = '/admin/index.html';
                 }, 1000);
             } else {
                 // Show error message
-                showAlert(alertContainer, 'danger', data.message || 'Login failed');
+                showAlert(alertContainer, 'danger', data.error || data.message || 'Login failed');
                 
                 // Reset button
                 submitButton.disabled = false;

@@ -1,5 +1,6 @@
 // Database diagnostic function for troubleshooting
 import { neon } from '@netlify/neon';
+import bcrypt from 'bcrypt';
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -31,53 +32,92 @@ export const handler = async (event, context) => {
   }
 
   try {
-    // Test database connection
-    const testQuery = await sql`SELECT 1 as test`;
+    console.log('Database debug starting...');
 
-    // Get admin users
+    // First, let's check if the admin_users table exists
+    const tables = await sql`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `;
+    
+    console.log('Available tables:', tables.map(t => t.table_name));
+
+    // Check if admin_users table exists
+    const adminUsersTableExists = tables.some(t => t.table_name === 'admin_users');
+    
+    if (!adminUsersTableExists) {
+      // Create the table and default users
+      console.log('admin_users table does not exist, creating...');
+      
+      await sql`
+        CREATE TABLE IF NOT EXISTS admin_users (
+          id VARCHAR(255) PRIMARY KEY,
+          username VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(50) NOT NULL DEFAULT 'admin',
+          full_name VARCHAR(255),
+          email VARCHAR(255),
+          is_active BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `;
+
+      // Create default admin users
+      const superAdminPasswordHash = await bcrypt.hash('SuperAdmin123!', 12);
+      const adminPasswordHash = await bcrypt.hash('Admin123!', 12);
+      
+      await sql`
+        INSERT INTO admin_users (id, username, password_hash, role, full_name, email, is_active) 
+        VALUES 
+        (
+          'user_superadmin_001', 
+          'superadmin', 
+          ${superAdminPasswordHash}, 
+          'superadmin', 
+          'Super Administrator', 
+          'superadmin@tournament.local', 
+          true
+        ),
+        (
+          'user_admin_001', 
+          'admin', 
+          ${adminPasswordHash}, 
+          'admin', 
+          'Administrator', 
+          'admin@tournament.local', 
+          true
+        )
+      `;
+      
+      console.log('Default admin users created');
+    }
+
+    // Get all admin users (without password hashes for security)
     const users = await sql`
-      SELECT id, username, role, is_active, created_at
-      FROM admin_users
+      SELECT id, username, role, full_name, email, is_active, created_at
+      FROM admin_users 
       ORDER BY created_at ASC
     `;
 
-    // Get players table schema
-    const playersSchema = await sql`
-      SELECT column_name, data_type, is_nullable
-      FROM information_schema.columns
-      WHERE table_name = 'players'
-      ORDER BY ordinal_position
+    console.log(`Found ${users.length} admin users`);
+
+    // Test password verification for admin user
+    const adminUser = await sql`
+      SELECT username, password_hash 
+      FROM admin_users 
+      WHERE username = 'admin'
     `;
 
-    // Get registration sessions count
-    const sessionCount = await sql`SELECT COUNT(*) as count FROM registration_sessions`;
-
-    // Get registration sessions details
-    const registrationSessionsResult = await sql`
-      SELECT * FROM registration_sessions ORDER BY created_at DESC
-    `;
-    
-    // Get players details  
-    const playersResult = await sql`
-      SELECT * FROM players ORDER BY created_at DESC
-    `;
-
-    // Fix player count mismatches
-    for (const session of registrationSessionsResult) {
-      const actualPlayerCount = await sql`
-        SELECT COUNT(*) as count 
-        FROM players 
-        WHERE registration_session_id = ${session.session_id}
-      `;
-      
-      if (actualPlayerCount[0].count !== session.player_count) {
-        await sql`
-          UPDATE registration_sessions 
-          SET player_count = ${actualPlayerCount[0].count}
-          WHERE session_id = ${session.session_id}
-        `;
-        session.player_count = actualPlayerCount[0].count;
-      }
+    let passwordTestResult = null;
+    if (adminUser.length > 0) {
+      const testPassword = 'Admin123!';
+      passwordTestResult = {
+        passwordExists: !!adminUser[0].password_hash,
+        passwordHashLength: adminUser[0].password_hash ? adminUser[0].password_hash.length : 0,
+        testResult: await bcrypt.compare(testPassword, adminUser[0].password_hash)
+      };
     }
 
     return {
@@ -88,49 +128,20 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: true,
-        diagnostics: {
-          databaseUrl: process.env.DATABASE_URL ? 'Available' : 'Missing',
-          databaseConnection: 'Success',
-          adminUsersTable: 'Exists',
-          adminUsers: {
-            count: users.length,
-            users: users.map(user => ({
-              id: user.id,
-              username: user.username,
-              role: user.role,
-              isActive: user.is_active,
-              createdAt: user.created_at
-            }))
-          },
-          playersTableSchema: playersSchema,
-          registrationSessionsTable: 'Exists',
-          registrationSessionsCount: sessionCount[0].count,
-          registrationSessions: registrationSessionsResult.map(session => ({
-            id: session.id,
-            sessionId: session.session_id,
-            adminUsername: session.admin_username,
-            title: session.title,
-            maxPlayers: session.max_players,
-            playerCount: session.player_count,
-            isActive: session.is_active,
-            createdAt: session.created_at
-          })),
-          playersCount: playersResult.length,
-          players: playersResult.map(player => ({
-            id: player.id,
-            name: player.name,
-            dota2id: player.dota2id,
-            peakmmr: player.peakmmr,
-            registrationSessionId: player.registration_session_id,
-            createdAt: player.created_at
-          }))
-        },
-        timestamp: new Date().toISOString()
-      }, null, 2)
+        debug: {
+          tablesFound: tables.map(t => t.table_name),
+          adminUsersTableExists,
+          usersCount: users.length,
+          users: users,
+          passwordTest: passwordTestResult,
+          timestamp: new Date().toISOString()
+        }
+      })
     };
 
   } catch (error) {
     console.error('Database debug error:', error);
+    
     return {
       statusCode: 500,
       headers: {
@@ -139,9 +150,9 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        error: 'Database diagnostic failed',
+        error: 'Database debug failed',
         details: error.message,
-        timestamp: new Date().toISOString()
+        stack: error.stack
       })
     };
   }
