@@ -1024,20 +1024,28 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
     
     console.log(`🔄 High/Low Shuffle: Need ${playersNeededForTeams} players for ${numTeams} teams, ${playersToReserve} to reserves`);
     
-    // Strategy: Random selection from a broader middle range for reserves
-    const guaranteedTopCount = Math.floor(playersNeededForTeams * 0.3); // Keep top 30% guaranteed
-    const guaranteedBottomCount = Math.floor(playersNeededForTeams * 0.3); // Keep bottom 30% guaranteed  
-    const flexibleCount = playersNeededForTeams - guaranteedTopCount - guaranteedBottomCount; // Remaining 40% - flexible
+    // Strategy: Randomized selection from middle tier for reserves (NON-DETERMINISTIC)
+    const guaranteedTopCount = Math.floor(playersNeededForTeams * 0.4); // Keep top 40% guaranteed
+    const guaranteedBottomCount = Math.floor(playersNeededForTeams * 0.4); // Keep bottom 40% guaranteed  
+    const flexibleCount = playersNeededForTeams - guaranteedTopCount - guaranteedBottomCount; // Remaining 20% - flexible
     
     // Guaranteed players for teams
-    const guaranteedTopPlayers = sortedPlayers.slice(0, guaranteedTopCount); // TOP players (guaranteed)
-    const guaranteedBottomPlayers = sortedPlayers.slice(-guaranteedBottomCount); // BOTTOM players (guaranteed - LOW MMR priority)
+    const guaranteedTopPlayers = sortedPlayers.slice(0, guaranteedTopCount); // TOP 40% (guaranteed)
+    const guaranteedBottomPlayers = sortedPlayers.slice(-guaranteedBottomCount); // BOTTOM 40% (guaranteed - LOW MMR priority)
     
-    // Flexible candidates (broader middle range for more randomness)
+    // Flexible candidates (middle 20% MMR range - these are the reserve candidates)
     const flexibleCandidates = sortedPlayers.slice(guaranteedTopCount, sortedPlayers.length - guaranteedBottomCount);
     
-    // Randomly select players for teams vs reserves from flexible candidates
-    const shuffledFlexibleCandidates = [...flexibleCandidates].sort(() => Math.random() - 0.5);
+    // Apply MULTIPLE rounds of shuffling for maximum randomness
+    let shuffledFlexibleCandidates = [...flexibleCandidates];
+    for (let i = 0; i < 3; i++) {
+        shuffledFlexibleCandidates = shuffledFlexibleCandidates.sort(() => Math.random() - 0.5);
+    }
+    
+    // Additional randomization using timestamp-based seed for different results each time
+    const randomSeed = Date.now() % 1000;
+    shuffledFlexibleCandidates = shuffledFlexibleCandidates.sort(() => (Math.random() + randomSeed / 1000) - 0.5);
+    
     const flexiblePlayersForTeams = shuffledFlexibleCandidates.slice(0, flexibleCount);
     const playersForReserves = shuffledFlexibleCandidates.slice(flexibleCount);
     
@@ -1048,12 +1056,14 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
         ...guaranteedBottomPlayers
     ];
     
-    console.log(`🔄 Player selection strategy (with randomness):`);
-    console.log(`   Guaranteed TOP ${guaranteedTopCount} players (highest MMR)`);
-    console.log(`   Guaranteed BOTTOM ${guaranteedBottomCount} players (lowest MMR - PRIORITY)`);
-    console.log(`   Flexible selection: ${flexibleCount} from ${flexibleCandidates.length} flexible candidates`);
-    console.log(`   Selected for teams: ${flexiblePlayersForTeams.length} random flexible players`);
-    console.log(`   Moving to reserves: ${playersForReserves.length} random flexible players`);
+    console.log(`🔄 Player selection strategy (NON-DETERMINISTIC randomization):`);
+    console.log(`   Guaranteed TOP ${guaranteedTopCount} players (highest MMR) - ALWAYS for teams`);
+    console.log(`   Guaranteed BOTTOM ${guaranteedBottomCount} players (lowest MMR - PRIORITY) - ALWAYS for teams`);
+    console.log(`   Flexible middle tier: ${flexibleCandidates.length} candidates (MMR range: ${flexibleCandidates[0]?.peakmmr || 0} - ${flexibleCandidates[flexibleCandidates.length - 1]?.peakmmr || 0})`);
+    console.log(`   After MULTI-SHUFFLE randomization:`);
+    console.log(`     → Selected for teams: ${flexiblePlayersForTeams.length} random middle-tier players`);
+    console.log(`     → Moving to reserves: ${playersForReserves.length} random middle-tier players`);
+    console.log(`   Reserve randomness: Multiple shuffle rounds + timestamp seed for different results each generation`);
     
     if (playersForReserves.length > 0) {
         const reserveMMRs = playersForReserves.map(p => p.peakmmr || 0).sort((a, b) => b - a);
