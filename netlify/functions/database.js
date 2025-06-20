@@ -1,6 +1,7 @@
 // Database module for Netlify Functions using Neon DB (PostgreSQL)
 import { neon } from '@netlify/neon';
 import { hashPassword, verifyPassword, validatePasswordStrength } from './password-utils.js';
+import { optimizedQuery, createOptimalIndexes } from './database-optimization.js';
 
 // Initialize Neon database connection
 const sql = neon(process.env.DATABASE_URL);
@@ -177,6 +178,9 @@ async function initializeDatabase() {
       console.log('⚠️  Please change these passwords after first login!');
     }
 
+    // Create optimal indexes for performance
+    await createOptimalIndexes();
+    
     console.log('Database initialization completed successfully');
 
   } catch (error) {

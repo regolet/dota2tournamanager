@@ -81,6 +81,11 @@
   to = "/.netlify/functions/change-password"
   status = 200
 
+[[redirects]]
+  from = "/admin/api/database-health"
+  to = "/.netlify/functions/database-health"
+  status = 200
+
 [functions]
   node_bundler = "esbuild"
 
