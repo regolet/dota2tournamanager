@@ -1,5 +1,11 @@
 // Registration API function for admin panel using Neon DB
 import { getRegistrationSettings, saveRegistrationSettings } from './database.js';
+import { 
+  validateString, 
+  validateSessionTitle, 
+  checkRateLimit, 
+  sanitizeForLogging 
+} from './validation-utils.js';
 import { neon } from '@netlify/neon';
 
 // Initialize Neon database connection
@@ -9,6 +15,26 @@ export const handler = async (event, context) => {
   try {
     // Store request info for debugging if needed
     const { httpMethod, path, queryStringParameters, body, headers } = event;
+    
+    // Rate limiting protection
+    const clientIP = headers['x-forwarded-for'] || headers['cf-connecting-ip'] || 'unknown';
+    const rateLimit = checkRateLimit(`registration-${clientIP}`, 30, 60000); // 30 requests per minute
+    
+    if (!rateLimit.allowed) {
+      console.warn(`Rate limit exceeded for IP: ${clientIP}`);
+      return {
+        statusCode: 429,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Retry-After': rateLimit.retryAfter.toString()
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Too many requests. Please try again later.',
+          retryAfter: rateLimit.retryAfter
+        })
+      };
+    }
 
     // CORS headers
     const corsHeaders = {
@@ -107,6 +133,14 @@ export const handler = async (event, context) => {
       let requestBody = {};
       try {
         requestBody = JSON.parse(body || '{}');
+        
+        // Log sanitized request for debugging (without sensitive data)
+        console.log('Registration request:', {
+          method: httpMethod,
+          body: sanitizeForLogging(requestBody),
+          ip: clientIP
+        });
+        
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
         return {
@@ -127,12 +161,28 @@ export const handler = async (event, context) => {
           // Creating new registration - get data from settings object
           const {
             expiry,
-            playerLimit = 40
+            playerLimit = 40,
+            tournamentName: customTournamentName
           } = settings || {};
           
-          const tournamentName = 'Dota 2 Tournament';
-          const tournamentDate = null; // Can be added later if needed
+          // Validate tournament name if provided
+          let tournamentName = 'Dota 2 Tournament';
+          if (customTournamentName) {
+            const nameValidation = validateSessionTitle(customTournamentName, false);
+            if (!nameValidation.isValid) {
+              return {
+                statusCode: 400,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                  success: false,
+                  message: 'Invalid tournament name: ' + nameValidation.errors.join(', ')
+                })
+              };
+            }
+            tournamentName = nameValidation.value;
+          }
           
+          // Validate expiry date
           if (!expiry) {
             return {
               statusCode: 400,
@@ -143,6 +193,33 @@ export const handler = async (event, context) => {
               })
             };
           }
+          
+          const expiryDate = new Date(expiry);
+          if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+            return {
+              statusCode: 400,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                success: false,
+                message: 'Expiry date must be a valid future date'
+              })
+            };
+          }
+          
+          // Validate player limit
+          const numericPlayerLimit = parseInt(playerLimit, 10);
+          if (isNaN(numericPlayerLimit) || numericPlayerLimit < 1 || numericPlayerLimit > 200) {
+            return {
+              statusCode: 400,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                success: false,
+                message: 'Player limit must be between 1 and 200'
+              })
+            };
+          }
+          
+          const tournamentDate = null; // Can be added later if needed
           
           // Close any existing registration first
           await sql`
@@ -161,7 +238,7 @@ export const handler = async (event, context) => {
               created_at, updated_at
             ) VALUES (
               true, ${tournamentName}, ${tournamentDate},
-              ${playerLimit}, ${expiry},
+              ${numericPlayerLimit}, ${expiry},
               NOW(), NOW()
             )
             RETURNING *

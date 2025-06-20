@@ -8,10 +8,34 @@ import {
   getRegistrationSessionBySessionId,
   incrementRegistrationPlayerCount
 } from './database.js';
+import { 
+  validatePlayer, 
+  validateSessionId, 
+  checkRateLimit, 
+  sanitizeForLogging 
+} from './validation-utils.js';
 
 export const handler = async (event, context) => {
   try {
+    // Rate limiting for public registration endpoint
+    const clientIP = event.headers['x-forwarded-for'] || event.headers['cf-connecting-ip'] || 'unknown';
+    const rateLimit = checkRateLimit(`add-player-${clientIP}`, 5, 60000); // 5 registrations per minute per IP
     
+    if (!rateLimit.allowed) {
+      console.warn(`Rate limit exceeded for player registration from IP: ${clientIP}`);
+      return {
+        statusCode: 429,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Retry-After': rateLimit.retryAfter.toString()
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Too many registration attempts. Please wait before trying again.',
+          retryAfter: rateLimit.retryAfter
+        })
+      };
+    }
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -59,6 +83,48 @@ export const handler = async (event, context) => {
     }
     
     const { name, dota2id, peakmmr, registrationSessionId } = requestBody;
+    
+    // Log sanitized request for debugging
+    console.log('Player registration attempt:', {
+      ip: clientIP,
+      hasSessionId: !!registrationSessionId,
+      body: sanitizeForLogging(requestBody)
+    });
+    
+    // Validate player data using comprehensive validation
+    const playerValidation = validatePlayer({ name, dota2id, peakmmr }, false);
+    if (!playerValidation.isValid) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Invalid player data: ' + playerValidation.errors.join(', '),
+          errors: playerValidation.errors
+        })
+      };
+    }
+    
+    // Validate session ID format if provided
+    if (registrationSessionId) {
+      const sessionIdValidation = validateSessionId(registrationSessionId, false);
+      if (!sessionIdValidation.isValid) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Invalid registration session ID format'
+          })
+        };
+      }
+    }
     
     // Validate registration session if provided
     let registrationSession = null;
@@ -140,78 +206,13 @@ export const handler = async (event, context) => {
       }
     }
     
-    // Validate required fields
-    if (!name || !dota2id) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Player name and Dota 2 ID are required'
-        })
-      };
-    }
+    // Client IP already extracted at top for rate limiting
     
-    // Validate name length
-    if (name.length < 2 || name.length > 50) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Player name must be between 2 and 50 characters'
-        })
-      };
-    }
-    
-    // Validate Dota 2 ID (should be numeric)
-    if (!/^\d+$/.test(dota2id)) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Dota 2 ID must be numeric'
-        })
-      };
-    }
-    
-    // Validate MMR if provided
-    const mmr = parseInt(peakmmr) || 0;
-    if (mmr < 0 || mmr > 15000) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Peak MMR must be between 0 and 15000'
-        })
-      };
-    }
-    
-    // Get client IP address
-    const clientIP = event.headers['x-forwarded-for'] || 
-                    event.headers['x-real-ip'] || 
-                    event.headers['cf-connecting-ip'] || 
-                    'unknown';
-    
-    // Create player object
+    // Create player object using validated data
     const playerData = {
-      name: name.trim(),
-      dota2id: dota2id.trim(),
-      peakmmr: mmr,
+      name: playerValidation.player.name,
+      dota2id: playerValidation.player.dota2id,
+      peakmmr: playerValidation.player.peakmmr,
       ipAddress: clientIP.split(',')[0].trim(), // Take first IP if multiple
       registrationDate: new Date().toISOString(),
       registrationSessionId: registrationSessionId // Link player to registration session

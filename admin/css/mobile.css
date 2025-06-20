@@ -1,0 +1,115 @@
+/* Mobile-first responsive design improvements */
+
+/* Base mobile styles */
+@media (max-width: 767.98px) {
+    /* Enhanced mobile navigation */
+    .navbar-brand {
+        font-size: 1.1rem !important;
+    }
+    
+    .navbar-nav .nav-link {
+        padding: 0.75rem 1rem !important;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+    }
+    
+    .navbar-nav .nav-link i {
+        width: 20px;
+        margin-right: 0.5rem;
+    }
+    
+    /* Better mobile forms */
+    .form-control {
+        font-size: 16px !important; /* Prevents zoom on iOS */
+        padding: 0.75rem !important;
+    }
+    
+    .btn {
+        padding: 0.75rem 1.5rem !important;
+        font-size: 1rem !important;
+        min-height: 44px; /* Touch target size */
+    }
+    
+    .btn-sm {
+        min-height: 38px !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    /* Mobile-friendly tables */
+    .table-responsive {
+        border: none;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table td, .table th {
+        white-space: nowrap;
+        padding: 0.5rem !important;
+        font-size: 0.9rem;
+    }
+    
+    /* Stack cards on mobile */
+    .row .col-lg-4, .row .col-md-6 {
+        margin-bottom: 1rem;
+    }
+    
+    /* Mobile-friendly modals */
+    .modal-dialog {
+        margin: 0.5rem !important;
+        max-width: calc(100vw - 1rem) !important;
+    }
+    
+    .modal-body {
+        padding: 1rem !important;
+    }
+    
+    .modal-header {
+        padding: 1rem !important;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .modal-footer {
+        padding: 1rem !important;
+        border-top: 1px solid #dee2e6;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        margin: 0;
+    }
+    
+    /* Better mobile spacing */
+    .container, .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    /* Mobile-friendly cards */
+    .card {
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+    
+    .card-header {
+        padding: 0.75rem 1rem !important;
+        font-size: 0.95rem;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+}
+
+/* Touch-friendly improvements */
+.btn:hover, .btn:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+} 
