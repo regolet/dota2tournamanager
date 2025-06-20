@@ -1,10 +1,8 @@
 // Database optimization and performance utilities
-import { neon, neonConfig } from '@netlify/neon';
+import { neon } from '@netlify/neon';
 
-// Configure Neon for optimal performance
-neonConfig.fetchConnectionCache = true;
-neonConfig.pipelineConnect = false;
-neonConfig.useSecureWebSocket = true;
+// Note: Configuration options may not be available in this version of @netlify/neon
+// Configuration would be handled in environment variables or connection string
 
 // Initialize optimized database connection
 const sql = neon(process.env.DATABASE_URL);

@@ -1,11 +1,9 @@
-// Admin login function
-import { createSession, authenticateUser } from './database.js';
-import { 
-  validateUsername, 
-  validateString, 
-  checkRateLimit, 
-  sanitizeForLogging 
-} from './validation-utils.js';
+// Admin login function - Simplified for debugging
+import { neon } from '@netlify/neon';
+import bcrypt from 'bcrypt';
+
+// Initialize database connection
+const sql = neon(process.env.DATABASE_URL);
 
 export const handler = async (event, context) => {
   // Handle CORS
@@ -35,32 +33,15 @@ export const handler = async (event, context) => {
   }
 
   try {
-    // Enhanced rate limiting for login attempts
-    const clientIP = event.headers['x-forwarded-for'] || event.headers['cf-connecting-ip'] || 'unknown';
-    const rateLimit = checkRateLimit(`login-${clientIP}`, 5, 900000); // 5 attempts per 15 minutes
+    console.log('Login function starting...');
     
-    if (!rateLimit.allowed) {
-      console.warn(`Login rate limit exceeded for IP: ${clientIP}`);
-      return {
-        statusCode: 429,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Retry-After': rateLimit.retryAfter.toString()
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'Too many login attempts. Please try again later.',
-          retryAfter: rateLimit.retryAfter
-        })
-      };
-    }
-    
-    // Parse and validate request body
+    // Parse request body
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
+      console.log('Request body parsed successfully');
     } catch (parseError) {
-      console.warn('Invalid JSON in login request from IP:', clientIP);
+      console.error('JSON parse error:', parseError);
       return {
         statusCode: 400,
         headers: {
@@ -75,15 +56,9 @@ export const handler = async (event, context) => {
     }
     
     const { username, password } = requestBody;
+    console.log('Login attempt for username:', username);
     
-    // Log sanitized request (username only, no password)
-    console.log('Login attempt:', {
-      ip: clientIP,
-      username: username || '[missing]',
-      timestamp: new Date().toISOString()
-    });
-    
-    // Validate input
+    // Basic validation
     if (!username || !password) {
       return {
         statusCode: 400,
@@ -98,94 +73,20 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Validate username format
-    const usernameValidation = validateUsername(username, true);
-    if (!usernameValidation.isValid) {
-      console.warn(`Invalid username format in login attempt from IP: ${clientIP}`, usernameValidation.errors);
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'Invalid username format'
-        })
-      };
-    }
+    // Authenticate user
+    console.log('Attempting database authentication...');
     
-    // Validate password (basic checks, not strength since it's existing password)
-    const passwordValidation = validateString(password, {
-      required: true,
-      minLength: 1,
-      maxLength: 128,
-      fieldName: 'Password'
-    });
-    if (!passwordValidation.isValid) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'Invalid password format'
-        })
-      };
-    }
+    // Get user from database
+    const users = await sql`
+      SELECT id, username, password_hash, role, full_name, email, is_active
+      FROM admin_users 
+      WHERE username = ${username} AND is_active = true
+    `;
     
-    console.log('Login attempt for username:', usernameValidation.value);
+    console.log(`Database query completed. Found ${users.length} users.`);
     
-    // Authenticate user using database with validated credentials
-    const authResult = await authenticateUser(usernameValidation.value, passwordValidation.value);
-    console.log('Authentication result:', {
-      success: authResult.success,
-      username: usernameValidation.value,
-      ip: clientIP
-    });
-    
-    if (authResult.success) {
-      try {
-        // Generate session ID
-        const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Set session expiration (24 hours from now)
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24);
-        
-        console.log('Creating session for user:', authResult.user.id, 'Role:', authResult.user.role);
-        
-        // Create session in database
-        await createSession(sessionId, authResult.user.id, authResult.user.role, expiresAt.toISOString());
-        
-        console.log('Session created successfully:', sessionId);
-        
-        return {
-          statusCode: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: true,
-            sessionId: sessionId,
-            expiresAt: expiresAt.toISOString(),
-            user: {
-              username: authResult.user.username,
-              role: authResult.user.role,
-              fullName: authResult.user.fullName,
-              email: authResult.user.email
-            },
-            message: 'Login successful'
-          })
-        };
-      } catch (sessionError) {
-        console.error('Session creation error:', sessionError);
-        throw new Error('Session creation failed: ' + sessionError.message);
-      }
-    } else {
+    if (users.length === 0) {
+      console.log('User not found or inactive');
       return {
         statusCode: 401,
         headers: {
@@ -194,17 +95,70 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          error: authResult.message || 'Invalid username or password'
+          error: 'Invalid username or password'
         })
       };
     }
+    
+    const user = users[0];
+    console.log('User found, verifying password...');
+    
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    console.log('Password verification result:', isPasswordValid);
+    
+    if (!isPasswordValid) {
+      return {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          error: 'Invalid username or password'
+        })
+      };
+    }
+    
+    // Generate session
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+    
+    console.log('Creating session...');
+    
+    // Create session in database
+    await sql`
+      INSERT INTO admin_sessions (id, user_id, role, expires_at)
+      VALUES (${sessionId}, ${user.id}, ${user.role}, ${expiresAt.toISOString()})
+    `;
+    
+    console.log('Session created successfully:', sessionId);
+    
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        success: true,
+        sessionId: sessionId,
+        expiresAt: expiresAt.toISOString(),
+        user: {
+          username: user.username,
+          role: user.role,
+          fullName: user.full_name,
+          email: user.email
+        },
+        message: 'Login successful'
+      })
+    };
 
   } catch (error) {
     console.error('Login error:', error);
     console.error('Error stack:', error.stack);
-    
-    // Don't expose internal error details in production
-    const isDevelopment = process.env.NODE_ENV === 'development';
     
     return {
       statusCode: 500,
@@ -215,10 +169,7 @@ export const handler = async (event, context) => {
       body: JSON.stringify({
         success: false,
         error: 'Internal server error',
-        ...(isDevelopment && {
-          details: error.message,
-          stack: error.stack
-        })
+        details: error.message
       })
     };
   }

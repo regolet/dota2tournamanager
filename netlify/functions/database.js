@@ -1,7 +1,6 @@
 // Database module for Netlify Functions using Neon DB (PostgreSQL)
 import { neon } from '@netlify/neon';
 import { hashPassword, verifyPassword, validatePasswordStrength } from './password-utils.js';
-import { optimizedQuery, createOptimalIndexes } from './database-optimization.js';
 
 // Initialize Neon database connection
 const sql = neon(process.env.DATABASE_URL);
@@ -179,13 +178,39 @@ async function initializeDatabase() {
     }
 
     // Create optimal indexes for performance
-    await createOptimalIndexes();
+    await createBasicIndexes();
     
     console.log('Database initialization completed successfully');
 
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
+  }
+}
+
+// Create basic database indexes for performance
+async function createBasicIndexes() {
+  try {
+    console.log('Creating basic database indexes...');
+    
+    // Players table indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_players_session ON players(registration_session_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_players_dota2id ON players(dota2id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_players_mmr ON players(peakmmr DESC)`;
+    
+    // Registration sessions indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_reg_sessions_session_id ON registration_sessions(session_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_reg_sessions_admin ON registration_sessions(admin_user_id)`;
+    
+    // Admin sessions indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_user ON admin_sessions(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires ON admin_sessions(expires_at)`;
+    
+    console.log('Basic database indexes created successfully');
+    
+  } catch (error) {
+    console.error('Error creating indexes:', error);
+    // Don't throw error as indexes might already exist
   }
 }
 
