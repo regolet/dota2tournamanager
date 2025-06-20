@@ -14,14 +14,29 @@
         }
     };
 
-    // Provide fallback session methods for compatibility
-    if (!window.sessionManager && window.simpleSessionManager) {
-        window.sessionManager = {
-            getSessionId: () => window.simpleSessionManager.getSessionId(),
-            getUser: () => window.simpleSessionManager.getUser(),
-            isLoggedIn: () => !!window.simpleSessionManager.getSessionId()
-        };
-    }
+    // Fix for security.js localStorage access - prevent decode errors
+    const originalGetItem = localStorage.getItem;
+    localStorage.getItem = function(key) {
+        try {
+            const value = originalGetItem.call(this, key);
+            // For session-related keys, return the raw value without decoding
+            if (key === 'adminSessionId' || key === 'adminUser' || key === 'adminSessionExpires') {
+                return value;
+            }
+            return value;
+        } catch (error) {
+            console.warn('Failed to get stored value for key:', key);
+            return null;
+        }
+    };
+
+    // Override any decode attempts for session data
+    window.decodeStoredValue = function(key) {
+        if (key === 'adminSessionId') {
+            return localStorage.getItem('adminSessionId');
+        }
+        return localStorage.getItem(key);
+    };
 
     console.log("Quick fix applied - reduced logging and fixed session compatibility");
 })();

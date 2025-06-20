@@ -44,9 +44,10 @@
                 showDatabaseStatus('checking', 'Checking database health...');
             }
 
-            const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+            const sessionId = window.simpleSessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
             if (!sessionId) {
-                throw new Error('No session ID available');
+                console.log('Database health check: No session ID available, skipping check');
+                return;
             }
 
             const response = await fetch('/admin/api/database-health', {

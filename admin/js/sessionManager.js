@@ -92,7 +92,17 @@
             localStorage.removeItem("adminUser");
             localStorage.removeItem("adminSessionExpires");
             window.location.href = "/admin/login.html";
-        }
+        },
+        // Add compatibility methods
+        init: async () => {
+            console.log("Session manager init() called - using simple session manager");
+            return await validateCurrentSession();
+        },
+        checkSession: () => validateCurrentSession(),
+        isLoggedIn: () => !!localStorage.getItem("adminSessionId")
     };
+
+    // Also expose as window.sessionManager for backward compatibility
+    window.sessionManager = window.simpleSessionManager;
 
 })();
