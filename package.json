@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@netlify/neon": "^0.1.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "bcrypt": "^5.1.1"
   },
   "devDependencies": {
     "netlify-cli": "^17.0.0"

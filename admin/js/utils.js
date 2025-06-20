@@ -256,10 +256,209 @@ function debounce(func, wait) {
     };
 }
 
+// Password management functions
+function togglePasswordVisibility(fieldId) {
+    const passwordField = document.getElementById(fieldId);
+    const iconElement = document.getElementById(fieldId + '-icon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        iconElement.className = 'bi bi-eye-slash';
+    } else {
+        passwordField.type = 'password';
+        iconElement.className = 'bi bi-eye';
+    }
+}
+
+function checkPasswordStrength(password) {
+    let score = 0;
+    let feedback = [];
+    
+    // Length check
+    if (password.length >= 8) score += 1;
+    else feedback.push('At least 8 characters');
+    
+    // Uppercase check
+    if (/[A-Z]/.test(password)) score += 1;
+    else feedback.push('Uppercase letter');
+    
+    // Lowercase check
+    if (/[a-z]/.test(password)) score += 1;
+    else feedback.push('Lowercase letter');
+    
+    // Number check
+    if (/[0-9]/.test(password)) score += 1;
+    else feedback.push('Number');
+    
+    // Special character check
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 1;
+    else feedback.push('Special character');
+    
+    // Length bonus
+    if (password.length >= 12) score += 1;
+    
+    const strength = {
+        score: score,
+        percentage: Math.min((score / 5) * 100, 100),
+        level: score < 2 ? 'Weak' : score < 4 ? 'Fair' : score < 5 ? 'Good' : 'Strong',
+        color: score < 2 ? 'danger' : score < 4 ? 'warning' : score < 5 ? 'info' : 'success',
+        feedback: feedback
+    };
+    
+    return strength;
+}
+
+function setupPasswordChangeModal() {
+    const newPasswordField = document.getElementById('new-password');
+    const confirmPasswordField = document.getElementById('confirm-password');
+    const strengthIndicator = document.getElementById('password-strength');
+    const strengthBar = document.getElementById('strength-bar');
+    const strengthText = document.getElementById('strength-text');
+    const matchFeedback = document.getElementById('password-match-feedback');
+    const passwordForm = document.getElementById('password-change-form');
+    
+    if (!newPasswordField) return; // Modal not present
+    
+    // Password strength checking
+    newPasswordField.addEventListener('input', function() {
+        const password = this.value;
+        
+        if (password.length > 0) {
+            const strength = checkPasswordStrength(password);
+            strengthIndicator.style.display = 'block';
+            strengthBar.style.width = strength.percentage + '%';
+            strengthBar.className = `progress-bar bg-${strength.color}`;
+            strengthText.textContent = strength.level;
+            
+            if (strength.feedback.length > 0) {
+                strengthText.textContent += ' - Missing: ' + strength.feedback.join(', ');
+            }
+        } else {
+            strengthIndicator.style.display = 'none';
+        }
+        
+        checkPasswordMatch();
+    });
+    
+    // Password confirmation checking
+    confirmPasswordField.addEventListener('input', checkPasswordMatch);
+    
+    function checkPasswordMatch() {
+        const newPassword = newPasswordField.value;
+        const confirmPassword = confirmPasswordField.value;
+        
+        if (confirmPassword.length > 0) {
+            if (newPassword === confirmPassword) {
+                matchFeedback.textContent = '✓ Passwords match';
+                matchFeedback.className = 'form-text text-success';
+                confirmPasswordField.classList.remove('is-invalid');
+                confirmPasswordField.classList.add('is-valid');
+            } else {
+                matchFeedback.textContent = '✗ Passwords do not match';
+                matchFeedback.className = 'form-text text-danger';
+                confirmPasswordField.classList.remove('is-valid');
+                confirmPasswordField.classList.add('is-invalid');
+            }
+        } else {
+            matchFeedback.textContent = '';
+            confirmPasswordField.classList.remove('is-valid', 'is-invalid');
+        }
+    }
+    
+    // Form submission
+    passwordForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const currentPassword = document.getElementById('current-password').value;
+        const newPassword = newPasswordField.value;
+        const confirmPassword = confirmPasswordField.value;
+        const submitBtn = document.getElementById('change-password-btn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        
+        // Validation
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            showNotification('Please fill in all fields', 'error');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            showNotification('New password and confirmation do not match', 'error');
+            return;
+        }
+        
+        if (currentPassword === newPassword) {
+            showNotification('New password must be different from current password', 'error');
+            return;
+        }
+        
+        const strength = checkPasswordStrength(newPassword);
+        if (strength.score < 4) {
+            showNotification('Password is not strong enough. Please meet all requirements.', 'error');
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        btnText.textContent = 'Changing...';
+        spinner.classList.remove('d-none');
+        
+        try {
+            const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+            
+            const response = await fetch('/admin/api/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': sessionId
+                },
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword,
+                    confirmPassword
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showNotification('Password changed successfully!', 'success');
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('passwordChangeModal'));
+                modal.hide();
+                
+                // Reset form
+                passwordForm.reset();
+                strengthIndicator.style.display = 'none';
+                matchFeedback.textContent = '';
+                confirmPasswordField.classList.remove('is-valid', 'is-invalid');
+            } else {
+                showNotification(result.message || 'Failed to change password', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Password change error:', error);
+            showNotification('Error changing password. Please try again.', 'error');
+        } finally {
+            // Reset button state
+            submitBtn.disabled = false;
+            btnText.textContent = 'Change Password';
+            spinner.classList.add('d-none');
+        }
+    });
+}
+
+// Initialize password change modal when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    setupPasswordChangeModal();
+});
+
 // Make functions globally available
 window.API_BASE_URL = API_BASE_URL;
 window.fetchWithAuth = fetchWithAuth;
 window.showNotification = showNotification;
 window.debounce = debounce;
+window.togglePasswordVisibility = togglePasswordVisibility;
 
 // Utils loaded and available globally

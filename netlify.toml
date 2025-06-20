@@ -76,6 +76,11 @@
   to = "/.netlify/functions/get-registration-session"
   status = 200
 
+[[redirects]]
+  from = "/admin/api/change-password"
+  to = "/.netlify/functions/change-password"
+  status = 200
+
 [functions]
   node_bundler = "esbuild"
 

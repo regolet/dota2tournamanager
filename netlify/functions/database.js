@@ -1,5 +1,6 @@
 // Database module for Netlify Functions using Neon DB (PostgreSQL)
 import { neon } from '@netlify/neon';
+import { hashPassword, verifyPassword, validatePasswordStrength } from './password-utils.js';
 
 // Initialize Neon database connection
 const sql = neon(process.env.DATABASE_URL);
@@ -138,13 +139,17 @@ async function initializeDatabase() {
     // Create default admin users if table is empty
     const usersCount = await sql`SELECT COUNT(*) as count FROM admin_users`;
     if (usersCount[0].count == 0) {
+      // Hash default passwords securely
+      const superAdminPasswordHash = await hashPassword('SuperAdmin123!');
+      const adminPasswordHash = await hashPassword('Admin123!');
+      
       // Create default super admin
       await sql`
         INSERT INTO admin_users (id, username, password_hash, role, full_name, email, is_active) 
         VALUES (
           'user_superadmin_001', 
           'superadmin', 
-          'superadmin123', 
+          ${superAdminPasswordHash}, 
           'superadmin', 
           'Super Administrator', 
           'superadmin@tournament.local', 
@@ -158,13 +163,18 @@ async function initializeDatabase() {
         VALUES (
           'user_admin_001', 
           'admin', 
-          'admin123', 
+          ${adminPasswordHash}, 
           'admin', 
           'Administrator', 
           'admin@tournament.local', 
           true
         )
       `;
+      
+      console.log('🔐 Default admin users created with secure passwords:');
+      console.log('   • superadmin / SuperAdmin123!');
+      console.log('   • admin / Admin123!');
+      console.log('⚠️  Please change these passwords after first login!');
     }
 
     console.log('Database initialization completed successfully');
@@ -1068,6 +1078,16 @@ export async function authenticateUser(username, password) {
     await initializeDatabase();
     console.log('Database initialized successfully');
     
+    // Input validation
+    if (!username || !password) {
+      return {
+        success: false,
+        message: 'Username and password are required'
+      };
+    }
+
+    // Rate limiting could be added here in the future
+    
     // First get the user by username
     const users = await sql`
       SELECT id, username, password_hash, role, full_name, email, is_active
@@ -1081,8 +1101,36 @@ export async function authenticateUser(username, password) {
       const user = users[0];
       console.log('User found:', user.username, 'Role:', user.role);
       
-      // Simple password comparison (for development/testing)
-      if (user.password_hash === password) {
+      // Secure password verification using bcrypt
+      let isPasswordValid = false;
+      
+      try {
+        // Check if password is already hashed (starts with $2b$ for bcrypt)
+        if (user.password_hash.startsWith('$2b$')) {
+          // Use bcrypt verification for hashed passwords
+          isPasswordValid = await verifyPassword(password, user.password_hash);
+        } else {
+          // Legacy plain text password support (for migration)
+          console.warn('⚠️  User has legacy plain text password. Please update to secure hash.');
+          isPasswordValid = (user.password_hash === password);
+          
+          // Auto-upgrade to hashed password if plain text matches
+          if (isPasswordValid) {
+            const hashedPassword = await hashPassword(password);
+            await sql`
+              UPDATE admin_users 
+              SET password_hash = ${hashedPassword}, updated_at = NOW() 
+              WHERE id = ${user.id}
+            `;
+            console.log('✅ Password automatically upgraded to secure hash for user:', username);
+          }
+        }
+      } catch (error) {
+        console.error('Password verification error:', error);
+        return { success: false, message: 'Authentication error' };
+      }
+      
+      if (isPasswordValid) {
         return {
           success: true,
           user: {
@@ -1136,11 +1184,23 @@ export async function createAdminUser(userData) {
   try {
     await initializeDatabase();
     
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(userData.password);
+    if (!passwordValidation.isValid) {
+      return { 
+        success: false, 
+        message: 'Password does not meet security requirements: ' + passwordValidation.messages.join(', ')
+      };
+    }
+    
+    // Hash the password securely
+    const hashedPassword = await hashPassword(userData.password);
+    
     const userId = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     
     await sql`
       INSERT INTO admin_users (id, username, password_hash, role, full_name, email, is_active)
-      VALUES (${userId}, ${userData.username}, ${userData.password}, ${userData.role}, ${userData.fullName}, ${userData.email}, ${userData.isActive !== false})
+      VALUES (${userId}, ${userData.username}, ${hashedPassword}, ${userData.role}, ${userData.fullName}, ${userData.email}, ${userData.isActive !== false})
     `;
     
     return { success: true, userId };
@@ -1169,7 +1229,18 @@ export async function updateAdminUser(userId, updates) {
     // Build update query dynamically
     const updateFields = {};
     if (updates.username) updateFields.username = updates.username;
-    if (updates.password) updateFields.password_hash = updates.password;
+    if (updates.password) {
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(updates.password);
+      if (!passwordValidation.isValid) {
+        return { 
+          success: false, 
+          message: 'Password does not meet security requirements: ' + passwordValidation.messages.join(', ')
+        };
+      }
+      // Hash the new password
+      updateFields.password_hash = await hashPassword(updates.password);
+    }
     if (updates.role) updateFields.role = updates.role;
     if (updates.fullName !== undefined) updateFields.full_name = updates.fullName;
     if (updates.email !== undefined) updateFields.email = updates.email;

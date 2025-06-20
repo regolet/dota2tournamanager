@@ -843,19 +843,23 @@ window.showChangePasswordModal = showChangePasswordModal;
  * Show the change password modal
  */
 function showChangePasswordModal() {
-    const modal = document.getElementById('change-password-modal');
+    // Use the new password change modal from utils.js
+    const modal = document.getElementById('passwordChangeModal');
     if (modal) {
         // Clear form
-        const form = document.getElementById('change-password-form');
+        const form = document.getElementById('password-change-form');
         if (form) {
             form.reset();
         }
         
-        // Hide any existing alerts
-        const alert = document.getElementById('password-change-alert');
-        if (alert) {
-            alert.style.display = 'none';
-        }
+        // Reset any validation states
+        const strengthIndicator = document.getElementById('password-strength');
+        const matchFeedback = document.getElementById('password-match-feedback');
+        const confirmPasswordField = document.getElementById('confirm-password');
+        
+        if (strengthIndicator) strengthIndicator.style.display = 'none';
+        if (matchFeedback) matchFeedback.textContent = '';
+        if (confirmPasswordField) confirmPasswordField.classList.remove('is-valid', 'is-invalid');
         
         // Show modal
         const bsModal = new bootstrap.Modal(modal);
