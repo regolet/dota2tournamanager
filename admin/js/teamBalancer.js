@@ -1007,46 +1007,38 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
     console.log(`🔄 High/Low Shuffle: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
     console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
 
-    // Step 1: Prioritize LOW MMR players for teams, move MID-TIER to reserves
-    // Strategy: Keep highest MMR (for balance) + lowest MMR (priority), remove middle MMR
-    const highTierSize = numTeams; // 1 high MMR player per team (for balance)
-    const lowTierSize = numTeams;  // 1 low MMR player per team (priority)
-    const midTierSlotsNeeded = maxPlayersForTeams - highTierSize - lowTierSize; // Remaining slots for mid-tier
+    // Step 1: Select players for teams and reserves (prioritize LOW MMR for teams)
+    // Strategy: Take top players for teams, but prioritize keeping LOW MMR in teams
     
-    // Split all players into tiers first
-    const totalHighTier = sortedPlayers.slice(0, Math.ceil(sortedPlayers.length * 0.33)); // Top 33%
-    const totalMidTier = sortedPlayers.slice(Math.ceil(sortedPlayers.length * 0.33), Math.floor(sortedPlayers.length * 0.67)); // Middle 33%
-    const totalLowTier = sortedPlayers.slice(Math.floor(sortedPlayers.length * 0.67)); // Bottom 33%
+    // First, let's identify which players should go to reserves (middle MMR range)
+    // We want to keep the HIGHEST and LOWEST MMR players, and reserve the MIDDLE ones
     
-    console.log(`🔄 Full player breakdown:`);
-    console.log(`   Total High Tier: ${totalHighTier.length} players (MMR: ${totalHighTier[0]?.peakmmr || 0} - ${totalHighTier[totalHighTier.length - 1]?.peakmmr || 0})`);
-    console.log(`   Total Mid Tier: ${totalMidTier.length} players (MMR: ${totalMidTier[0]?.peakmmr || 0} - ${totalMidTier[totalMidTier.length - 1]?.peakmmr || 0})`);
-    console.log(`   Total Low Tier: ${totalLowTier.length} players (MMR: ${totalLowTier[0]?.peakmmr || 0} - ${totalLowTier[totalLowTier.length - 1]?.peakmmr || 0})`);
+    const playersNeededForTeams = maxPlayersForTeams; // exactly 40 for 8 teams
+    const playersToReserve = sortedPlayers.length - playersNeededForTeams; // exactly 1 for 41 total
     
-    // Select players for teams: ALL high tier + ALL low tier + some mid tier
-    const highTierForTeams = totalHighTier.slice(0, highTierSize); // Top high MMR players
-    const lowTierForTeams = totalLowTier.slice(-lowTierSize); // Bottom low MMR players (priority)
-    const midTierForTeams = totalMidTier.slice(0, midTierSlotsNeeded); // Only some mid-tier players
+    console.log(`🔄 High/Low Shuffle: Need ${playersNeededForTeams} players for ${numTeams} teams, ${playersToReserve} to reserves`);
     
-    // Players going to reserves (mostly mid-tier + excess players)
-    const playersForReserves = [
-        ...totalHighTier.slice(highTierSize), // Excess high-tier players
-        ...totalMidTier.slice(midTierSlotsNeeded), // Excess mid-tier players (MOST GO HERE)
-        ...totalLowTier.slice(0, -lowTierSize) // Excess low-tier players
-    ].filter(Boolean);
+    // Strategy: Remove middle MMR players (around the median) to reserves
+    const keepTopCount = Math.ceil(playersNeededForTeams * 0.5); // Keep top 50% of team slots
+    const keepBottomCount = playersNeededForTeams - keepTopCount; // Keep bottom 50% of team slots
     
-    // Combine players for teams
-    const playersForTeams = [...highTierForTeams, ...midTierForTeams, ...lowTierForTeams];
+    // Select players for teams: TOP + BOTTOM players, skip middle
+    const playersForTeams = [
+        ...sortedPlayers.slice(0, keepTopCount), // TOP players
+        ...sortedPlayers.slice(-keepBottomCount) // BOTTOM players (LOW MMR priority)
+    ];
     
-    console.log(`🔄 Team assignment priority: LOW MMR players prioritized`);
-    console.log(`   High tier for teams: ${highTierForTeams.length} players`);
-    console.log(`   Mid tier for teams: ${midTierForTeams.length} players`);
-    console.log(`   Low tier for teams: ${lowTierForTeams.length} players (PRIORITY)`);
-    console.log(`   Going to reserves: ${playersForReserves.length} players (mostly mid-tier)`);
+    // Middle players go to reserves
+    const playersForReserves = sortedPlayers.slice(keepTopCount, sortedPlayers.length - keepBottomCount);
+    
+    console.log(`🔄 Player selection strategy:`);
+    console.log(`   Keeping TOP ${keepTopCount} players (highest MMR)`);
+    console.log(`   Keeping BOTTOM ${keepBottomCount} players (lowest MMR - PRIORITY)`);
+    console.log(`   Moving ${playersForReserves.length} MIDDLE MMR players to reserves`);
     
     if (playersForReserves.length > 0) {
         const reserveMMRs = playersForReserves.map(p => p.peakmmr || 0).sort((a, b) => b - a);
-        console.log(`🔄 Moving ${playersForReserves.length} players to reserves (MMR range: ${reserveMMRs[0]} - ${reserveMMRs[reserveMMRs.length - 1]})`);
+        console.log(`🔄 Moving ${playersForReserves.length} middle-tier players to reserves (MMR range: ${reserveMMRs[0]} - ${reserveMMRs[reserveMMRs.length - 1]})`);
         
         // Move players to reserves
         playersForReserves.forEach(player => {
@@ -1071,10 +1063,17 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
         displayReservedPlayers();
     }
     
-    // Step 2: Create final tiers from selected team players for positional assignment
-    const highTierPlayers = highTierForTeams;
-    const lowTierPlayers = lowTierForTeams;
-    const midTierPlayers = midTierForTeams;
+    // Step 2: Create tiers from selected team players for positional assignment
+    // Sort the selected players again (they are mixed after combining top + bottom)
+    const teamPlayersResorted = playersForTeams.sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+    
+    const highTierSize = numTeams; // 1 high MMR player per team
+    const lowTierSize = numTeams;  // 1 low MMR player per team  
+    const midTierSize = teamPlayersResorted.length - highTierSize - lowTierSize; // Remaining players
+    
+    const highTierPlayers = teamPlayersResorted.slice(0, highTierSize);
+    const midTierPlayers = teamPlayersResorted.slice(highTierSize, highTierSize + midTierSize);
+    const lowTierPlayers = teamPlayersResorted.slice(-lowTierSize);
     
     console.log(`🔄 Player tiers created:`);
     console.log(`   High Tier (Slot 1): ${highTierPlayers.length} players (MMR: ${highTierPlayers[0]?.peakmmr || 0} - ${highTierPlayers[highTierPlayers.length - 1]?.peakmmr || 0})`);
