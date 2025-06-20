@@ -625,8 +625,8 @@ function autoBalance() {
         console.log('Balance method element:', balanceMethodSelect);
         console.log('All balance options:', balanceMethodSelect ? Array.from(balanceMethodSelect.options).map(o => o.value) : 'No select found');
 
-        // For High Ranked Balance, calculate teams based on ALL available players
-        // Other methods can exclude already reserved players
+        // High Ranked Balance and Perfect MMR Balance calculate teams based on ALL available players
+        // Other methods exclude already reserved players
         let playersForTeams, numTeams;
         
         if (balanceMethod === 'highRanked') {
@@ -634,6 +634,11 @@ function autoBalance() {
             playersForTeams = [...state.availablePlayers]; // Use ALL available players
             numTeams = Math.floor(state.availablePlayers.length / teamSize);
             console.log(`High Ranked Balance: ${state.availablePlayers.length} total players → ${numTeams} teams of ${teamSize} (${numTeams * teamSize} in teams, ${state.availablePlayers.length - (numTeams * teamSize)} to reserves)`);
+        } else if (balanceMethod === 'perfectMmr') {
+            // Perfect MMR Balance handles its own reserve logic
+            playersForTeams = [...state.availablePlayers]; // Use ALL available players
+            numTeams = Math.floor(state.availablePlayers.length / teamSize);
+            console.log(`Perfect MMR Balance: ${state.availablePlayers.length} total players → ${numTeams} teams of ${teamSize} (${numTeams * teamSize} in teams, ${state.availablePlayers.length - (numTeams * teamSize)} to reserves)`);
         } else {
             // Other methods exclude already reserved players
             const reservedPlayerIds = state.reservedPlayers ? state.reservedPlayers.map(p => p.id) : [];
@@ -678,8 +683,8 @@ function autoBalance() {
         // Distribute players based on selected balance method
         distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
         
-        // For non-highRanked methods, handle leftover players
-        if (balanceMethod !== 'highRanked') {
+        // For methods that don't handle their own reserves, handle leftover players
+        if (balanceMethod !== 'highRanked' && balanceMethod !== 'perfectMmr') {
             const playersUsedInTeams = state.balancedTeams.reduce((total, team) => total + team.players.length, 0);
             const leftoverPlayers = playersForTeams.slice(playersUsedInTeams);
             
@@ -713,7 +718,7 @@ function autoBalance() {
                 showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
             }
         }
-        // Note: highRanked method handles its own reserve logic within distributeHighRankedBalance
+        // Note: highRanked and perfectMmr methods handle their own reserve logic within their distribution functions
 
         // Display balanced teams with new layout
         console.log('🎯 Displaying teams with new compact table layout...');
@@ -906,24 +911,59 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
 }
 
 /**
- * Perfect MMR Balance - Try to make team MMR totals as close as possible (with shuffling)
+ * Perfect MMR Balance - Try to make team MMR totals as close as possible, low MMR to reserves
  */
 function distributePerfectMmrBalance(players, numTeams, teamSize) {
-    // Sort players by MMR (highest first) - purely deterministic, no randomization
+    // Sort players by MMR (highest first) - high MMR players get priority
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
     
-    console.log(`⚖️ Perfect MMR Balance: Distributing ${sortedPlayers.length} players deterministically for closest possible MMR balance`);
+    const maxPlayersForTeams = numTeams * teamSize;
+    
+    console.log(`⚖️ Perfect MMR Balance: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
+    console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
 
+    // Step 1: Separate players for teams vs reserves
+    const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
+    const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
+    
+    if (playersForReserves.length > 0) {
+        console.log(`⚖️ Moving ${playersForReserves.length} lowest MMR players to reserves (MMR range: ${playersForReserves[0]?.peakmmr || 0} - ${playersForReserves[playersForReserves.length - 1]?.peakmmr || 0})`);
+        
+        // Move lowest MMR players to reserves
+        playersForReserves.forEach(player => {
+            // Remove from available players
+            const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
+            if (playerIndex > -1) {
+                state.availablePlayers.splice(playerIndex, 1);
+            }
+            
+            // Add to reserved players if not already there
+            if (!state.reservedPlayers) {
+                state.reservedPlayers = [];
+            }
+            const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
+            if (!alreadyReserved) {
+                state.reservedPlayers.push(player);
+            }
+        });
+        
+        // Update displays immediately
+        displayPlayersForBalancer(state.availablePlayers);
+        displayReservedPlayers();
+    }
+    
+    // Step 2: Distribute players for optimal MMR balance (deterministic, no randomness)
+    console.log(`⚖️ Distributing ${playersForTeams.length} players for closest possible MMR balance...`);
+    
     // Distribute each player to the team with the lowest current total MMR
-    for (const player of sortedPlayers) {
-        // Stop if all teams are full
-        if (state.balancedTeams.every(team => team.players.length >= teamSize)) {
-            console.log(`All teams are full (${teamSize} players each)`);
-            break;
-        }
-
+    for (const player of playersForTeams) {
         // Find the team with the lowest total MMR that still has space
         const availableTeams = state.balancedTeams.filter(team => team.players.length < teamSize);
+        if (availableTeams.length === 0) {
+            console.log(`⚖️ All teams are full (${teamSize} players each)`);
+            break;
+        }
+        
         const targetTeam = availableTeams.reduce((lowest, current) => 
             current.totalMmr < lowest.totalMmr ? current : lowest
         );
@@ -935,11 +975,18 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
         console.log(`⚖️ Added ${player.name} (${player.peakmmr} MMR) to team with ${targetTeam.totalMmr - (player.peakmmr || 0)} MMR (new total: ${targetTeam.totalMmr})`);
     }
     
-    // Log final team balance for verification
-    console.log('⚖️ Final Perfect MMR Balance Results:');
+    // Step 3: Log final results
+    console.log(`⚖️ Perfect MMR Balance completed:`);
+    console.log(`   • ${playersForTeams.length} highest MMR players distributed across ${numTeams} teams`);
+    console.log(`   • ${playersForReserves.length} lowest MMR players moved to reserves`);
+    console.log(`   • Deterministic distribution for optimal MMR balance`);
+    
+    // Log team composition
     state.balancedTeams.forEach((team, index) => {
         const avgMmr = team.players.length > 0 ? Math.round(team.totalMmr / team.players.length) : 0;
-        console.log(`Team ${index + 1}: ${team.players.length} players, Total MMR: ${team.totalMmr}, Avg MMR: ${avgMmr}`);
+        const mmrRange = team.players.length > 0 ? 
+            `${Math.max(...team.players.map(p => p.peakmmr || 0))} - ${Math.min(...team.players.map(p => p.peakmmr || 0))}` : 'N/A';
+        console.log(`   Team ${index + 1}: ${team.players.length} players, Avg MMR: ${avgMmr}, Total MMR: ${team.totalMmr}, Range: ${mmrRange}`);
     });
 }
 
