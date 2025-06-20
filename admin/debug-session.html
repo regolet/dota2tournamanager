@@ -3,97 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Debug</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Session Debug - Tournament Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .debug-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .log-output {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Session Debug</h3>
+    <div class="container mt-4">
+        <h1>Session Debug Tool</h1>
+        <p class="text-muted">This tool helps debug login and session issues.</p>
+        
+        <!-- Current Session Status -->
+        <div class="debug-section">
+            <h3>Current Session Status</h3>
+            <div id="session-status" class="log-output">Checking...</div>
+            <button class="btn btn-secondary mt-2" onclick="checkCurrentSession()">Refresh Session Status</button>
+        </div>
+        
+        <!-- Test Login -->
+        <div class="debug-section">
+            <h3>Test Login</h3>
+            <form id="test-login-form" class="mb-3">
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" id="test-username" class="form-control" placeholder="Username" value="admin">
                     </div>
-                    <div class="card-body">
-                        <div id="debug-info"></div>
-                        <button id="test-session" class="btn btn-primary">Test Session</button>
-                        <button id="clear-session" class="btn btn-warning">Clear Session</button>
-                        <a href="login.html" class="btn btn-secondary">Go to Login</a>
-                        <a href="index.html" class="btn btn-success">Go to Admin Panel</a>
+                    <div class="col-md-4">
+                        <input type="password" id="test-password" class="form-control" placeholder="Password" value="admin123">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">Test Login</button>
                     </div>
                 </div>
-            </div>
+            </form>
+            <div id="login-output" class="log-output">No login test performed yet.</div>
+        </div>
+        
+        <!-- Test Session Validation -->
+        <div class="debug-section">
+            <h3>Test Session Validation</h3>
+            <button class="btn btn-info" onclick="testSessionValidation()">Test Current Session</button>
+            <div id="validation-output" class="log-output mt-2">No validation test performed yet.</div>
+        </div>
+        
+        <!-- Clear Session -->
+        <div class="debug-section">
+            <h3>Clear Session</h3>
+            <button class="btn btn-warning" onclick="clearSession()">Clear All Session Data</button>
+            <div id="clear-output" class="log-output mt-2">No clear operation performed yet.</div>
         </div>
     </div>
 
     <script>
-        function updateDebugInfo() {
-            const sessionId = localStorage.getItem('adminSessionId');
-            const user = localStorage.getItem('adminUser');
-            const expires = localStorage.getItem('adminSessionExpires');
-            
-            const debugInfo = document.getElementById('debug-info');
-            debugInfo.innerHTML = `
-                <h5>Local Storage Info:</h5>
-                <p><strong>Session ID:</strong> ${sessionId || 'Not found'}</p>
-                <p><strong>User:</strong> ${user || 'Not found'}</p>
-                <p><strong>Expires:</strong> ${expires || 'Not found'}</p>
-                <div id="session-test-result"></div>
-            `;
+        let logCounter = 0;
+        
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toISOString();
+            const logMessage = `[${timestamp}] ${message}\n`;
+            element.textContent += logMessage;
+            element.scrollTop = element.scrollHeight;
         }
-
-        document.getElementById('test-session').addEventListener('click', async () => {
+        
+        function clearLog(elementId) {
+            document.getElementById(elementId).textContent = '';
+        }
+        
+        async function checkCurrentSession() {
+            clearLog('session-status');
+            log('session-status', 'Checking current session status...');
+            
             const sessionId = localStorage.getItem('adminSessionId');
-            const resultDiv = document.getElementById('session-test-result');
+            const adminUser = localStorage.getItem('adminUser');
+            const sessionExpires = localStorage.getItem('adminSessionExpires');
+            
+            log('session-status', `LocalStorage sessionId: ${sessionId || 'NONE'}`);
+            log('session-status', `LocalStorage adminUser: ${adminUser || 'NONE'}`);
+            log('session-status', `LocalStorage sessionExpires: ${sessionExpires || 'NONE'}`);
+            
+            if (sessionId) {
+                log('session-status', 'Testing session with server...');
+                try {
+                    const response = await fetch('/.netlify/functions/check-session', {
+                        headers: {
+                            'x-session-id': sessionId
+                        }
+                    });
+                    
+                    log('session-status', `Server response status: ${response.status}`);
+                    
+                    const data = await response.json();
+                    log('session-status', `Server response: ${JSON.stringify(data, null, 2)}`);
+                } catch (error) {
+                    log('session-status', `Error checking session: ${error.message}`);
+                }
+            }
+        }
+        
+        document.getElementById('test-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearLog('login-output');
+            
+            const username = document.getElementById('test-username').value;
+            const password = document.getElementById('test-password').value;
+            
+            log('login-output', `Attempting login with username: ${username}`);
+            
+            try {
+                const response = await fetch('/.netlify/functions/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password, rememberMe: true })
+                });
+                
+                log('login-output', `Login response status: ${response.status}`);
+                
+                const data = await response.json();
+                log('login-output', `Login response: ${JSON.stringify(data, null, 2)}`);
+                
+                if (data.success && data.sessionId) {
+                    localStorage.setItem('adminSessionId', data.sessionId);
+                    if (data.user) {
+                        localStorage.setItem('adminUser', JSON.stringify(data.user));
+                    }
+                    if (data.expiresAt) {
+                        localStorage.setItem('adminSessionExpires', data.expiresAt);
+                    }
+                    log('login-output', 'Session data stored in localStorage');
+                    
+                    // Test the session immediately
+                    log('login-output', 'Testing session immediately...');
+                    const testResponse = await fetch('/.netlify/functions/check-session', {
+                        headers: {
+                            'x-session-id': data.sessionId
+                        }
+                    });
+                    
+                    const testData = await testResponse.json();
+                    log('login-output', `Immediate session test: ${JSON.stringify(testData, null, 2)}`);
+                }
+            } catch (error) {
+                log('login-output', `Login error: ${error.message}`);
+            }
+        });
+        
+        async function testSessionValidation() {
+            clearLog('validation-output');
+            const sessionId = localStorage.getItem('adminSessionId');
             
             if (!sessionId) {
-                resultDiv.innerHTML = '<div class="alert alert-warning">No session ID found</div>';
+                log('validation-output', 'No session ID found in localStorage');
                 return;
             }
-
+            
+            log('validation-output', `Testing session ID: ${sessionId}`);
+            
             try {
                 const response = await fetch('/.netlify/functions/check-session', {
                     headers: {
                         'x-session-id': sessionId
                     }
                 });
-
-                const data = await response.json();
                 
-                if (data.success) {
-                    resultDiv.innerHTML = `
-                        <div class="alert alert-success">
-                            <h6>Session Valid!</h6>
-                            <p>User: ${data.user.username} (${data.user.role})</p>
-                        </div>
-                    `;
-                } else {
-                    resultDiv.innerHTML = `
-                        <div class="alert alert-danger">
-                            <h6>Session Invalid</h6>
-                            <p>${data.message || 'Unknown error'}</p>
-                        </div>
-                    `;
-                }
+                log('validation-output', `Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log('validation-output', `Response data: ${JSON.stringify(data, null, 2)}`);
             } catch (error) {
-                resultDiv.innerHTML = `
-                    <div class="alert alert-danger">
-                        <h6>Session Test Failed</h6>
-                        <p>${error.message}</p>
-                    </div>
-                `;
+                log('validation-output', `Validation error: ${error.message}`);
             }
-        });
-
-        document.getElementById('clear-session').addEventListener('click', () => {
+        }
+        
+        function clearSession() {
+            clearLog('clear-output');
             localStorage.removeItem('adminSessionId');
             localStorage.removeItem('adminUser');
             localStorage.removeItem('adminSessionExpires');
-            updateDebugInfo();
+            sessionStorage.clear();
+            log('clear-output', 'All session data cleared from localStorage and sessionStorage');
+        }
+        
+        // Check session on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkCurrentSession();
         });
-
-        // Update debug info on page load
-        document.addEventListener('DOMContentLoaded', updateDebugInfo);
     </script>
 </body>
 </html>

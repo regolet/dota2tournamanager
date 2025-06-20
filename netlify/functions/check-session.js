@@ -15,13 +15,17 @@ export const handler = async (event, context) => {
   }
 
   try {
-    
+    console.log('Check-session function called:', {
+      method: event.httpMethod,
+      headers: event.headers,
+      timestamp: new Date().toISOString()
+    });
     
     // Get session ID from headers
     const sessionId = event.headers['x-session-id'];
     
     if (!sessionId) {
-      
+      console.log('No session ID provided in headers');
       return {
         statusCode: 401,
         headers: {
@@ -35,13 +39,20 @@ export const handler = async (event, context) => {
       };
     }
 
-    
+    console.log('Validating session ID:', sessionId);
     
     // Validate session using database
     const sessionData = await validateSession(sessionId);
     
+    console.log('Session validation result:', {
+      valid: sessionData.valid,
+      userId: sessionData.userId,
+      username: sessionData.username,
+      role: sessionData.role
+    });
+    
     if (sessionData.valid) {
-      
+      console.log('Session is valid, returning success response');
       return {
         statusCode: 200,
         headers: {
@@ -60,7 +71,7 @@ export const handler = async (event, context) => {
         })
       };
     } else {
-      
+      console.log('Session is invalid or expired');
       return {
         statusCode: 401,
         headers: {
@@ -76,6 +87,7 @@ export const handler = async (event, context) => {
 
   } catch (error) {
     console.error('Error checking session:', error);
+    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers: {
@@ -84,7 +96,8 @@ export const handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error',
+        details: error.message
       })
     };
   }

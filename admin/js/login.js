@@ -53,10 +53,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show success message
                 showAlert(alertContainer, 'success', 'Login successful! Redirecting...');
                 
-                // Redirect to admin panel
-                setTimeout(() => {
-                    window.location.href = '/admin/index.html';
-                }, 1000);
+                // Verify session is working before redirect
+                try {
+                    const verifyResponse = await fetch('/.netlify/functions/check-session', {
+                        headers: {
+                            'x-session-id': data.sessionId
+                        }
+                    });
+                    
+                    const verifyData = await verifyResponse.json();
+                    
+                    if (verifyData.success) {
+                        // Session verified, safe to redirect
+                        window.location.href = '/admin/index.html';
+                    } else {
+                        // Session verification failed, try again with a short delay
+                        setTimeout(() => {
+                            window.location.href = '/admin/index.html';
+                        }, 500);
+                    }
+                } catch (verifyError) {
+                    console.warn('Session verification failed, proceeding with redirect:', verifyError);
+                    // Proceed with redirect anyway after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/admin/index.html';
+                    }, 500);
+                }
             } else {
                 // Show error message
                 showAlert(alertContainer, 'danger', data.error || data.message || 'Login failed');

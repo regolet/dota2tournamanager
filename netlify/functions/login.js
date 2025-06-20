@@ -126,7 +126,12 @@ export const handler = async (event, context) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
     
-    console.log('Creating session...');
+    console.log('Creating session...', {
+      sessionId,
+      userId: user.id,
+      role: user.role,
+      expiresAt: expiresAt.toISOString()
+    });
     
     // Create session in database
     await sql`
@@ -135,6 +140,24 @@ export const handler = async (event, context) => {
     `;
     
     console.log('Session created successfully:', sessionId);
+    
+    // Verify session was created properly by checking it immediately
+    try {
+      const verifySession = await sql`
+        SELECT s.id, s.user_id, s.role, u.username, u.full_name, u.is_active
+        FROM admin_sessions s
+        JOIN admin_users u ON s.user_id = u.id
+        WHERE s.id = ${sessionId} AND s.expires_at > NOW() AND u.is_active = true
+      `;
+      
+      if (verifySession.length > 0) {
+        console.log('Session verification successful:', verifySession[0]);
+      } else {
+        console.error('Session verification failed - session not found in database');
+      }
+    } catch (verifyError) {
+      console.error('Error verifying session after creation:', verifyError);
+    }
     
     return {
       statusCode: 200,
