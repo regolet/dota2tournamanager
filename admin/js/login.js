@@ -1,4 +1,4 @@
-// login.js - Handles admin login functionality
+﻿// login.js - Handles admin login functionality
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
@@ -96,9 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Show an alert message
- * @param {HTMLElement} container - The container element
- * @param {string} type - The alert type (success, danger, warning, info)
- * @param {string} message - The alert message
  */
 function showAlert(container, type, message) {
     if (!container) return;
@@ -108,7 +105,7 @@ function showAlert(container, type, message) {
     
     // Create alert element
     const alert = document.createElement('div');
-    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.className = lert alert- alert-dismissible fade show;
     alert.setAttribute('role', 'alert');
     
     // Add icon based on type
@@ -129,11 +126,11 @@ function showAlert(container, type, message) {
     }
     
     // Set alert content
-    alert.innerHTML = `
-        ${icon}
-        ${message}
+    alert.innerHTML = 
+        
+        
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
+    ;
     
     // Add alert to container
     container.appendChild(alert);
@@ -141,18 +138,13 @@ function showAlert(container, type, message) {
 
 /**
  * Check if user is logged in
- * @returns {Promise<boolean>} True if logged in, false otherwise
  */
 async function checkLoginStatus() {
     try {
         const sessionId = localStorage.getItem('adminSessionId');
         if (!sessionId) return false;
         
-        // Include session ID both as header and as URL parameter
-        const url = new URL('/.netlify/functions/check-session', window.location.origin);
-        url.searchParams.append('sessionId', sessionId);
-        
-        const response = await fetch(url, {
+        const response = await fetch('/.netlify/functions/check-session', {
             headers: {
                 'x-session-id': sessionId
             }
@@ -168,4 +160,4 @@ async function checkLoginStatus() {
         console.error('Error checking login status:', error);
         return false;
     }
-} 
+}
