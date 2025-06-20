@@ -1,10 +1,8 @@
-﻿// login.js - Handles admin login functionality
+// login.js - Handles admin login functionality
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     if (!loginForm) return;
-    
-    // Login page loaded - no session checks, just login form
 
     // Handle form submission
     loginForm.addEventListener('submit', async (e) => {
@@ -55,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show success message
                 showAlert(alertContainer, 'success', 'Login successful! Redirecting...');
                 
-                // Redirect to admin panel (no sessionId in URL needed)
+                // Redirect to admin panel
                 setTimeout(() => {
                     window.location.href = '/admin/index.html';
                 }, 1000);
@@ -94,21 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-/**
- * Show an alert message
- */
 function showAlert(container, type, message) {
     if (!container) return;
     
-    // Clear existing alerts
     container.innerHTML = '';
     
-    // Create alert element
     const alert = document.createElement('div');
-    alert.className = lert alert- alert-dismissible fade show;
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
     alert.setAttribute('role', 'alert');
     
-    // Add icon based on type
     let icon = '';
     switch (type) {
         case 'success':
@@ -125,20 +117,15 @@ function showAlert(container, type, message) {
             break;
     }
     
-    // Set alert content
-    alert.innerHTML = 
-        
-        
+    alert.innerHTML = `
+        ${icon}
+        ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    ;
+    `;
     
-    // Add alert to container
     container.appendChild(alert);
 }
 
-/**
- * Check if user is logged in
- */
 async function checkLoginStatus() {
     try {
         const sessionId = localStorage.getItem('adminSessionId');
