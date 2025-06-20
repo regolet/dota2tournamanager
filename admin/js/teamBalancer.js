@@ -625,13 +625,24 @@ function autoBalance() {
         console.log('Balance method element:', balanceMethodSelect);
         console.log('All balance options:', balanceMethodSelect ? Array.from(balanceMethodSelect.options).map(o => o.value) : 'No select found');
 
-        // Get players available for team generation (exclude reserved players)
-        const reservedPlayerIds = state.reservedPlayers ? state.reservedPlayers.map(p => p.id) : [];
-        const playersForTeams = state.availablePlayers.filter(p => !reservedPlayerIds.includes(p.id));
+        // For High Ranked Balance, calculate teams based on ALL available players
+        // Other methods can exclude already reserved players
+        let playersForTeams, numTeams;
         
-        console.log('Total available players:', state.availablePlayers.length);
-        console.log('Reserved players:', reservedPlayerIds.length);
-        console.log('Players for team generation:', playersForTeams.length);
+        if (balanceMethod === 'highRanked') {
+            // High Ranked Balance handles its own reserve logic
+            playersForTeams = [...state.availablePlayers]; // Use ALL available players
+            numTeams = Math.floor(state.availablePlayers.length / teamSize);
+            console.log(`High Ranked Balance: ${state.availablePlayers.length} total players → ${numTeams} teams of ${teamSize} (${numTeams * teamSize} in teams, ${state.availablePlayers.length - (numTeams * teamSize)} to reserves)`);
+        } else {
+            // Other methods exclude already reserved players
+            const reservedPlayerIds = state.reservedPlayers ? state.reservedPlayers.map(p => p.id) : [];
+            playersForTeams = state.availablePlayers.filter(p => !reservedPlayerIds.includes(p.id));
+            numTeams = Math.floor(playersForTeams.length / teamSize);
+            console.log('Other methods: Total available players:', state.availablePlayers.length);
+            console.log('Reserved players:', reservedPlayerIds.length);
+            console.log('Players for team generation:', playersForTeams.length);
+        }
         
         if (playersForTeams.length === 0) {
             showNotification('No players available for team generation. All players are reserved.', 'warning');
@@ -641,9 +652,6 @@ function autoBalance() {
             }
             return;
         }
-
-        // Calculate number of teams based on non-reserved players
-        const numTeams = Math.floor(playersForTeams.length / teamSize);
         
         if (numTeams < 2) {
             showNotification(`Not enough non-reserved players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players. (${playersForTeams.length} available, ${reservedPlayerIds.length} reserved)`, 'warning');
@@ -667,42 +675,45 @@ function autoBalance() {
         }
         console.log(`Initialized ${numTeams} empty teams`);
 
-        // Distribute players based on selected balance method (using only non-reserved players)
+        // Distribute players based on selected balance method
         distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
         
-        // Handle leftover players - move them to reserved list
-        const playersUsedInTeams = state.balancedTeams.reduce((total, team) => total + team.players.length, 0);
-        const leftoverPlayers = playersForTeams.slice(playersUsedInTeams);
-        
-        if (leftoverPlayers.length > 0) {
-            console.log(`Found ${leftoverPlayers.length} leftover players, moving to reserved list:`, leftoverPlayers.map(p => p.name));
+        // For non-highRanked methods, handle leftover players
+        if (balanceMethod !== 'highRanked') {
+            const playersUsedInTeams = state.balancedTeams.reduce((total, team) => total + team.players.length, 0);
+            const leftoverPlayers = playersForTeams.slice(playersUsedInTeams);
             
-            // Initialize reserved players if needed
-            if (!state.reservedPlayers) {
-                state.reservedPlayers = [];
-            }
-            
-            // Move leftover players to reserved list
-            leftoverPlayers.forEach(player => {
-                // Remove from available players
-                const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
-                if (playerIndex > -1) {
-                    state.availablePlayers.splice(playerIndex, 1);
+            if (leftoverPlayers.length > 0) {
+                console.log(`Found ${leftoverPlayers.length} leftover players, moving to reserved list:`, leftoverPlayers.map(p => p.name));
+                
+                // Initialize reserved players if needed
+                if (!state.reservedPlayers) {
+                    state.reservedPlayers = [];
                 }
                 
-                // Add to reserved players if not already there
-                const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
-                if (!alreadyReserved) {
-                    state.reservedPlayers.push(player);
-                }
-            });
-            
-            // Update displays
-            displayPlayersForBalancer(state.availablePlayers);
-            displayReservedPlayers();
-            
-            showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
+                // Move leftover players to reserved list
+                leftoverPlayers.forEach(player => {
+                    // Remove from available players
+                    const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
+                    if (playerIndex > -1) {
+                        state.availablePlayers.splice(playerIndex, 1);
+                    }
+                    
+                    // Add to reserved players if not already there
+                    const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
+                    if (!alreadyReserved) {
+                        state.reservedPlayers.push(player);
+                    }
+                });
+                
+                // Update displays
+                displayPlayersForBalancer(state.availablePlayers);
+                displayReservedPlayers();
+                
+                showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
+            }
         }
+        // Note: highRanked method handles its own reserve logic within distributeHighRankedBalance
 
         // Display balanced teams with new layout
         console.log('🎯 Displaying teams with new compact table layout...');
