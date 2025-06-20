@@ -1,0 +1,98 @@
+// Simple Session Manager - bypasses complex session logic
+(function() {
+    "use strict";
+
+    // Simple session validation
+    async function validateCurrentSession() {
+        try {
+            const sessionId = localStorage.getItem("adminSessionId");
+            
+            if (!sessionId) {
+                console.log("No session ID found, redirecting to login");
+                redirectToLogin();
+                return false;
+            }
+
+            console.log("Found session ID:", sessionId);
+
+            const response = await fetch("/.netlify/functions/check-session", {
+                headers: {
+                    "x-session-id": sessionId
+                }
+            });
+
+            if (!response.ok) {
+                console.log("Session check failed - response not ok");
+                redirectToLogin();
+                return false;
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log("Session valid for user:", data.user.username);
+                // Store/update user info
+                localStorage.setItem("adminUser", JSON.stringify(data.user));
+                return true;
+            } else {
+                console.log("Session invalid:", data.message);
+                redirectToLogin();
+                return false;
+            }
+        } catch (error) {
+            console.error("Session validation error:", error);
+            redirectToLogin();
+            return false;
+        }
+    }
+
+    function redirectToLogin() {
+        // Clear invalid session data
+        localStorage.removeItem("adminSessionId");
+        localStorage.removeItem("adminUser");
+        localStorage.removeItem("adminSessionExpires");
+        
+        // Only redirect if we are not already on the login page
+        if (!window.location.pathname.includes("login.html")) {
+            console.log("Redirecting to login page");
+            window.location.href = "/admin/login.html";
+        }
+    }
+
+    // Initialize session check on page load
+    document.addEventListener("DOMContentLoaded", async function() {
+        // Skip session check if we are on the login page
+        if (window.location.pathname.includes("login.html")) {
+            return;
+        }
+
+        console.log("Simple session manager: Checking session...");
+        const isValid = await validateCurrentSession();
+        
+        if (isValid) {
+            console.log("Session valid - proceeding with page load");
+            // Dispatch event to let other modules know session is ready
+            window.dispatchEvent(new CustomEvent("sessionReady"));
+        }
+    });
+
+    // Expose simple session utilities
+    window.simpleSessionManager = {
+        validateCurrentSession,
+        getSessionId: () => localStorage.getItem("adminSessionId"),
+        getUser: () => {
+            try {
+                return JSON.parse(localStorage.getItem("adminUser") || "{}");
+            } catch {
+                return {};
+            }
+        },
+        logout: () => {
+            localStorage.removeItem("adminSessionId");
+            localStorage.removeItem("adminUser");
+            localStorage.removeItem("adminSessionExpires");
+            window.location.href = "/admin/login.html";
+        }
+    };
+
+})();
