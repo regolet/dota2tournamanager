@@ -787,35 +787,81 @@ function distributePlayersByMethod(players, method, numTeams, teamSize) {
 }
 
 /**
- * High Ranked Balance - Prioritize high MMR players for teams, low MMR to reserves
+ * High Ranked Balance - Prioritize high MMR players for teams, low MMR to reserves (with randomness)
  */
 function distributeHighRankedBalance(players, numTeams, teamSize) {
     // Sort players by MMR (highest first) - high MMR players get priority
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
     
-    console.log(`👑 High Ranked Balance: Prioritizing top ${numTeams * teamSize} players for teams`);
+    const maxPlayersForTeams = numTeams * teamSize;
+    
+    console.log(`👑 High Ranked Balance: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
     console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
 
-    // Simple snake draft: distribute players in MMR order until teams are full
+    // Step 1: Separate players for teams vs reserves
+    const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
+    const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
+    
+    if (playersForReserves.length > 0) {
+        console.log(`👑 Moving ${playersForReserves.length} lowest MMR players to reserves (MMR range: ${playersForReserves[0]?.peakmmr || 0} - ${playersForReserves[playersForReserves.length - 1]?.peakmmr || 0})`);
+        
+        // Move lowest MMR players to reserves
+        playersForReserves.forEach(player => {
+            // Remove from available players
+            const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
+            if (playerIndex > -1) {
+                state.availablePlayers.splice(playerIndex, 1);
+            }
+            
+            // Add to reserved players if not already there
+            if (!state.reservedPlayers) {
+                state.reservedPlayers = [];
+            }
+            const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
+            if (!alreadyReserved) {
+                state.reservedPlayers.push(player);
+            }
+        });
+        
+        // Update displays immediately
+        displayPlayersForBalancer(state.availablePlayers);
+        displayReservedPlayers();
+    }
+    
+    // Step 2: Create MMR tiers for randomness within similar skill levels
+    const tierSize = Math.ceil(playersForTeams.length / (numTeams * 2)); // Create roughly 2 tiers per team
+    const shuffledPlayersForTeams = [];
+    
+    console.log(`👑 Creating MMR tiers of size ${tierSize} for randomness...`);
+    
+    for (let i = 0; i < playersForTeams.length; i += tierSize) {
+        const tier = playersForTeams.slice(i, i + tierSize);
+        // Shuffle within each tier to add randomness while maintaining MMR proximity
+        const shuffledTier = tier.sort(() => Math.random() - 0.5);
+        shuffledPlayersForTeams.push(...shuffledTier);
+        
+        const tierMmrRange = tier.length > 0 ? 
+            `${tier[0]?.peakmmr || 0} - ${tier[tier.length - 1]?.peakmmr || 0}` : 'N/A';
+        console.log(`👑 Tier ${Math.floor(i / tierSize) + 1}: ${tier.length} players (MMR: ${tierMmrRange}) - shuffled`);
+    }
+    
+    // Step 3: Snake draft with the tier-shuffled players
     let currentTeam = 0;
     let direction = 1; // 1 for forward, -1 for backward (snake pattern)
     let playersUsed = 0;
-    const maxPlayersForTeams = numTeams * teamSize;
-
-    // Snake draft all sorted players in strict MMR order
-    for (let i = 0; i < sortedPlayers.length; i++) {
-        const player = sortedPlayers[i];
-        
-        // Stop if all teams are full
+    
+    console.log(`👑 Starting snake draft with ${shuffledPlayersForTeams.length} tier-shuffled players...`);
+    
+    for (const player of shuffledPlayersForTeams) {
         if (playersUsed >= maxPlayersForTeams) {
-            console.log(`👑 All teams full (${maxPlayersForTeams} players used), remaining players go to reserves`);
             break;
         }
+        
         state.balancedTeams[currentTeam].players.push(player);
         state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
         playersUsed++;
 
-        console.log(`👑 Added ${player.name} (${player.peakmmr} MMR) to Team ${currentTeam + 1} [Pick ${playersUsed}/${maxPlayersForTeams}]`);
+        console.log(`👑 Snake draft: ${player.name} (${player.peakmmr} MMR) → Team ${currentTeam + 1} [${playersUsed}/${maxPlayersForTeams}]`);
 
         // Move to next team using snake pattern
         if (direction === 1) {
@@ -833,16 +879,19 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
         }
     }
     
-    // Log info about unused players (they will go to reserves automatically)
-    const leftoverCount = sortedPlayers.length - playersUsed;
-    if (leftoverCount > 0) {
-        const leftoverPlayers = sortedPlayers.slice(playersUsed);
-        const leftoverMmrRange = leftoverPlayers.length > 0 ? 
-            `${leftoverPlayers[0]?.peakmmr || 0} - ${leftoverPlayers[leftoverPlayers.length - 1]?.peakmmr || 0}` : 'N/A';
-        console.log(`👑 High Ranked Balance: ${leftoverCount} lowest MMR players (${leftoverMmrRange}) will go to reserves`);
-    }
+    // Step 4: Log final results
+    console.log(`🐍 High Ranked Balance completed:`);
+    console.log(`   • ${playersUsed} highest MMR players distributed across ${numTeams} teams`);
+    console.log(`   • ${playersForReserves.length} lowest MMR players moved to reserves`);
+    console.log(`   • Added randomness within MMR tiers for non-deterministic results`);
     
-    console.log(`🐍 Pure snake draft completed - highest ${playersUsed} MMR players distributed across teams`);
+    // Log team composition
+    state.balancedTeams.forEach((team, index) => {
+        const avgMmr = team.players.length > 0 ? Math.round(team.totalMmr / team.players.length) : 0;
+        const mmrRange = team.players.length > 0 ? 
+            `${Math.max(...team.players.map(p => p.peakmmr || 0))} - ${Math.min(...team.players.map(p => p.peakmmr || 0))}` : 'N/A';
+        console.log(`   Team ${index + 1}: ${team.players.length} players, Avg MMR: ${avgMmr}, Range: ${mmrRange}`);
+    });
 }
 
 /**
