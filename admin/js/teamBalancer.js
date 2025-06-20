@@ -819,9 +819,12 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     console.log(`👑 High Ranked Balance: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
     console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
 
-    // Step 1: Separate players for teams vs reserves
+    // Step 1: Separate players for teams vs reserves (with randomness)
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
-    const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
+    
+    // Add randomness to reserve selection from lowest MMR candidates
+    const reserveCandidates = sortedPlayers.slice(maxPlayersForTeams);
+    const playersForReserves = [...reserveCandidates].sort(() => Math.random() - 0.5); // Shuffle reserves for variety
     
     if (playersForReserves.length > 0) {
         console.log(`👑 Moving ${playersForReserves.length} lowest MMR players to reserves (MMR range: ${playersForReserves[0]?.peakmmr || 0} - ${playersForReserves[playersForReserves.length - 1]?.peakmmr || 0})`);
@@ -927,9 +930,12 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
     console.log(`⚖️ Perfect MMR Balance: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
     console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
 
-    // Step 1: Separate players for teams vs reserves
+    // Step 1: Separate players for teams vs reserves (with randomness)
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
-    const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
+    
+    // Add randomness to reserve selection from lowest MMR candidates  
+    const reserveCandidates = sortedPlayers.slice(maxPlayersForTeams);
+    const playersForReserves = [...reserveCandidates].sort(() => Math.random() - 0.5); // Shuffle reserves for variety
     
     if (playersForReserves.length > 0) {
         console.log(`⚖️ Moving ${playersForReserves.length} lowest MMR players to reserves (MMR range: ${playersForReserves[0]?.peakmmr || 0} - ${playersForReserves[playersForReserves.length - 1]?.peakmmr || 0})`);
@@ -1018,23 +1024,36 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
     
     console.log(`🔄 High/Low Shuffle: Need ${playersNeededForTeams} players for ${numTeams} teams, ${playersToReserve} to reserves`);
     
-    // Strategy: Remove middle MMR players (around the median) to reserves
-    const keepTopCount = Math.ceil(playersNeededForTeams * 0.5); // Keep top 50% of team slots
-    const keepBottomCount = playersNeededForTeams - keepTopCount; // Keep bottom 50% of team slots
+    // Strategy: Remove middle MMR players (around the median) to reserves with randomness
+    const keepTopCount = Math.ceil(playersNeededForTeams * 0.4); // Keep top 40% of team slots (guaranteed)
+    const keepBottomCount = Math.ceil(playersNeededForTeams * 0.4); // Keep bottom 40% of team slots (guaranteed)
+    const flexibleSlots = playersNeededForTeams - keepTopCount - keepBottomCount; // Remaining 20% - flexible selection
     
-    // Select players for teams: TOP + BOTTOM players, skip middle
+    // Guaranteed players for teams
+    const guaranteedTopPlayers = sortedPlayers.slice(0, keepTopCount); // TOP players (guaranteed)
+    const guaranteedBottomPlayers = sortedPlayers.slice(-keepBottomCount); // BOTTOM players (guaranteed - LOW MMR priority)
+    
+    // Middle tier candidates (for flexible selection and reserves)
+    const middleTierCandidates = sortedPlayers.slice(keepTopCount, sortedPlayers.length - keepBottomCount);
+    
+    // Randomly select some middle-tier players for teams, rest go to reserves
+    const shuffledMiddleCandidates = [...middleTierCandidates].sort(() => Math.random() - 0.5);
+    const middlePlayersForTeams = shuffledMiddleCandidates.slice(0, flexibleSlots);
+    const playersForReserves = shuffledMiddleCandidates.slice(flexibleSlots);
+    
+    // Combine all players for teams
     const playersForTeams = [
-        ...sortedPlayers.slice(0, keepTopCount), // TOP players
-        ...sortedPlayers.slice(-keepBottomCount) // BOTTOM players (LOW MMR priority)
+        ...guaranteedTopPlayers,
+        ...middlePlayersForTeams,
+        ...guaranteedBottomPlayers
     ];
     
-    // Middle players go to reserves
-    const playersForReserves = sortedPlayers.slice(keepTopCount, sortedPlayers.length - keepBottomCount);
-    
-    console.log(`🔄 Player selection strategy:`);
-    console.log(`   Keeping TOP ${keepTopCount} players (highest MMR)`);
-    console.log(`   Keeping BOTTOM ${keepBottomCount} players (lowest MMR - PRIORITY)`);
-    console.log(`   Moving ${playersForReserves.length} MIDDLE MMR players to reserves`);
+    console.log(`🔄 Player selection strategy (with randomness):`);
+    console.log(`   Guaranteed TOP ${keepTopCount} players (highest MMR)`);
+    console.log(`   Guaranteed BOTTOM ${keepBottomCount} players (lowest MMR - PRIORITY)`);
+    console.log(`   Flexible selection: ${flexibleSlots} from ${middleTierCandidates.length} middle-tier candidates`);
+    console.log(`   Selected for teams: ${middlePlayersForTeams.length} random middle-tier players`);
+    console.log(`   Moving to reserves: ${playersForReserves.length} random middle-tier players`);
     
     if (playersForReserves.length > 0) {
         const reserveMMRs = playersForReserves.map(p => p.peakmmr || 0).sort((a, b) => b - a);
