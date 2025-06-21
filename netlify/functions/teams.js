@@ -47,7 +47,18 @@ export async function handler(event, context) {
     }
 
     console.log('Validating session...');
-    const sessionValidation = await validateSession(sessionId);
+    let sessionValidation;
+    try {
+      sessionValidation = await validateSession(sessionId);
+    } catch (sessionError) {
+      console.error('Session validation error:', sessionError);
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Session validation failed' })
+      };
+    }
+    
     console.log('Session validation result:', sessionValidation.valid);
     
     if (!sessionValidation.valid) {
@@ -59,8 +70,18 @@ export async function handler(event, context) {
       };
     }
 
-    const adminUserId = sessionValidation.session.user_id;
+    const adminUserId = sessionValidation.session?.user_id;
     const adminUsername = sessionValidation.user?.username || 'Unknown';
+    
+    if (!adminUserId) {
+      console.error('No admin user ID in session:', sessionValidation);
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Invalid session structure' })
+      };
+    }
+    
     console.log('Admin user:', adminUserId, adminUsername);
 
     // Handle different HTTP methods
@@ -127,13 +148,29 @@ async function handleGet(event, adminUserId, headers) {
     } else {
       console.log('Getting all team configurations for admin:', adminUserId);
       // Get all team configurations for this admin
-      const teamConfigs = await getTeamConfigurations(adminUserId);
-      console.log('Retrieved team configurations:', teamConfigs.length);
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(teamConfigs)
-      };
+      try {
+        const teamConfigs = await getTeamConfigurations(adminUserId);
+        console.log('Retrieved team configurations:', teamConfigs.length);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(teamConfigs)
+        };
+      } catch (dbError) {
+        console.error('Database error in getTeamConfigurations:', dbError);
+        // If it's a table not found error, return empty array
+        if (dbError.message && (dbError.message.includes('relation "teams" does not exist') || 
+                               dbError.message.includes('table') || 
+                               dbError.message.includes('does not exist'))) {
+          console.log('Teams table does not exist yet - returning empty array');
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify([])
+          };
+        }
+        throw dbError; // Re-throw other database errors
+      }
     }
   } catch (error) {
     console.error('HandleGet error:', error);
