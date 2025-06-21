@@ -40,6 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Store session ID in localStorage
                 localStorage.setItem('adminSessionId', data.sessionId);
                 
+                // Store login timestamp for grace period
+                localStorage.setItem('adminLoginTimestamp', Date.now().toString());
+                
                 // Store user info if available
                 if (data.user) {
                     localStorage.setItem('adminUser', JSON.stringify(data.user));
@@ -53,31 +56,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show success message
                 showAlert(alertContainer, 'success', 'Login successful! Redirecting...');
                 
-                // Verify session is working before redirect
-                try {
-                    const verifyResponse = await fetch('/.netlify/functions/check-session', {
-                        headers: {
-                            'x-session-id': data.sessionId
+                // Wait a moment for session to be fully established
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                // Verify session is working before redirect with retries
+                let sessionVerified = false;
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    try {
+                        console.log(`Verifying session attempt ${attempt}/3`);
+                        const verifyResponse = await fetch('/.netlify/functions/check-session', {
+                            headers: {
+                                'x-session-id': data.sessionId
+                            }
+                        });
+                        
+                        if (verifyResponse.ok) {
+                            const verifyData = await verifyResponse.json();
+                            
+                            if (verifyData.success) {
+                                console.log('Session verified successfully for user:', verifyData.user.username);
+                                sessionVerified = true;
+                                break;
+                            } else {
+                                console.log(`Session verification failed on attempt ${attempt}:`, verifyData.error || verifyData.message);
+                            }
+                        } else {
+                            console.log(`Session verification response not ok on attempt ${attempt}:`, verifyResponse.status);
                         }
-                    });
-                    
-                    const verifyData = await verifyResponse.json();
-                    
-                    if (verifyData.success) {
-                        // Session verified, safe to redirect
-                        window.location.href = '/admin/index.html';
-                    } else {
-                        // Session verification failed, try again with a short delay
-                        setTimeout(() => {
-                            window.location.href = '/admin/index.html';
-                        }, 500);
+                    } catch (verifyError) {
+                        console.warn(`Session verification attempt ${attempt} failed:`, verifyError);
                     }
-                } catch (verifyError) {
-                    console.warn('Session verification failed, proceeding with redirect:', verifyError);
-                    // Proceed with redirect anyway after a short delay
+                    
+                    // Wait before retry (except on last attempt)
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+                }
+                
+                // Redirect with appropriate delay
+                if (sessionVerified) {
+                    // Session verified, redirect immediately
+                    window.location.href = '/admin/index.html';
+                } else {
+                    // Session not verified, redirect with delay and hope for the best
+                    console.warn('Session could not be verified, redirecting with delay');
                     setTimeout(() => {
                         window.location.href = '/admin/index.html';
-                    }, 500);
+                    }, 750);
                 }
             } else {
                 // Show error message

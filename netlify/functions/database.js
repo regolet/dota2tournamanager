@@ -966,28 +966,50 @@ export async function validateSession(sessionId) {
   try {
     await initializeDatabase();
     
+    console.log('Validating session:', sessionId, 'at', new Date().toISOString());
+    
+    // Use NOW() without timezone comparison to avoid timezone issues
     const sessions = await sql`
-      SELECT s.id, s.user_id, s.role, u.username, u.full_name, u.is_active
+      SELECT s.id, s.user_id, s.role, s.expires_at, u.username, u.full_name, u.is_active
       FROM admin_sessions s
       JOIN admin_users u ON s.user_id = u.id
-      WHERE s.id = ${sessionId} AND s.expires_at > NOW() AND u.is_active = true
+      WHERE s.id = ${sessionId} AND u.is_active = true
     `;
     
+    console.log('Found sessions:', sessions.length);
+    
     if (sessions.length > 0) {
-      return {
-        valid: true,
-        sessionId: sessions[0].id,
-        userId: sessions[0].user_id,
-        role: sessions[0].role,
-        username: sessions[0].username,
-        fullName: sessions[0].full_name
-      };
+      const session = sessions[0];
+      const now = new Date();
+      const expiresAt = new Date(session.expires_at);
+      
+      console.log('Session expires at:', expiresAt.toISOString());
+      console.log('Current time:', now.toISOString());
+      console.log('Session valid:', expiresAt > now);
+      
+      // Check if session is expired
+      if (expiresAt > now) {
+        return {
+          valid: true,
+          sessionId: session.id,
+          userId: session.user_id,
+          role: session.role,
+          username: session.username,
+          fullName: session.full_name
+        };
+      } else {
+        console.log('Session expired, cleaning up...');
+        // Clean up expired session
+        await sql`DELETE FROM admin_sessions WHERE id = ${sessionId}`;
+        return { valid: false, reason: 'expired' };
+      }
     }
     
-    return { valid: false };
+    console.log('No session found with ID:', sessionId);
+    return { valid: false, reason: 'not_found' };
   } catch (error) {
     console.error('Error validating session:', error);
-    return { valid: false };
+    return { valid: false, reason: 'error', error: error.message };
   }
 }
 

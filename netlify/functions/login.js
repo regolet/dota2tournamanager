@@ -141,17 +141,29 @@ export const handler = async (event, context) => {
     
     console.log('Session created successfully:', sessionId);
     
+    // Add small delay to ensure database consistency
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Verify session was created properly by checking it immediately
     try {
       const verifySession = await sql`
-        SELECT s.id, s.user_id, s.role, u.username, u.full_name, u.is_active
+        SELECT s.id, s.user_id, s.role, s.expires_at, u.username, u.full_name, u.is_active
         FROM admin_sessions s
         JOIN admin_users u ON s.user_id = u.id
-        WHERE s.id = ${sessionId} AND s.expires_at > NOW() AND u.is_active = true
+        WHERE s.id = ${sessionId} AND u.is_active = true
       `;
       
       if (verifySession.length > 0) {
-        console.log('Session verification successful:', verifySession[0]);
+        const session = verifySession[0];
+        const now = new Date();
+        const sessionExpires = new Date(session.expires_at);
+        console.log('Session verification successful:', {
+          sessionId: session.id,
+          username: session.username,
+          expiresAt: sessionExpires.toISOString(),
+          currentTime: now.toISOString(),
+          isValid: sessionExpires > now
+        });
       } else {
         console.error('Session verification failed - session not found in database');
       }
