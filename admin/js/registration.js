@@ -72,6 +72,32 @@ async function initRegistration() {
         if (copyBtn) {
             copyBtn.addEventListener('click', copyRegistrationUrl);
         }
+        
+        // Event delegation for dynamically created buttons
+        const tableBody = document.getElementById('registration-sessions-table');
+        if (tableBody) {
+            tableBody.addEventListener('click', function(e) {
+                const target = e.target.closest('button');
+                if (!target) return;
+                
+                const sessionId = target.dataset.sessionId;
+                const sessionTitle = target.dataset.sessionTitle;
+                
+                if (target.classList.contains('copy-session-link')) {
+                    copySessionLink(sessionId);
+                } else if (target.classList.contains('open-session-link')) {
+                    openSessionLink(sessionId);
+                } else if (target.classList.contains('edit-session')) {
+                    editSession(sessionId);
+                } else if (target.classList.contains('close-session')) {
+                    closeSession(sessionId, sessionTitle);
+                } else if (target.classList.contains('reopen-session')) {
+                    reopenSession(sessionId, sessionTitle);
+                } else if (target.classList.contains('delete-session')) {
+                    deleteSession(sessionId, sessionTitle);
+                }
+            });
+        }
     }
     
     async function loadRegistrationSessions() {
@@ -212,24 +238,24 @@ async function initRegistration() {
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="copySessionLink('${session.sessionId}')" title="Copy Link">
+                        <button class="btn btn-outline-primary copy-session-link" data-session-id="${session.sessionId}" title="Copy Link">
                             <i class="bi bi-clipboard"></i>
                         </button>
-                        <button class="btn btn-outline-secondary" onclick="openSessionLink('${session.sessionId}')" title="Open Link">
+                        <button class="btn btn-outline-secondary open-session-link" data-session-id="${session.sessionId}" title="Open Link">
                             <i class="bi bi-box-arrow-up-right"></i>
                         </button>
-                        <button class="btn btn-outline-info" onclick="editSession('${session.sessionId}')" title="Edit">
+                        <button class="btn btn-outline-info edit-session" data-session-id="${session.sessionId}" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </button>
                         ${session.isActive ? 
-                            `<button class="btn btn-outline-warning" onclick="closeSession('${session.sessionId}', '${escapeHtml(session.title).replace(/'/g, '\\\'')}')" title="Close Registration">
+                            `<button class="btn btn-outline-warning close-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Close Registration">
                                 <i class="bi bi-stop-circle"></i>
                             </button>` : 
-                            `<button class="btn btn-outline-success" onclick="reopenSession('${session.sessionId}', '${escapeHtml(session.title).replace(/'/g, '\\\'')}')" title="Reopen Registration">
+                            `<button class="btn btn-outline-success reopen-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Reopen Registration">
                                 <i class="bi bi-play-circle"></i>
                             </button>`
                         }
-                        <button class="btn btn-outline-danger" onclick="deleteSession('${session.sessionId}', '${escapeHtml(session.title).replace(/'/g, '\\\'')}')" title="Delete">
+                        <button class="btn btn-outline-danger delete-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Delete">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -673,12 +699,6 @@ async function initRegistration() {
     
     // Expose functions globally that need to be called from HTML
     window.initRegistration = initRegistration;
-    window.editSession = editSession;
-    window.deleteSession = deleteSession;
-    window.closeSession = closeSession;
-    window.reopenSession = reopenSession;
-    window.copySessionLink = copySessionLink;
-    window.openSessionLink = openSessionLink;
     window.resetRegistrationModule = resetRegistrationModule;
     window.notifyPlayerListsToRefresh = notifyPlayerListsToRefresh;
     
