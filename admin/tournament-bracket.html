@@ -5,33 +5,30 @@
             <i class="bi bi-trophy me-2"></i>Tournament Bracket Management
         </h2>
         <div class="btn-group" role="group">
-            <button id="import-teams-btn" class="btn btn-outline-primary">
-                <i class="bi bi-people me-1"></i>Import Teams
-            </button>
             <button id="refresh-bracket-btn" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-clockwise me-1"></i>Refresh
             </button>
         </div>
     </div>
 
-    <!-- Tournament Selector -->
+    <!-- Team Configuration Selector -->
     <div class="session-selector-container mb-4">
         <div class="card shadow-sm">
             <div class="card-body p-3">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <div class="d-flex align-items-center">
-                            <i class="bi bi-funnel me-2 text-primary"></i>
-                            <label for="tournament-bracket-session-selector" class="form-label mb-0 me-3">
-                                Select Tournament:
+                            <i class="bi bi-people-fill me-2 text-primary"></i>
+                            <label for="tournament-selector" class="form-label mb-0 me-3">
+                                Select Team Configuration:
                             </label>
-                            <select id="tournament-bracket-session-selector" class="form-select" style="max-width: 400px;">
-                                <option value="">Loading tournaments...</option>
+                            <select id="tournament-selector" class="form-select" style="max-width: 400px;">
+                                <option value="">Loading team configurations...</option>
                             </select>
                         </div>
                     </div>
                     <div class="col-md-4 text-end">
-                        <button id="refresh-bracket-sessions" class="btn btn-outline-primary btn-sm me-2">
+                        <button id="refresh-bracket-btn-2" class="btn btn-outline-primary btn-sm me-2">
                             <i class="bi bi-arrow-clockwise me-1"></i> Refresh
                         </button>
                         <span id="bracket-team-count" class="badge bg-secondary">0 teams</span>
@@ -166,7 +163,7 @@
                             <h5 class="text-muted mb-2">No Tournament Created</h5>
                             <p class="text-muted mb-4">Create a tournament to get started with bracket management</p>
                             <div class="text-muted small">
-                                <div class="mb-2">📋 <strong>Step 1:</strong> Import teams from Team Balancer or add manually</div>
+                                <div class="mb-2">📋 <strong>Step 1:</strong> Select a saved team configuration from the dropdown above</div>
                                 <div class="mb-2">🏆 <strong>Step 2:</strong> Choose tournament format and create tournament</div>
                                 <div class="mb-2">⚔️ <strong>Step 3:</strong> Manage matches and track results</div>
                             </div>

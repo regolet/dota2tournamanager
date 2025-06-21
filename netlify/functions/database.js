@@ -127,6 +127,27 @@ async function initializeDatabase() {
       )
     `;
 
+    // Create teams table for storing generated team configurations
+    await sql`
+      CREATE TABLE IF NOT EXISTS teams (
+        id SERIAL PRIMARY KEY,
+        team_set_id VARCHAR(255) NOT NULL,
+        admin_user_id VARCHAR(255) NOT NULL,
+        admin_username VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        balance_method VARCHAR(100) NOT NULL DEFAULT 'highRanked',
+        total_teams INTEGER NOT NULL DEFAULT 0,
+        total_players INTEGER NOT NULL DEFAULT 0,
+        average_mmr INTEGER DEFAULT 0,
+        registration_session_id VARCHAR(255),
+        teams_data JSONB NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     // Insert default registration settings if table is empty
     const settingsCount = await sql`SELECT COUNT(*) as count FROM registration_settings`;
     if (settingsCount[0].count == 0) {
@@ -205,6 +226,12 @@ async function createBasicIndexes() {
     // Admin sessions indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_user ON admin_sessions(user_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires ON admin_sessions(expires_at)`;
+    
+    // Teams table indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_teams_admin_user ON teams(admin_user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_teams_set_id ON teams(team_set_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_teams_active ON teams(is_active)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_teams_session ON teams(registration_session_id)`;
     
     console.log('Basic database indexes created successfully');
     
@@ -1362,5 +1389,162 @@ export async function deleteAdminUser(userId) {
   } catch (error) {
     console.error('Error deleting admin user:', error);
     return { success: false, message: 'Error deleting user' };
+  }
+}
+
+// Teams management operations
+export async function saveTeamConfiguration(adminUserId, adminUsername, teamData) {
+  try {
+    await initializeDatabase();
+    
+    const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    await sql`
+      INSERT INTO teams (
+        team_set_id, admin_user_id, admin_username, title, description, 
+        balance_method, total_teams, total_players, average_mmr, 
+        registration_session_id, teams_data
+      ) VALUES (
+        ${teamSetId}, ${adminUserId}, ${adminUsername}, ${teamData.title}, 
+        ${teamData.description || ''}, ${teamData.balanceMethod}, 
+        ${teamData.totalTeams}, ${teamData.totalPlayers}, ${teamData.averageMmr},
+        ${teamData.registrationSessionId || null}, ${JSON.stringify(teamData.teams)}
+      )
+    `;
+    
+    return { success: true, teamSetId };
+  } catch (error) {
+    console.error('Error saving team configuration:', error);
+    return { success: false, message: 'Error saving team configuration' };
+  }
+}
+
+export async function getTeamConfigurations(adminUserId = null) {
+  try {
+    await initializeDatabase();
+    
+    let teams;
+    if (adminUserId) {
+      teams = await sql`
+        SELECT * FROM teams 
+        WHERE admin_user_id = ${adminUserId} AND is_active = true
+        ORDER BY created_at DESC
+      `;
+    } else {
+      teams = await sql`
+        SELECT * FROM teams 
+        WHERE is_active = true
+        ORDER BY created_at DESC
+      `;
+    }
+    
+    return teams.map(team => ({
+      id: team.id,
+      teamSetId: team.team_set_id,
+      adminUserId: team.admin_user_id,
+      adminUsername: team.admin_username,
+      title: team.title,
+      description: team.description,
+      balanceMethod: team.balance_method,
+      totalTeams: team.total_teams,
+      totalPlayers: team.total_players,
+      averageMmr: team.average_mmr,
+      registrationSessionId: team.registration_session_id,
+      teams: JSON.parse(team.teams_data),
+      createdAt: team.created_at,
+      updatedAt: team.updated_at
+    }));
+  } catch (error) {
+    console.error('Error getting team configurations:', error);
+    return [];
+  }
+}
+
+export async function getTeamConfigurationById(teamSetId) {
+  try {
+    await initializeDatabase();
+    
+    const teams = await sql`
+      SELECT * FROM teams 
+      WHERE team_set_id = ${teamSetId} AND is_active = true
+    `;
+    
+    if (teams.length === 0) {
+      return null;
+    }
+    
+    const team = teams[0];
+    return {
+      id: team.id,
+      teamSetId: team.team_set_id,
+      adminUserId: team.admin_user_id,
+      adminUsername: team.admin_username,
+      title: team.title,
+      description: team.description,
+      balanceMethod: team.balance_method,
+      totalTeams: team.total_teams,
+      totalPlayers: team.total_players,
+      averageMmr: team.average_mmr,
+      registrationSessionId: team.registration_session_id,
+      teams: JSON.parse(team.teams_data),
+      createdAt: team.created_at,
+      updatedAt: team.updated_at
+    };
+  } catch (error) {
+    console.error('Error getting team configuration:', error);
+    return null;
+  }
+}
+
+export async function updateTeamConfiguration(teamSetId, updates) {
+  try {
+    await initializeDatabase();
+    
+    const updateFields = {};
+    if (updates.title !== undefined) updateFields.title = updates.title;
+    if (updates.description !== undefined) updateFields.description = updates.description;
+    if (updates.isActive !== undefined) updateFields.is_active = updates.isActive;
+    if (updates.teams !== undefined) updateFields.teams_data = JSON.stringify(updates.teams);
+    
+    if (Object.keys(updateFields).length === 0) {
+      return { success: false, message: 'No fields to update' };
+    }
+    
+    // Perform individual updates
+    if (updateFields.title !== undefined) {
+      await sql`UPDATE teams SET title = ${updateFields.title}, updated_at = NOW() WHERE team_set_id = ${teamSetId}`;
+    }
+    if (updateFields.description !== undefined) {
+      await sql`UPDATE teams SET description = ${updateFields.description}, updated_at = NOW() WHERE team_set_id = ${teamSetId}`;
+    }
+    if (updateFields.is_active !== undefined) {
+      await sql`UPDATE teams SET is_active = ${updateFields.is_active}, updated_at = NOW() WHERE team_set_id = ${teamSetId}`;
+    }
+    if (updateFields.teams_data !== undefined) {
+      await sql`UPDATE teams SET teams_data = ${updateFields.teams_data}, updated_at = NOW() WHERE team_set_id = ${teamSetId}`;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating team configuration:', error);
+    return { success: false, message: 'Error updating team configuration' };
+  }
+}
+
+export async function deleteTeamConfiguration(teamSetId) {
+  try {
+    await initializeDatabase();
+    
+    // Soft delete - deactivate instead of deleting
+    await sql`
+      UPDATE teams 
+      SET is_active = false, updated_at = NOW() 
+      WHERE team_set_id = ${teamSetId}
+    `;
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting team configuration:', error);
+    return { success: false, message: 'Error deleting team configuration' };
   }
 } 

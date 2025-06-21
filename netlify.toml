@@ -81,6 +81,11 @@
   to = "/.netlify/functions/change-password"
   status = 200
 
+[[redirects]]
+  from = "/admin/api/teams"
+  to = "/.netlify/functions/teams"
+  status = 200
+
 [functions]
   node_bundler = "esbuild"
 

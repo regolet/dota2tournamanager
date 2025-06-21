@@ -360,6 +360,15 @@ function setupBalancerButtons() {
         exportTeamsBtn.removeAttribute('onclick');
         exportTeamsBtn.addEventListener('click', exportTeams);
     }
+
+    // Save Teams button
+    const saveTeamsBtn = document.getElementById('save-teams') || 
+                        document.getElementById('save-teams-btn') || 
+                        document.querySelector('[onclick="saveTeams()"]');
+    if (saveTeamsBtn) {
+        saveTeamsBtn.removeAttribute('onclick');
+        saveTeamsBtn.addEventListener('click', saveTeams);
+    }
 }
 
 /**
@@ -616,7 +625,7 @@ function autoBalance() {
 
         // Get balance settings
         const teamSizeSelect = document.getElementById('team-size');
-        const balanceMethodSelect = document.getElementById('balance-type'); // Fixed ID to match HTML
+        const balanceMethodSelect = document.getElementById('balance-type');
         
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
@@ -1578,6 +1587,86 @@ function exportTeams() {
 }
 
 /**
+ * Save teams to database for tournament bracket use
+ */
+async function saveTeams() {
+    if (!state.balancedTeams || state.balancedTeams.length === 0) {
+        showNotification('No teams to save', 'warning');
+        return;
+    }
+
+    // Show save dialog
+    const title = prompt('Enter a name for this team configuration:', 
+        `${state.registrationSessions.find(s => s.sessionId === state.currentSessionId)?.title || 'Tournament'} Teams`);
+    
+    if (!title) {
+        return; // User cancelled
+    }
+
+    try {
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        if (!sessionId) {
+            showNotification('Session expired. Please login again.', 'error');
+            return;
+        }
+
+        // Calculate team statistics
+        const totalPlayers = state.balancedTeams.reduce((sum, team) => sum + team.players.length, 0);
+        const allMmrs = state.balancedTeams.flatMap(team => team.players.map(p => p.peakmmr || 0));
+        const averageMmr = allMmrs.length > 0 ? Math.round(allMmrs.reduce((sum, mmr) => sum + mmr, 0) / allMmrs.length) : 0;
+
+        // Get balance method from current settings
+        const balanceMethodSelect = document.getElementById('balance-type');
+        const balanceMethod = balanceMethodSelect ? balanceMethodSelect.value : 'highRanked';
+
+        const teamData = {
+            title: title.trim(),
+            description: `Teams generated on ${new Date().toLocaleDateString()} using ${balanceMethod} method`,
+            balanceMethod: balanceMethod,
+            totalTeams: state.balancedTeams.length,
+            totalPlayers: totalPlayers,
+            averageMmr: averageMmr,
+            registrationSessionId: state.currentSessionId,
+            teams: state.balancedTeams.map((team, index) => ({
+                teamNumber: index + 1,
+                name: `Team ${index + 1}`,
+                totalMmr: team.totalMmr,
+                averageMmr: Math.round(team.totalMmr / team.players.length),
+                players: team.players.map(player => ({
+                    id: player.id,
+                    name: player.name,
+                    dota2id: player.dota2id,
+                    peakmmr: player.peakmmr || 0,
+                    isManual: player.isManual || false
+                }))
+            }))
+        };
+
+        const response = await fetch('/admin/api/teams', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionId}`
+            },
+            body: JSON.stringify(teamData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification(`Teams saved successfully as "${title}"`, 'success');
+        } else {
+            showNotification(result.error || 'Failed to save teams', 'error');
+        }
+
+    } catch (error) {
+        console.error('Error saving teams:', error);
+        showNotification('Error saving teams to database', 'error');
+    }
+}
+
+/**
  * Setup listener for registration updates
  * This allows the team balancer to refresh when registration settings change
  */
@@ -1634,7 +1723,8 @@ window.teamBalancerModule = {
     loadPlayersForBalancer,
     autoBalance,
     clearTeams,
-    exportTeams
+    exportTeams,
+    saveTeams
 };
 
     // Expose init function globally for navigation system
@@ -1645,5 +1735,6 @@ window.initTeamBalancer = initTeamBalancer;
     window.autoBalance = autoBalance;
     window.clearTeams = clearTeams;
     window.exportTeams = exportTeams;
+    window.saveTeams = saveTeams;
 
 })();

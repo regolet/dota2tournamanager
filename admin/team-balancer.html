@@ -112,6 +112,9 @@
                         <i class="bi bi-people-fill me-2"></i>Team Generator
                     </h3>
                     <div class="btn-group" role="group">
+                        <button id="save-teams" class="btn btn-sm btn-outline-success" title="Save Teams">
+                            <i class="bi bi-floppy"></i>
+                        </button>
                         <button id="export-teams" class="btn btn-sm btn-outline-secondary" title="Export Teams">
                             <i class="bi bi-download"></i>
                         </button>
@@ -310,6 +313,19 @@
                     window.exportTeams();
                 } else {
                     console.error('exportTeams function not found');
+                }
+            });
+        }
+
+        // Backup event listener for save teams button
+        const saveBtn = document.getElementById('save-teams');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                console.log('Save teams button clicked'); // Debug log
+                if (window.saveTeams) {
+                    window.saveTeams();
+                } else {
+                    console.error('saveTeams function not found');
                 }
             });
         }
