@@ -1678,4 +1678,25 @@ export async function getTournament(tournamentId) {
     console.error('Error getting tournament:', error);
     return null;
   }
+}
+
+export async function getTournaments() {
+  try {
+    await initializeDatabase();
+    
+    const tournaments = await sql`
+      SELECT 
+        id, 
+        tournament_data->>'name' as name,
+        created_at
+      FROM tournaments
+      WHERE is_active = true
+      ORDER BY created_at DESC
+    `;
+    
+    return tournaments;
+  } catch (error) {
+    console.error('Error getting tournaments list:', error);
+    return [];
+  }
 } 

@@ -1,5 +1,5 @@
 // Function to handle tournament data operations (GET, POST)
-import { saveTournament, getTournament, validateSession } from './database.js';
+import { saveTournament, getTournament, getTournaments, validateSession } from './database.js';
 
 export async function handler(event, context) {
     const headers = {
@@ -57,26 +57,30 @@ export async function handler(event, context) {
         }
 
         if (event.httpMethod === 'GET') {
-            const tournamentId = event.queryStringParameters.id;
-            if (!tournamentId) {
-                return {
-                    statusCode: 400,
-                    body: JSON.stringify({ message: 'Tournament ID is required' }),
-                    headers
-                };
-            }
-
-            const tournament = await getTournament(tournamentId);
-            if (tournament) {
+            const tournamentId = event.queryStringParameters?.id;
+            
+            // If ID is provided, get a specific tournament
+            if (tournamentId) {
+                const tournament = await getTournament(tournamentId);
+                if (tournament) {
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify(tournament),
+                        headers
+                    };
+                } else {
+                    return {
+                        statusCode: 404,
+                        body: JSON.stringify({ message: 'Tournament not found' }),
+                        headers
+                    };
+                }
+            } else {
+                // If no ID, get the list of all tournaments
+                const tournaments = await getTournaments();
                 return {
                     statusCode: 200,
-                    body: JSON.stringify(tournament),
-                    headers
-                };
-            } else {
-                return {
-                    statusCode: 404,
-                    body: JSON.stringify({ message: 'Tournament not found' }),
+                    body: JSON.stringify(tournaments),
                     headers
                 };
             }
