@@ -95,8 +95,11 @@ async function initTeamBalancer() {
         // Load registration sessions
         await loadRegistrationSessions();
         
-        // Setup event listeners
+        // Setup event listeners for static elements
         setupTeamBalancerEventListeners();
+        
+        // Setup initial state for dynamic buttons (will be re-run)
+        setupBalancerButtons();
         
         // Reserved players will be initialized when needed during team generation
         
@@ -1128,7 +1131,6 @@ function displayBalancedTeams() {
                           document.querySelector('.teams-container');
     
     if (!teamsContainer) {
-        console.error('Teams container not found - looking for teams-display');
         return;
     }
     
@@ -1149,9 +1151,17 @@ function displayBalancedTeams() {
                     <i class="bi bi-people-fill me-2"></i>
                     Balanced Teams (${state.balancedTeams.length})
                 </h5>
-                <button class="btn btn-sm btn-outline-secondary" onclick="exportTeams()">
-                    <i class="bi bi-download me-1"></i>Export Teams
-                </button>
+                <div class="btn-group" role="group">
+                    <button id="save-teams-btn" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-floppy me-1"></i>Save
+                    </button>
+                    <button id="export-teams-btn" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-download me-1"></i>Export
+                    </button>
+                    <button id="clear-teams-btn" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>Clear
+                    </button>
+                </div>
             </div>
             
             <!-- Compact Teams Table -->
@@ -1212,11 +1222,8 @@ function displayBalancedTeams() {
     setTimeout(() => {
         teamsContainer.innerHTML = teamsHtml;
         
-        // Enable export button if teams exist
-        const exportBtn = document.getElementById('export-teams');
-        if (exportBtn) {
-            exportBtn.disabled = false;
-        }
+        // Re-attach event listeners to the new buttons
+        setupBalancerButtons();
     }, 10);
 }
 
