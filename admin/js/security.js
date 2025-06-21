@@ -15,8 +15,8 @@
         // Monitor for security threats
         setupThreatMonitoring();
         
-        // Secure local storage
-        setupSecureStorage();
+        // Secure local storage - temporarily disabled to prevent session interference
+        // setupSecureStorage();
         
         console.log('🔒 Security features initialized');
     }
@@ -152,11 +152,13 @@
      * Secure storage implementation
      */
     function setupSecureStorage() {
-        // Override localStorage to add encryption for sensitive data
+        // Note: Session management (adminSessionId) is handled separately
+        // Only encrypt non-session sensitive data to avoid interference
         const originalSetItem = localStorage.setItem;
         const originalGetItem = localStorage.getItem;
         
-        const sensitiveKeys = ['adminSessionId', 'userToken', 'sessionData'];
+        // Removed adminSessionId from sensitive keys to avoid session interference
+        const sensitiveKeys = ['userToken', 'sessionData', 'creditCardInfo'];
         
         localStorage.setItem = function(key, value) {
             if (sensitiveKeys.includes(key)) {
@@ -180,9 +182,9 @@
             return value;
         };
         
-        // Auto-clear sensitive data on page unload
+        // Auto-clear sensitive data on page unload (but preserve session data)
         window.addEventListener('beforeunload', function() {
-            // Clear sensitive data after some inactivity
+            // Clear non-session sensitive data after some inactivity
             setTimeout(() => {
                 sensitiveKeys.forEach(key => {
                     if (localStorage.getItem(key)) {

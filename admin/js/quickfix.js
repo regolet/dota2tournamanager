@@ -14,13 +14,19 @@
         }
     };
 
-    // Fix for security.js localStorage access - prevent decode errors
+    // Fix for localStorage access - ensure session data is handled properly
     const originalGetItem = localStorage.getItem;
+    const originalSetItem = localStorage.setItem;
+    
+    // Session-related keys that should never be obfuscated
+    const sessionKeys = ['adminSessionId', 'adminUser', 'adminSessionExpires', 'adminLoginTimestamp'];
+    
+    // Override localStorage to prevent any interference with session data
     localStorage.getItem = function(key) {
         try {
             const value = originalGetItem.call(this, key);
-            // For session-related keys, return the raw value without decoding
-            if (key === 'adminSessionId' || key === 'adminUser' || key === 'adminSessionExpires') {
+            // For session-related keys, always return the raw value
+            if (sessionKeys.includes(key)) {
                 return value;
             }
             return value;
@@ -29,11 +35,23 @@
             return null;
         }
     };
+    
+    localStorage.setItem = function(key, value) {
+        try {
+            // For session-related keys, store directly without any modification
+            if (sessionKeys.includes(key)) {
+                return originalSetItem.call(this, key, value);
+            }
+            return originalSetItem.call(this, key, value);
+        } catch (error) {
+            console.warn('Failed to set stored value for key:', key);
+        }
+    };
 
     // Override any decode attempts for session data
     window.decodeStoredValue = function(key) {
-        if (key === 'adminSessionId') {
-            return localStorage.getItem('adminSessionId');
+        if (sessionKeys.includes(key)) {
+            return originalGetItem.call(localStorage, key);
         }
         return localStorage.getItem(key);
     };
