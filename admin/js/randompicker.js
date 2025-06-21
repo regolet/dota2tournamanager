@@ -193,6 +193,15 @@ async function initRandomPicker() {
         setupRandomPickerRegistrationListener();
         
         console.log('Random picker initialized successfully');
+        
+        // Enable navigation tabs now that random picker is loaded
+        if (typeof enableNavigationTab === 'function') {
+            enableNavigationTab('random-picker-tab');
+            // Trigger completion check for all tabs
+            if (typeof completeNavigationInitialization === 'function') {
+                completeNavigationInitialization();
+            }
+        }
     } catch (error) {
         console.error('Error initializing random picker:', error);
         showNotification('Failed to initialize random picker', 'error');
