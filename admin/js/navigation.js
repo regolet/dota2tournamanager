@@ -69,6 +69,27 @@ function initNavigationLoadingState() {
 }
 
 /**
+ * Show loading state for a specific tab during initialization
+ */
+function showTabLoadingState(tabId, loadingText = 'Initializing...') {
+    const tab = document.getElementById(tabId);
+    if (!tab) return;
+    
+    // Disable the tab temporarily
+    tab.classList.add('loading');
+    tab.style.opacity = '0.6';
+    tab.style.pointerEvents = 'none';
+    tab.title = loadingText;
+    
+    // Show loading spinner on icon
+    const icon = tab.querySelector('i');
+    if (icon) {
+        icon.dataset.originalClass = icon.className;
+        icon.className = 'bi bi-hourglass-split me-2 spinner';
+    }
+}
+
+/**
  * Enable a specific navigation tab when its module is ready
  */
 function enableNavigationTab(tabId, originalIcon = null) {
@@ -78,7 +99,7 @@ function enableNavigationTab(tabId, originalIcon = null) {
     console.log(`✅ Enabling navigation tab: ${tabId}`);
     
     // Restore functionality
-    tab.classList.remove('disabled');
+    tab.classList.remove('disabled', 'loading');
     tab.classList.add('ready');
     tab.style.opacity = '1';
     tab.style.pointerEvents = 'auto';
@@ -96,8 +117,12 @@ function enableNavigationTab(tabId, originalIcon = null) {
     
     // Restore original icon
     const icon = tab.querySelector('i');
-    if (icon && originalIcon) {
-        icon.className = originalIcon;
+    if (icon) {
+        if (originalIcon) {
+            icon.className = originalIcon;
+        } else if (icon.dataset.originalClass) {
+            icon.className = icon.dataset.originalClass;
+        }
         icon.classList.remove('spinner');
     }
     
@@ -476,6 +501,9 @@ async function loadContentFromFile(filename, sectionId, title, initFunc = null) 
  * Loads and displays the team balancer section
  */
 async function loadTeamBalancer() {
+    // Show loading state for this tab
+    showTabLoadingState('team-balancer-tab', 'Loading Team Balancer...');
+    
     // Loading Team Balancer
     
     // Clean up registration resources if switching from registration tab
@@ -487,13 +515,23 @@ async function loadTeamBalancer() {
     updateActiveTab('team-balancer');
 
     // Load team balancer template and JavaScript
-    return await loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
+    const result = await loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
+    
+        // Ensure tab is enabled after successful load
+    if (result) {
+        enableNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+    }
+    
+    return result;
 }
 
 /**
  * Loads and displays the random picker section
  */
 async function loadRandomPicker() {
+    // Show loading state for this tab
+    showTabLoadingState('random-picker-tab', 'Loading Random Picker...');
+    
     // Loading Random Picker
     
     // Clean up registration resources if switching from registration tab
@@ -505,14 +543,22 @@ async function loadRandomPicker() {
     updateActiveTab('random-picker');
 
     // Load random picker template and JavaScript
-    return loadTabContent('./random-picker.html', 'main-content', '/admin/js/randompicker.js');
+    const result = await loadTabContent('./random-picker.html', 'main-content', '/admin/js/randompicker.js');
+    
+    // Ensure tab is enabled after successful load
+    if (result) {
+        enableNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
+    }
+    
+    return result;
 }
 
 /**
  * Loads and displays the masterlist section
  */
 async function loadMasterlist() {
-    
+    // Show loading state for this tab
+    showTabLoadingState('masterlist-tab', 'Loading Masterlist...');
     
     // Loading Masterlist
     
@@ -525,13 +571,23 @@ async function loadMasterlist() {
     updateActiveTab('masterlist');
 
     // Load masterlist template and JavaScript
-    return loadTabContent('./masterlist.html', 'main-content', '/admin/js/masterlist.js');
+    const result = await loadTabContent('./masterlist.html', 'main-content', '/admin/js/masterlist.js');
+    
+    // Ensure tab is enabled after successful load
+    if (result) {
+        enableNavigationTab('masterlist-tab', 'bi bi-shield-check me-1');
+    }
+    
+    return result;
 }
 
 /**
  * Loads and displays the player list section
  */
 async function loadPlayerList() {
+    // Show loading state for this tab
+    showTabLoadingState('player-list-tab', 'Loading Player List...');
+    
     // Loading Player List
     
     // Clean up registration resources if switching from registration tab
@@ -546,11 +602,15 @@ async function loadPlayerList() {
     const result = await loadTabContent('./player-list.html', 'main-content', '/admin/js/playerList.js');
     
     // After template and script are loaded, initialize the player list
-    if (result && typeof window.initPlayerListWhenReady === 'function') {
-        window.initPlayerListWhenReady();
-    } else if (typeof window.initPlayerList === 'function') {
-        // Fallback to direct initialization with delay
-        setTimeout(window.initPlayerList, 50);
+    if (result) {
+        if (typeof window.initPlayerListWhenReady === 'function') {
+            await window.initPlayerListWhenReady();
+        } else if (typeof window.initPlayerList === 'function') {
+            // Fallback to direct initialization with delay
+            await new Promise(resolve => setTimeout(resolve, 50));
+            await window.initPlayerList();
+        }
+        enableNavigationTab('player-list-tab', 'bi bi-list-ul me-1');
     }
     
     return result;
@@ -561,6 +621,9 @@ async function loadPlayerList() {
  */
 async function loadRegistration() {
     try {
+        // Show loading state for this tab
+        showTabLoadingState('registration-tab', 'Loading Registration Manager...');
+        
         console.log('Loading Registration Manager');
 
         // Update active tab immediately
@@ -576,13 +639,23 @@ async function loadRegistration() {
             if (typeof window.initRegistration === 'function') {
                 await window.initRegistration();
             }
+            enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
             return true;
         }
 
         // Load registration template and JavaScript
-        return await loadTabContent('./registration.html', 'main-content', '/admin/js/registration.js');
+        const result = await loadTabContent('./registration.html', 'main-content', '/admin/js/registration.js');
+        
+        // Ensure tab is enabled after successful load
+        if (result) {
+            enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
+        }
+        
+        return result;
     } catch (error) {
         console.error('Error loading registration:', error);
+        // Still enable the tab even if there was an error
+        enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
         return false;
     }
 }
@@ -591,6 +664,9 @@ async function loadRegistration() {
  * Loads and displays the tournament bracket section
  */
 async function loadTournamentBracket() {
+    // Show loading state for this tab
+    showTabLoadingState('tournament-bracket-tab', 'Loading Tournament Bracket...');
+    
     // Loading Tournament Bracket
     
     // Clean up registration resources if switching from registration tab
@@ -615,6 +691,8 @@ async function loadTournamentBracket() {
                 completeNavigationInitialization();
             } else {
                 console.log('⚠️ Tournament bracket page function not available yet');
+                // Still enable the tab even if initialization failed
+                enableNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
             }
         }, 100);
     }
@@ -997,8 +1075,7 @@ async function initializeModule(moduleFileName) {
             case 'teamBalancer':
                 if (typeof window.initTeamBalancer === 'function') {
                     await window.initTeamBalancer();
-                    enableNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
-                    // Team Balancer initialized
+                    // Team Balancer initialized (tab will be enabled by loadTeamBalancer)
                 } else {
                     // initTeamBalancer function not found
                 }
@@ -1007,8 +1084,7 @@ async function initializeModule(moduleFileName) {
             case 'randompicker':
                 if (typeof window.initRandomPicker === 'function') {
                     await window.initRandomPicker();
-                    enableNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
-                    // Random Picker initialized
+                    // Random Picker initialized (tab will be enabled by loadRandomPicker)
                 } else {
                     // initRandomPicker function not found
                 }
@@ -1017,8 +1093,7 @@ async function initializeModule(moduleFileName) {
             case 'playerList':
                 if (typeof window.initPlayerList === 'function') {
                     await window.initPlayerList();
-                    enableNavigationTab('player-list-tab', 'bi bi-list-ul me-1');
-                    // Player List initialized
+                    // Player List initialized (tab will be enabled by loadPlayerList)
                 } else {
                     // initPlayerList function not found
                 }
@@ -1027,8 +1102,7 @@ async function initializeModule(moduleFileName) {
             case 'registration':
                 if (typeof window.initRegistration === 'function') {
                     await window.initRegistration();
-                    enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
-                    // Registration initialized
+                    // Registration initialized (tab will be enabled by loadRegistration)
                 } else {
                     // initRegistration function not found
                 }
@@ -1037,8 +1111,7 @@ async function initializeModule(moduleFileName) {
             case 'masterlist':
                 if (typeof window.initMasterlist === 'function') {
                     await window.initMasterlist();
-                    enableNavigationTab('masterlist-tab', 'bi bi-shield-check me-1');
-                    // Masterlist initialized
+                    // Masterlist initialized (tab will be enabled by loadMasterlist)
                 } else {
                     // initMasterlist function not found
                 }
@@ -1046,15 +1119,12 @@ async function initializeModule(moduleFileName) {
                 
             case 'tournamentBrackets':
                 // Tournament bracket is handled separately in loadTournamentBracket
-                enableNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
+                // Tab will be enabled by loadTournamentBracket function
                 break;
                 
             default:
                 // No specific initialization for module
         }
-        
-        // Check if all tabs are now ready
-        completeNavigationInitialization();
     } catch (error) {
         // Error initializing module
     }
