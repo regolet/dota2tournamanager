@@ -57,8 +57,10 @@
             }
         });
 
-        // Check for dangerous content
-        if (element.innerHTML && /<script|javascript:|vbscript:|on\w+=/i.test(element.innerHTML)) {
+        // Check for dangerous content (but ignore our own security modal)
+        if (element.innerHTML && 
+            !element.id?.includes('security-alert') && 
+            /<script|javascript:|vbscript:|on\w+=/i.test(element.innerHTML)) {
             console.warn('🚨 Potential XSS detected in element:', element);
             element.innerHTML = element.textContent; // Convert to safe text
         }
@@ -94,12 +96,13 @@
         let suspiciousActivities = 0;
         const maxSuspiciousActivities = 10;
         
-        // Monitor console usage (potential devtools abuse)
+        // Monitor console usage (potential devtools abuse) - increased threshold for debug mode
         let consoleCount = 0;
         const originalConsoleLog = console.log;
         console.log = function(...args) {
             consoleCount++;
-            if (consoleCount > 20) {
+            // Increased threshold to 100 to account for debug logging
+            if (consoleCount > 100) {
                 reportSuspiciousActivity('excessive_console_usage');
             }
             return originalConsoleLog.apply(this, args);
@@ -234,7 +237,10 @@
             `;
             document.body.appendChild(alertModal);
         } else {
-            document.getElementById('security-alert-message').textContent = message;
+            const messageElement = document.getElementById('security-alert-message');
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
         }
         
         // Show modal

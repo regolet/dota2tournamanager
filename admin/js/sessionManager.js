@@ -2,8 +2,8 @@
 (function() {
     "use strict";
 
-    // Debug flag
-    let debugMode = true;
+    // Debug flag - set to false now that session is working
+    let debugMode = false;
     
     function debugLog(...args) {
         if (debugMode) {
@@ -212,6 +212,13 @@
             }
         },
         getUser: () => {
+            try {
+                return JSON.parse(localStorage.getItem("adminUser") || "{}");
+            } catch {
+                return {};
+            }
+        },
+        getUserInfo: () => {
             try {
                 return JSON.parse(localStorage.getItem("adminUser") || "{}");
             } catch {
