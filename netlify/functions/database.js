@@ -1445,15 +1445,24 @@ export async function getTeamConfigurations(adminUserId = null) {
   try {
     await initializeDatabase();
     
-    console.log(`[DB] Getting all team configs (bypassing admin ID AND is_active for debugging)`);
+    let teams;
+    if (adminUserId) {
+      console.log(`[DB] Getting team configs for admin_user_id: ${adminUserId}`);
+      teams = await sql`
+        SELECT * FROM teams 
+        WHERE admin_user_id = ${adminUserId} AND is_active = true
+        ORDER BY created_at DESC
+      `;
+    } else {
+      console.log(`[DB] Getting all active team configs (no admin_user_id provided)`);
+      teams = await sql`
+        SELECT * FROM teams 
+        WHERE is_active = true
+        ORDER BY created_at DESC
+      `;
+    }
     
-    // DEBUG: Temporarily remove WHERE clause to see if any teams exist at all
-    let teams = await sql`
-      SELECT * FROM teams 
-      ORDER BY created_at DESC
-    `;
-    
-    console.log(`[DB] Found ${teams.length} total team configurations (active and inactive)`);
+    console.log(`[DB] Found ${teams.length} team configurations matching query.`);
     
     return teams.map(team => ({
       id: team.id,
@@ -1467,14 +1476,13 @@ export async function getTeamConfigurations(adminUserId = null) {
       totalPlayers: team.total_players,
       averageMmr: team.average_mmr,
       registrationSessionId: team.registration_session_id,
-      teams: team.teams_data ? JSON.parse(team.teams_data) : [], // Add defensive parsing
-      isActive: team.is_active, // Include status for debugging
+      teams: team.teams_data ? JSON.parse(team.teams_data) : [],
       createdAt: team.created_at,
       updatedAt: team.updated_at
     }));
   } catch (error) {
-    console.error('[DB] Error getting team configurations:', error);
-    return [];
+    console.error('[DB] CRITICAL: Error getting team configurations:', error);
+    return []; // Return empty on error to prevent frontend crash
   }
 }
 

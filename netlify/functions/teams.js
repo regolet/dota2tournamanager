@@ -150,9 +150,7 @@ async function handleGet(event, adminUserId, headers) {
 
 async function handlePost(event, adminUserId, adminUsername, headers) {
   try {
-    console.log('[Teams API] Received POST request to save teams.');
     const teamData = JSON.parse(event.body);
-    console.log('[Teams API] Parsed team data:', JSON.stringify(teamData, null, 2));
     
     // Validate required fields
     if (!teamData.title || !teamData.teams || !Array.isArray(teamData.teams)) {
@@ -180,9 +178,7 @@ async function handlePost(event, adminUserId, adminUsername, headers) {
       teams: teamData.teams
     };
 
-    console.log('[Teams API] Calling saveTeamConfiguration with data:', JSON.stringify(teamConfigData, null, 2));
     const result = await saveTeamConfiguration(adminUserId, adminUsername, teamConfigData);
-    console.log('[Teams API] Result from saveTeamConfiguration:', result);
     
     if (result.success) {
       return {
