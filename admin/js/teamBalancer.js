@@ -103,10 +103,19 @@ async function initTeamBalancer() {
         // Listen for registration updates to refresh player data
         setupTeamBalancerRegistrationListener();
         
+        // Enable the tab after all initialization is complete
+        if (typeof window.enableOnlyNavigationTab === 'function') {
+            window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+        }
 
     } catch (error) {
         console.error('Error initializing team balancer:', error);
         showNotification('Failed to initialize team balancer', 'error');
+        
+        // Still enable the tab even if there was an error
+        if (typeof window.enableOnlyNavigationTab === 'function') {
+            window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+        }
     }
 }
 
@@ -220,6 +229,11 @@ function updateSessionSelector() {
         
         // Load players for the selected session
         loadPlayersForBalancer();
+    } else {
+        // No sessions available, still enable the tab
+        if (typeof window.enableOnlyNavigationTab === 'function') {
+            window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+        }
     }
 }
 
@@ -479,16 +493,29 @@ async function loadPlayersForBalancer() {
                     showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
                 }
                 
-                // Players are loaded - tab will be enabled when clicked
+                // Enable the tab after data loading is complete
+                if (typeof window.enableOnlyNavigationTab === 'function') {
+                    window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+                }
             } else {
                 console.error('Failed to load players:', data.message || 'Unknown error');
                 showNotification(data.message || 'Failed to load players', 'error');
                 state.availablePlayers = [];
                 displayPlayersForBalancer([]);
+                
+                // Enable the tab even if data loading failed
+                if (typeof window.enableOnlyNavigationTab === 'function') {
+                    window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+                }
             }
         } catch (fetchError) {
             console.error('Network error loading players:', fetchError);
             showNotification('Network error loading players', 'error');
+            
+            // Enable the tab even if network error occurred
+            if (typeof window.enableOnlyNavigationTab === 'function') {
+                window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+            }
         } finally {
             if (loadingElement) {
                 loadingElement.style.display = 'none';
@@ -498,6 +525,11 @@ async function loadPlayersForBalancer() {
     } catch (error) {
         console.error('Error in loadPlayersForBalancer:', error);
         showNotification('Error loading players', 'error');
+        
+        // Enable the tab even if there was a general error
+        if (typeof window.enableOnlyNavigationTab === 'function') {
+            window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+        }
     }
 }
 
