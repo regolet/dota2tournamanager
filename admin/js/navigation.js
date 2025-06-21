@@ -12,159 +12,35 @@ const navigationState = {
 };
 
 /**
- * Initialize navigation loading state - disable all tabs until system is ready
+ * Initialize navigation loading state - simplified version
  */
 function initNavigationLoadingState() {
-    console.log('🔄 Initializing navigation loading state...');
-    
-    // Get all navigation tabs
-    const navTabs = document.querySelectorAll('.navbar-nav .nav-link');
-    
-    navTabs.forEach(tab => {
-        // Store original onclick handlers
-        if (tab.onclick) {
-            tab.dataset.originalOnclick = tab.onclick.toString();
-        }
-        if (tab.href && tab.href.startsWith('javascript:')) {
-            tab.dataset.originalHref = tab.href;
-            tab.href = 'javascript:void(0)'; // Disable the javascript link
-        }
-        
-        // Disable the tab
-        tab.classList.add('disabled');
-        tab.style.opacity = '0.5';
-        tab.style.pointerEvents = 'none';
-        tab.title = 'Loading... Please wait';
-        
-        // Add loading indicator
-        const icon = tab.querySelector('i');
-        if (icon) {
-            icon.className = 'bi bi-hourglass-split me-2'; // Loading icon
-            icon.classList.add('spinner');
-        }
-        
-        navigationState.disabledTabs.add(tab.id);
-    });
-    
-    // Add CSS for spinner animation
-    const style = document.createElement('style');
-    style.textContent = `
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .nav-link.disabled {
-            cursor: not-allowed !important;
-        }
-        .nav-link.ready {
-            transition: all 0.3s ease;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    console.log('🚫 Navigation tabs disabled during initialization');
+    // Simplified initialization - no longer disabling tabs
 }
 
 /**
- * Show loading state for a specific tab during initialization
+ * Show loading state for a specific tab during initialization - simplified
  */
 function showTabLoadingState(tabId, loadingText = 'Initializing...') {
-    const tab = document.getElementById(tabId);
-    if (!tab) return;
-    
-    // Disable the tab temporarily
-    tab.classList.add('loading');
-    tab.style.opacity = '0.6';
-    tab.style.pointerEvents = 'none';
-    tab.title = loadingText;
-    
-    // Show loading spinner on icon
-    const icon = tab.querySelector('i');
-    if (icon) {
-        icon.dataset.originalClass = icon.className;
-        icon.className = 'bi bi-hourglass-split me-2 spinner';
-    }
+    // Simplified - no longer showing loading states
 }
 
 /**
- * Disable all navigation tabs
+ * Disable all navigation tabs - simplified
  */
 function disableAllNavigationTabs() {
-    const navTabs = document.querySelectorAll('.navbar-nav .nav-link');
-    
-    navTabs.forEach(tab => {
-        tab.classList.add('disabled');
-        tab.classList.remove('ready');
-        tab.style.opacity = '0.5';
-        tab.style.pointerEvents = 'none';
-        tab.title = 'Loading... Please wait';
-        
-        // Add loading indicator
-        const icon = tab.querySelector('i');
-        if (icon) {
-            // Store original icon if not already stored
-            if (!icon.dataset.originalClass) {
-                icon.dataset.originalClass = icon.className;
-            }
-            icon.className = 'bi bi-hourglass-split me-2 spinner';
-        }
-        
-        navigationState.disabledTabs.add(tab.id);
-        navigationState.readyTabs.delete(tab.id);
-    });
+    // Simplified - no longer disabling tabs
 }
 
 /**
- * Enable only the specified navigation tab
+ * Enable only the specified navigation tab - simplified
  */
 function enableOnlyNavigationTab(tabId, originalIcon = null) {
-    const tab = document.getElementById(tabId);
-    if (!tab) {
-        console.error(`❌ Tab not found: ${tabId}`);
-        return;
-    }
-    
-    console.log(`✅ Enabling navigation tab: ${tabId}`);
-    console.log(`Tab before enabling:`, tab.className, `opacity: ${tab.style.opacity}`, `pointerEvents: ${tab.style.pointerEvents}`);
-    
-    // Enable this specific tab
-    tab.classList.remove('disabled', 'loading');
-    tab.classList.add('ready');
-    tab.style.opacity = '1';
-    tab.style.pointerEvents = 'auto';
-    tab.title = '';
-    
-    // Restore original icon
-    const icon = tab.querySelector('i');
-    if (icon) {
-        if (originalIcon) {
-            icon.className = originalIcon;
-        } else if (icon.dataset.originalClass) {
-            icon.className = icon.dataset.originalClass;
-        } else {
-            // Fallback to get original icon
-            icon.className = getOriginalIconForTab(tabId);
-        }
-        icon.classList.remove('spinner');
-    }
-    
-    navigationState.disabledTabs.delete(tabId);
-    navigationState.readyTabs.add(tabId);
-    
-    console.log(`Tab after enabling:`, tab.className, `opacity: ${tab.style.opacity}`, `pointerEvents: ${tab.style.pointerEvents}`);
-    
-    // Add ready indicator (brief green glow)
-    tab.style.boxShadow = '0 0 8px rgba(25, 135, 84, 0.4)';
-    setTimeout(() => {
-        tab.style.boxShadow = '';
-    }, 2000);
+    // Simplified - no longer enabling/disabling tabs
 }
 
 /**
- * Get the original icon class for a tab
+ * Get the original icon class for a tab - kept for compatibility
  */
 function getOriginalIconForTab(tabId) {
     const iconMap = {
@@ -179,37 +55,21 @@ function getOriginalIconForTab(tabId) {
 }
 
 /**
- * Enable a specific navigation tab (legacy function for backward compatibility)
+ * Enable a specific navigation tab - simplified
  */
 function enableNavigationTab(tabId, originalIcon = null) {
-    // Just call the new function that enables only this tab
-    enableOnlyNavigationTab(tabId, originalIcon);
+    // Simplified - no longer enabling/disabling tabs
 }
 
 /**
- * Complete navigation initialization - system is ready
+ * Complete navigation initialization - simplified
  */
 function completeNavigationInitialization() {
-    console.log('✅ Navigation system ready!');
     navigationState.isInitializing = false;
     
     // Show success message briefly
     if (window.showNotification) {
         window.showNotification('System initialized! Click any tab to access features.', 'success');
-    } else {
-        // Fallback notification
-        console.log('✅ System initialized! Click any tab to access features.');
-        
-        // Show a simple toast notification
-        const toast = document.createElement('div');
-        toast.className = 'alert alert-success position-fixed';
-        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; opacity: 0.9;';
-        toast.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>System ready! Click any tab to access features.';
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
     }
     
     // Enable the appropriate tab after system initialization
@@ -217,7 +77,7 @@ function completeNavigationInitialization() {
 }
 
 /**
- * Enable the active tab after system initialization completes
+ * Enable the active tab after system initialization completes - simplified
  */
 function enableActiveTabAfterInit() {
     // Wait a moment for DOM to be fully ready
@@ -225,9 +85,7 @@ function enableActiveTabAfterInit() {
         const activeTab = document.querySelector('.nav-link.active');
         
         if (activeTab && activeTab.id) {
-            console.log(`🎯 Found active tab after init: ${activeTab.id} - loading and enabling it`);
-            
-            // Load the content for the active tab and enable it
+            // Load the content for the active tab
             switch (activeTab.id) {
                 case 'team-balancer-tab':
                     loadTeamBalancer();
@@ -249,12 +107,10 @@ function enableActiveTabAfterInit() {
                     break;
                 default:
                     // Unknown tab, fallback to team balancer
-                    console.log('🎯 Unknown active tab, loading Team Balancer as fallback');
                     loadTeamBalancer();
             }
         } else {
             // No active tab found, auto-load team balancer
-            console.log('🎯 No active tab found, auto-loading Team Balancer...');
             const teamBalancerTab = document.getElementById('team-balancer-tab');
             if (teamBalancerTab) {
                 teamBalancerTab.click();
@@ -310,7 +166,6 @@ async function setupRoleBasedAccess() {
         const userInfo = await window.sessionManager?.getUserInfo();
         
         if (!userInfo || !userInfo.role) {
-            console.warn('No user role information available');
             return;
         }
         
@@ -402,7 +257,7 @@ async function setupRoleBasedAccess() {
         }
         
     } catch (error) {
-        console.error('Error setting up role-based access:', error);
+        // Silent error handling for role-based access
     }
 }
 
@@ -560,7 +415,6 @@ async function loadContentFromFile(filename, sectionId, title, initFunc = null) 
                     `Failed to load ${title}. ${error.message}`);
             }
         } catch (fallbackError) {
-            console.error('Error loading fallback HTML:', fallbackError);
             showError(mainContent, `Error Loading ${title}`, 
                 `Failed to load ${title}. ${error.message}`);
         }
@@ -575,11 +429,6 @@ async function loadContentFromFile(filename, sectionId, title, initFunc = null) 
  * Loads and displays the team balancer section
  */
 async function loadTeamBalancer() {
-    // Show loading state for this tab
-    showTabLoadingState('team-balancer-tab', 'Loading Team Balancer...');
-    
-    // Loading Team Balancer
-    
     // Clean up registration resources if switching from registration tab
     if (typeof cleanupRegistration === 'function') {
         cleanupRegistration();
@@ -591,11 +440,6 @@ async function loadTeamBalancer() {
     // Load team balancer template and JavaScript
     const result = await loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
     
-        // Ensure tab is enabled after successful load
-    if (result) {
-        enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
-    }
-    
     return result;
 }
 
@@ -603,11 +447,6 @@ async function loadTeamBalancer() {
  * Loads and displays the random picker section
  */
 async function loadRandomPicker() {
-    // Show loading state for this tab
-    showTabLoadingState('random-picker-tab', 'Loading Random Picker...');
-    
-    // Loading Random Picker
-    
     // Clean up registration resources if switching from registration tab
     if (typeof cleanupRegistration === 'function') {
         cleanupRegistration();
@@ -619,11 +458,6 @@ async function loadRandomPicker() {
     // Load random picker template and JavaScript
     const result = await loadTabContent('./random-picker.html', 'main-content', '/admin/js/randompicker.js');
     
-    // Ensure tab is enabled after successful load
-    if (result) {
-        enableOnlyNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
-    }
-    
     return result;
 }
 
@@ -631,11 +465,6 @@ async function loadRandomPicker() {
  * Loads and displays the masterlist section
  */
 async function loadMasterlist() {
-    // Show loading state for this tab
-    showTabLoadingState('masterlist-tab', 'Loading Masterlist...');
-    
-    // Loading Masterlist
-    
     // Clean up registration resources if switching from registration tab
     if (typeof cleanupRegistration === 'function') {
         cleanupRegistration();
@@ -647,11 +476,6 @@ async function loadMasterlist() {
     // Load masterlist template and JavaScript
     const result = await loadTabContent('./masterlist.html', 'main-content', '/admin/js/masterlist.js');
     
-    // Ensure tab is enabled after successful load
-    if (result) {
-        enableOnlyNavigationTab('masterlist-tab', 'bi bi-shield-check me-1');
-    }
-    
     return result;
 }
 
@@ -659,11 +483,6 @@ async function loadMasterlist() {
  * Loads and displays the player list section
  */
 async function loadPlayerList() {
-    // Show loading state for this tab
-    showTabLoadingState('player-list-tab', 'Loading Player List...');
-    
-    // Loading Player List
-    
     // Clean up registration resources if switching from registration tab
     if (typeof cleanupRegistration === 'function') {
         cleanupRegistration();
@@ -684,7 +503,6 @@ async function loadPlayerList() {
             await new Promise(resolve => setTimeout(resolve, 50));
             await window.initPlayerList();
         }
-        enableOnlyNavigationTab('player-list-tab', 'bi bi-list-ul me-1');
     }
     
     return result;
@@ -695,11 +513,6 @@ async function loadPlayerList() {
  */
 async function loadRegistration() {
     try {
-        // Show loading state for this tab
-        showTabLoadingState('registration-tab', 'Loading Registration Manager...');
-        
-        console.log('Loading Registration Manager');
-
         // Update active tab immediately
         updateActiveTab('registration-manager');
 
@@ -708,28 +521,18 @@ async function loadRegistration() {
         const existingContent = mainContent?.querySelector('#registration-manager, .registration-content');
         
         if (existingContent && window.registrationModuleLoaded) {
-            console.log('Registration already loaded, reinitializing...');
             // Just reinitialize if already loaded
             if (typeof window.initRegistration === 'function') {
                 await window.initRegistration();
             }
-            enableOnlyNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
             return true;
         }
 
         // Load registration template and JavaScript
         const result = await loadTabContent('./registration.html', 'main-content', '/admin/js/registration.js');
         
-        // Ensure tab is enabled after successful load
-        if (result) {
-            enableOnlyNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
-        }
-        
         return result;
     } catch (error) {
-        console.error('Error loading registration:', error);
-        // Still enable the tab even if there was an error
-        enableOnlyNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
         return false;
     }
 }
@@ -738,11 +541,6 @@ async function loadRegistration() {
  * Loads and displays the tournament bracket section
  */
 async function loadTournamentBracket() {
-    // Show loading state for this tab
-    showTabLoadingState('tournament-bracket-tab', 'Loading Tournament Bracket...');
-    
-    // Loading Tournament Bracket
-    
     // Clean up registration resources if switching from registration tab
     if (typeof cleanupRegistration === 'function') {
         cleanupRegistration();
@@ -759,13 +557,7 @@ async function loadTournamentBracket() {
         // Wait a moment for DOM to be fully ready
         setTimeout(async () => {
             if (typeof window.initTournamentBracketPage === 'function') {
-                console.log('🏆 Initializing tournament bracket page...');
                 await window.initTournamentBracketPage();
-                enableOnlyNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
-            } else {
-                console.log('⚠️ Tournament bracket page function not available yet');
-                // Still enable the tab even if initialization failed
-                enableOnlyNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
             }
         }, 100);
     }
@@ -823,21 +615,7 @@ function initNavigation() {
     // Initialize loading state first
     initNavigationLoadingState();
     
-    // Set up a shorter timeout as fallback to force enable tabs if needed
-    setTimeout(() => {
-        if (navigationState.isInitializing && navigationState.disabledTabs.size > 0) {
-            console.warn('⚠️ Some tabs are still disabled after 3 seconds, force enabling remaining tabs...');
-            
-            // Force enable any remaining tabs
-            navigationState.disabledTabs.forEach(tabId => {
-                const tab = document.getElementById(tabId);
-                if (tab) {
-                    const originalIcon = getOriginalIconForTab(tabId);
-                    enableOnlyNavigationTab(tabId, originalIcon);
-                }
-            });
-        }
-    }, 3000); // 3 second fallback timeout
+    // Simplified - no longer using tab enable/disable fallbacks
     
     // Initializing navigation
     
@@ -973,7 +751,6 @@ function initNavigation() {
     
     // Complete initialization after everything is set up
     setTimeout(() => {
-        console.log('🚀 Completing navigation initialization...');
         completeNavigationInitialization();
     }, 1000); // Wait for system to be fully ready
     
@@ -990,8 +767,6 @@ function initNavigation() {
     if (teamBalancerTab) {
         teamBalancerTab.addEventListener('click', async function(e) {
             e.preventDefault();
-            console.log('🎯 Team Balancer tab clicked - disabling all tabs');
-            disableAllNavigationTabs();
             await loadTeamBalancer();
         });
     }
@@ -999,8 +774,6 @@ function initNavigation() {
     if (tournamentBracketTab) {
         tournamentBracketTab.addEventListener('click', async function(e) {
             e.preventDefault();
-            console.log('🎯 Tournament Bracket tab clicked - disabling all tabs');
-            disableAllNavigationTabs();
             await loadTournamentBracket();
         });
     }
@@ -1008,8 +781,6 @@ function initNavigation() {
     if (randomPickerTab) {
         randomPickerTab.addEventListener('click', async function(e) {
             e.preventDefault();
-            console.log('🎯 Random Picker tab clicked - disabling all tabs');
-            disableAllNavigationTabs();
             await loadRandomPicker();
         });
     }
@@ -1017,8 +788,6 @@ function initNavigation() {
     if (playerListTab) {
         playerListTab.addEventListener('click', async function(e) {
             e.preventDefault();
-            console.log('🎯 Player List tab clicked - disabling all tabs');
-            disableAllNavigationTabs();
             await loadPlayerList();
         });
     }
@@ -1026,8 +795,6 @@ function initNavigation() {
     if (registrationTab) {
         registrationTab.addEventListener('click', async function(e) {
             e.preventDefault();
-            console.log('🎯 Registration tab clicked - disabling all tabs');
-            disableAllNavigationTabs();
             await loadRegistration();
         });
     }
@@ -1035,16 +802,12 @@ function initNavigation() {
     if (masterlistTab) {
         masterlistTab.addEventListener('click', async function(e) {
             e.preventDefault();
-            console.log('🎯 Masterlist tab clicked - disabling all tabs');
-            disableAllNavigationTabs();
             try {
                 await loadMasterlist();
             } catch (error) {
-                console.error('Error calling loadMasterlist:', error);
+                // Silent error handling
             }
         });
-    } else {
-        console.error('Masterlist tab element not found!');
     }
     
     // Load default tab content
@@ -1095,18 +858,9 @@ async function loadTabContent(templatePath, containerId, jsModulePath = null) {
             
             return true;
         } else {
-            console.error('Container not found:', containerId);
             return false;
         }
     } catch (error) {
-        console.error('Error loading content:', error);
-        console.error('Error details:', {
-            templatePath,
-            containerId,
-            jsModulePath,
-            message: error.message,
-            stack: error.stack
-        });
         return false;
     }
 }
@@ -1134,7 +888,6 @@ async function loadJavaScriptModule(jsPath) {
                 resolve();
             };
             script.onerror = (error) => {
-                console.error('Script failed to load:', script.src, error);
                 reject(new Error(`Failed to load ${jsPath}`));
             };
             
@@ -1149,12 +902,6 @@ async function loadJavaScriptModule(jsPath) {
         await initializeModule(moduleFileName);
         
     } catch (error) {
-        console.error('Error loading JavaScript module:', error);
-        console.error('Module details:', {
-            jsPath,
-            message: error.message,
-            stack: error.stack
-        });
         throw error;
     }
 }
