@@ -190,7 +190,7 @@
         function getSessionIdFromUrl() {
             const urlParams = new URLSearchParams(window.location.search);
             const sessionFromParams = urlParams.get('session');
-            console.log('Session ID from URL:', sessionFromParams);
+            
             return sessionFromParams;
         }
 
@@ -201,8 +201,7 @@
         document.addEventListener('DOMContentLoaded', async function() {
             sessionId = getSessionIdFromUrl();
             
-            console.log('Current URL:', window.location.href);
-            console.log('Extracted session ID:', sessionId);
+            
             
             if (!sessionId) {
                 showError('Session ID required', 'No registration session specified in URL');
@@ -222,13 +221,13 @@
         async function loadRegistrationSession() {
             try {
                 const apiUrl = `/.netlify/functions/get-registration-session?sessionId=${sessionId}`;
-                console.log('Fetching from:', apiUrl);
+
                 
                 const response = await fetch(apiUrl);
-                console.log('Response status:', response.status);
+
                 
                 const data = await response.json();
-                console.log('Response data:', data);
+
 
                 if (!data.success || !data.session) {
                     showError('Registration session not found', data.message || 'Registration session not found or expired');
@@ -496,10 +495,10 @@
                     if (masterlistPlayer) {
                         verifiedFromMasterlist = true;
                         verifiedMMR = masterlistPlayer.mmr;
-                        console.log('Player found in masterlist:', masterlistPlayer);
+        
                     }
                 } catch (error) {
-                    console.log('Masterlist verification failed, proceeding with submitted MMR');
+    
                 }
 
                 // Prepare form data
@@ -510,7 +509,7 @@
                     registrationSessionId: sessionId
                 };
 
-                console.log('Submitting registration:', formData);
+    
 
                 // Submit registration
                 const response = await fetch('/.netlify/functions/add-player', {

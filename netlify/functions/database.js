@@ -1056,20 +1056,7 @@ export async function deleteSession(sessionId) {
   }
 }
 
-// Clear all data (for testing)
-export async function clearAllData() {
-  try {
 
-    await sql`DELETE FROM players`;
-    await sql`DELETE FROM masterlist`;
-    await sql`DELETE FROM registration_settings`;
-    await sql`DELETE FROM admin_sessions`;
-
-  } catch (error) {
-    console.error('Error clearing data:', error);
-    throw error;
-  }
-}
 
 // Legacy exports for compatibility (wrap the new functions)
 export const playerDb = {

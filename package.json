@@ -7,7 +7,7 @@
     "dev": "netlify dev",
     "build": "echo 'Static site - no build needed'",
     "deploy": "netlify deploy --prod",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "netlify dev"
   },
   "dependencies": {
     "@netlify/neon": "^0.1.0",

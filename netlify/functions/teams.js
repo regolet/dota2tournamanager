@@ -7,41 +7,26 @@ import {
   deleteTeamConfiguration,
   validateSession 
 } from './database.js';
+import { getSecurityHeaders } from './security-utils.js';
 
 export async function handler(event, context) {
-  console.log('Teams API called:', event.httpMethod, event.path);
-  console.log('Headers:', JSON.stringify(event.headers, null, 2));
+  const headers = getSecurityHeaders();
 
-  // CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-Id',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Content-Type': 'application/json'
-  };
-
-  // Handle preflight requests
+  // Handle CORS
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers,
-      body: ''
+      headers
     };
   }
 
   try {
-    // Debug: Log all headers to see what we're receiving
-    console.log('Teams API Headers:', JSON.stringify(event.headers, null, 2));
-    
     // Validate session for all operations
     const sessionId = event.headers.authorization?.replace('Bearer ', '') || 
                      event.headers['x-session-id'] || 
                      event.headers['X-Session-Id'];
                      
-    console.log('Session ID extracted:', sessionId ? `Present: ${sessionId}` : 'Missing');
-    
     if (!sessionId) {
-      console.log('No session token provided');
       return {
         statusCode: 401,
         headers,
@@ -49,7 +34,6 @@ export async function handler(event, context) {
       };
     }
 
-    console.log('Validating session...');
     let sessionValidation;
     try {
       sessionValidation = await validateSession(sessionId);
@@ -62,10 +46,7 @@ export async function handler(event, context) {
       };
     }
     
-    console.log('Session validation result:', sessionValidation.valid);
-    
     if (!sessionValidation.valid) {
-      console.log('Invalid session:', sessionValidation.message);
       return {
         statusCode: 401,
         headers,
@@ -85,8 +66,6 @@ export async function handler(event, context) {
       };
     }
     
-    console.log('Admin user:', adminUserId, adminUsername);
-
     // Handle different HTTP methods
     switch (event.httpMethod) {
       case 'GET':
@@ -125,14 +104,10 @@ export async function handler(event, context) {
 }
 
 async function handleGet(event, adminUserId, headers) {
-  console.log('HandleGet called with adminUserId:', adminUserId);
-  
   try {
     const { teamSetId } = event.queryStringParameters || {};
-    console.log('Query parameters:', event.queryStringParameters);
     
     if (teamSetId) {
-      console.log('Getting specific team configuration:', teamSetId);
       // Get specific team configuration
       const teamConfig = await getTeamConfigurationById(teamSetId);
       if (!teamConfig) {
@@ -149,41 +124,19 @@ async function handleGet(event, adminUserId, headers) {
         body: JSON.stringify(teamConfig)
       };
     } else {
-      console.log('Getting all team configurations for admin:', adminUserId);
       // Get all team configurations for this admin
-      try {
-        const teamConfigs = await getTeamConfigurations(adminUserId);
-        console.log('Retrieved team configurations:', teamConfigs.length);
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(teamConfigs)
-        };
-      } catch (dbError) {
-        console.error('Database error in getTeamConfigurations:', dbError);
-        // If it's a table not found error, return empty array
-        if (dbError.message && (dbError.message.includes('relation "teams" does not exist') || 
-                               dbError.message.includes('table') || 
-                               dbError.message.includes('does not exist'))) {
-          console.log('Teams table does not exist yet - returning empty array');
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify([])
-          };
-        }
-        throw dbError; // Re-throw other database errors
-      }
+      const teamConfigs = await getTeamConfigurations(adminUserId);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(teamConfigs)
+      };
     }
   } catch (error) {
-    console.error('HandleGet error:', error);
-    console.error('HandleGet error stack:', error.stack);
-    
     // If it's a database table error, return empty array instead of failing
     if (error.message && (error.message.includes('relation "teams" does not exist') || 
                          error.message.includes('table') || 
                          error.message.includes('does not exist'))) {
-      console.log('Teams table does not exist yet - returning empty array');
       return {
         statusCode: 200,
         headers,
@@ -197,15 +150,10 @@ async function handleGet(event, adminUserId, headers) {
 
 async function handlePost(event, adminUserId, adminUsername, headers) {
   try {
-    console.log('HandlePost called for admin:', adminUserId, adminUsername);
-    console.log('Request body:', event.body);
-    
     const teamData = JSON.parse(event.body);
-    console.log('Parsed team data:', JSON.stringify(teamData, null, 2));
     
     // Validate required fields
     if (!teamData.title || !teamData.teams || !Array.isArray(teamData.teams)) {
-      console.log('Validation failed - missing required fields');
       return {
         statusCode: 400,
         headers,
@@ -219,8 +167,6 @@ async function handlePost(event, adminUserId, adminUsername, headers) {
     const allMmrs = teamData.teams.flatMap(team => team.players.map(p => p.peakmmr || 0));
     const averageMmr = allMmrs.length > 0 ? Math.round(allMmrs.reduce((sum, mmr) => sum + mmr, 0) / allMmrs.length) : 0;
 
-    console.log('Team statistics calculated:', { totalTeams, totalPlayers, averageMmr });
-
     const teamConfigData = {
       title: teamData.title,
       description: teamData.description || '',
@@ -232,9 +178,7 @@ async function handlePost(event, adminUserId, adminUsername, headers) {
       teams: teamData.teams
     };
 
-    console.log('Calling saveTeamConfiguration...');
     const result = await saveTeamConfiguration(adminUserId, adminUsername, teamConfigData);
-    console.log('SaveTeamConfiguration result:', result);
     
     if (result.success) {
       return {
@@ -247,7 +191,6 @@ async function handlePost(event, adminUserId, adminUsername, headers) {
         })
       };
     } else {
-      console.log('SaveTeamConfiguration failed:', result.message);
       return {
         statusCode: 500,
         headers,
@@ -255,8 +198,6 @@ async function handlePost(event, adminUserId, adminUsername, headers) {
       };
     }
   } catch (error) {
-    console.error('HandlePost error:', error);
-    console.error('HandlePost error stack:', error.stack);
     return {
       statusCode: 500,
       headers,

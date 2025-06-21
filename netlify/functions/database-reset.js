@@ -136,40 +136,7 @@ export const handler = async (event, context) => {
       actions.push(`Failed to create superadmin user: ${superAdminError.message}`);
     }
 
-    // Test login with the new users
-    const testResults = {};
-    
-    try {
-      const adminUser = await sql`
-        SELECT id, username, password_hash, role, is_active
-        FROM admin_users
-        WHERE username = 'admin'
-      `;
-      if (adminUser.length > 0) {
-        const passwordValid = adminUser[0].password_hash === 'admin123';
-        testResults.adminLogin = passwordValid ? 'Success' : 'Password mismatch';
-      } else {
-        testResults.adminLogin = 'User not found';
-      }
-    } catch (testError) {
-      testResults.adminLogin = `Error: ${testError.message}`;
-    }
-
-    try {
-      const superAdminUser = await sql`
-        SELECT id, username, password_hash, role, is_active
-        FROM admin_users
-        WHERE username = 'superadmin'
-      `;
-      if (superAdminUser.length > 0) {
-        const passwordValid = superAdminUser[0].password_hash === 'superadmin123';
-        testResults.superAdminLogin = passwordValid ? 'Success' : 'Password mismatch';
-      } else {
-        testResults.superAdminLogin = 'User not found';
-      }
-    } catch (testError) {
-      testResults.superAdminLogin = `Error: ${testError.message}`;
-    }
+    // Database reset completed successfully
 
     return {
       statusCode: 200,
@@ -181,7 +148,7 @@ export const handler = async (event, context) => {
         success: true,
         message: 'Database reset completed',
         actions,
-        testResults,
+
         credentials: {
           admin: { username: 'admin', password: 'admin123' },
           superadmin: { username: 'superadmin', password: 'superadmin123' }

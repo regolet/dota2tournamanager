@@ -6,69 +6,14 @@
      * Initialize security features
      */
     function initSecurity() {
-        // XSS protection disabled for admin panel
-        // setupXSSProtection();
-        
         // Set up CSRF protection
         setupCSRFProtection();
         
         // Monitor for security threats
         setupThreatMonitoring();
         
-        // Secure local storage - temporarily disabled to prevent session interference
-        // setupSecureStorage();
-        
-        console.log('🔒 Security features initialized (XSS monitoring disabled for admin panel)');
-    }
-
-    /**
-     * XSS Protection setup - disabled for admin panel to prevent false positives
-     */
-    function setupXSSProtection() {
-        // XSS monitoring disabled for admin panel due to excessive false positives
-        // Admin panel has controlled dynamic content that's safe
-        console.log('🔒 XSS monitoring disabled for admin panel - controlled environment');
-        
-        // Keep the sanitize function available for manual use if needed
-        // const observer = new MutationObserver(function(mutations) {
-        //     mutations.forEach(function(mutation) {
-        //         if (mutation.type === 'childList') {
-        //             mutation.addedNodes.forEach(function(node) {
-        //                 if (node.nodeType === Node.ELEMENT_NODE) {
-        //                     sanitizeElement(node);
-        //                 }
-        //             });
-        //         }
-        //     });
-        // });
-
-        // observer.observe(document.body, {
-        //     childList: true,
-        //     subtree: true
-        // });
-    }
-
-    /**
-     * Sanitize DOM element to prevent XSS - DISABLED for admin panel
-     */
-    function sanitizeElement(element) {
-        // Sanitization disabled for admin panel to prevent interference with legitimate dynamic content
-        // console.log('Sanitization skipped for admin panel element:', element);
-        return;
-        
-        // Original sanitization code commented out
-        // const dangerousAttrs = ['onload', 'onerror', 'onclick', 'onmouseover', 'onfocus', 'onblur'];
-        // dangerousAttrs.forEach(attr => {
-        //     if (element.hasAttribute && element.hasAttribute(attr)) {
-        //         element.removeAttribute(attr);
-        //         console.warn('🚨 Removed dangerous attribute:', attr, 'from element:', element);
-        //     }
-        // });
-
-        // if (element.innerHTML && /<script|javascript:|vbscript:|on\w+=/i.test(element.innerHTML)) {
-        //     console.warn('🚨 Potential XSS detected in element:', element);
-        //     element.innerHTML = element.textContent;
-        // }
+        // Secure local storage
+        setupSecureStorage();
     }
 
     /**
@@ -101,18 +46,6 @@
         let suspiciousActivities = 0;
         const maxSuspiciousActivities = 10;
         
-        // Monitor console usage (potential devtools abuse) - disabled for normal operation
-        let consoleCount = 0;
-        const originalConsoleLog = console.log;
-        console.log = function(...args) {
-            consoleCount++;
-            // Disabled console monitoring to prevent false positives during team balancing
-            // if (consoleCount > 1000) {
-            //     reportSuspiciousActivity('excessive_console_usage');
-            // }
-            return originalConsoleLog.apply(this, args);
-        };
-
         // Monitor for rapid form submissions
         const formSubmissionTimes = [];
         document.addEventListener('submit', function(e) {
@@ -147,10 +80,8 @@
 
         function reportSuspiciousActivity(type) {
             suspiciousActivities++;
-            console.warn('🚨 Suspicious activity detected:', type);
             
             if (suspiciousActivities > maxSuspiciousActivities) {
-                // Implement lockdown or additional verification
                 showSecurityAlert('Multiple suspicious activities detected. Please refresh the page.');
             }
         }
@@ -160,12 +91,9 @@
      * Secure storage implementation
      */
     function setupSecureStorage() {
-        // Note: Session management (adminSessionId) is handled separately
-        // Only encrypt non-session sensitive data to avoid interference
         const originalSetItem = localStorage.setItem;
         const originalGetItem = localStorage.getItem;
         
-        // Removed adminSessionId from sensitive keys to avoid session interference
         const sensitiveKeys = ['userToken', 'sessionData', 'creditCardInfo'];
         
         localStorage.setItem = function(key, value) {
@@ -183,20 +111,17 @@
                 try {
                     return decodeURIComponent(atob(value));
                 } catch (e) {
-                    console.warn('Failed to decode stored value for key:', key);
                     return null;
                 }
             }
             return value;
         };
         
-        // Auto-clear sensitive data on page unload (but preserve session data)
+        // Auto-clear sensitive data on page unload
         window.addEventListener('beforeunload', function() {
-            // Clear non-session sensitive data after some inactivity
             setTimeout(() => {
                 sensitiveKeys.forEach(key => {
                     if (localStorage.getItem(key)) {
-                        console.log('🔒 Auto-clearing sensitive data:', key);
                         localStorage.removeItem(key);
                     }
                 });
@@ -313,7 +238,6 @@
                 if (input.value && typeof input.value === 'string') {
                     // Check for potential XSS
                     if (/<script|javascript:|vbscript:|on\w+=/i.test(input.value)) {
-                        console.warn('🚨 Potential XSS in form input:', input.name, input.value);
                         input.value = sanitizeInput(input.value);
                         hasInvalidInput = true;
                     }
