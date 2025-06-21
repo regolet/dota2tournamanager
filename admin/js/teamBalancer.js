@@ -98,8 +98,7 @@ async function initTeamBalancer() {
         // Setup event listeners
         setupTeamBalancerEventListeners();
         
-        // Initialize reserved players display
-        displayReservedPlayers();
+        // Reserved players will be initialized when needed during team generation
         
         // Listen for registration updates to refresh player data
         setupTeamBalancerRegistrationListener();
@@ -569,16 +568,10 @@ function displayPlayersForBalancer(players) {
                 <span class="badge bg-primary">${player.peakmmr || 0}</span>
             </td>
             <td class="text-end pe-3">
-                <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-secondary move-to-reserved" 
-                            data-id="${player.id}" data-index="${index}" title="Move to Reserved">
-                        <i class="bi bi-arrow-right"></i>
-                    </button>
-                    <button type="button" class="btn btn-outline-danger remove-player" 
-                            data-id="${player.id}" data-index="${index}" title="Remove Player">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-player" 
+                        data-id="${player.id}" data-index="${index}" title="Remove Player">
                     <i class="bi bi-trash"></i>
                 </button>
-                </div>
             </td>
         </tr>
     `).join('');
@@ -1292,81 +1285,21 @@ function displayBalancedTeams() {
  * Setup player action buttons
  */
 function setupPlayerActionButtons() {
-    console.log('🔧 Setting up player action buttons...');
-    
-    // Move to reserved buttons
-    const moveToReservedButtons = document.querySelectorAll('.move-to-reserved');
-    console.log(`Found ${moveToReservedButtons.length} move-to-reserved buttons`);
-    
-    moveToReservedButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            console.log('📦 Move to reserved button clicked');
-            const playerId = e.currentTarget.getAttribute('data-id');
-            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
-            console.log(`Moving player ID: ${playerId}, Index: ${playerIndex}`);
-            movePlayerToReserved(playerId, playerIndex);
-        });
-    });
 
+    
     // Remove player buttons
     const removePlayerButtons = document.querySelectorAll('.remove-player');
-    console.log(`Found ${removePlayerButtons.length} remove-player buttons`);
     
     removePlayerButtons.forEach(button => {
         button.addEventListener('click', (e) => {
-            console.log('🗑️ Remove player button clicked');
             const playerId = e.currentTarget.getAttribute('data-id');
             const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
-            console.log(`Removing player ID: ${playerId}, Index: ${playerIndex}`);
             removePlayerFromList(playerId, playerIndex);
         });
     });
 }
 
-/**
- * Move player to reserved list
- */
-function movePlayerToReserved(playerId, playerIndex) {
-    console.log(`🔄 movePlayerToReserved called with ID: ${playerId}, Index: ${playerIndex}`);
-    console.log(`Available players count: ${state.availablePlayers?.length || 0}`);
-    console.log(`Reserved players count: ${state.reservedPlayers?.length || 0}`);
-    
-    // Find player by ID instead of using index (fixes sorting bug)
-    const playerRealIndex = state.availablePlayers.findIndex(p => p.id === playerId);
-    
-    if (playerRealIndex >= 0 && playerRealIndex < state.availablePlayers.length) {
-        const player = state.availablePlayers[playerRealIndex];
-        console.log(`Player to move: ${player.name} (ID: ${playerId}, Real Index: ${playerRealIndex})`);
-        
-        // Add to reserved players if not already there
-        if (!state.reservedPlayers) {
-            state.reservedPlayers = [];
-            console.log('Initialized reservedPlayers array');
-        }
-        
-        const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
-        if (!alreadyReserved) {
-            state.reservedPlayers.push(player);
-            console.log(`Added ${player.name} to reserved players`);
-            
-            // Remove from available players using the correct index
-            state.availablePlayers.splice(playerRealIndex, 1);
-            console.log(`Removed ${player.name} from available players`);
-            
-            // Refresh displays
-            displayPlayersForBalancer(state.availablePlayers);
-            displayReservedPlayers();
-            
-            showNotification(`${player.name} moved to reserved players`, 'success');
-        } else {
-            console.log(`${player.name} is already in reserved players`);
-            showNotification(`${player.name} is already in reserved players`, 'warning');
-        }
-    } else {
-        console.error(`Player not found with ID: ${playerId}. Available players: ${state.availablePlayers.length}`);
-        showNotification('Error: Player not found', 'error');
-    }
-}
+
 
 /**
  * Remove player from list
@@ -1377,7 +1310,7 @@ function removePlayerFromList(playerId, playerIndex) {
     
     if (playerRealIndex >= 0 && playerRealIndex < state.availablePlayers.length) {
         const player = state.availablePlayers[playerRealIndex];
-        console.log(`Player to remove: ${player.name} (ID: ${playerId}, Real Index: ${playerRealIndex})`);
+
         
         if (confirm(`Are you sure you want to remove ${player.name} from the team balancer?`)) {
             // Remove from available players using the correct index
@@ -1398,17 +1331,10 @@ function removePlayerFromList(playerId, playerIndex) {
  * Display reserved players
  */
 function displayReservedPlayers() {
-    console.log('📋 Displaying reserved players...');
-    
     const reservedList = document.getElementById('reserved-players-list');
     const reservedCountElement = document.getElementById('reserved-count');
     
-    console.log('Reserved list element:', reservedList);
-    console.log('Reserved count element:', reservedCountElement);
-    console.log('Reserved players:', state.reservedPlayers);
-    
     if (!reservedList) {
-        console.error('❌ Reserved players list element not found!');
         return;
     }
     
@@ -1416,11 +1342,9 @@ function displayReservedPlayers() {
     if (reservedCountElement) {
         const count = state.reservedPlayers ? state.reservedPlayers.length : 0;
         reservedCountElement.textContent = count;
-        console.log(`Updated reserved count badge to: ${count}`);
     }
     
     if (!state.reservedPlayers || state.reservedPlayers.length === 0) {
-        console.log('No reserved players to display');
         reservedList.innerHTML = `
             <tr>
                 <td colspan="2" class="text-center text-muted py-4">
