@@ -2,8 +2,8 @@
 (function() {
     "use strict";
 
-    // Debug flag - set to false now that session is working
-    let debugMode = false;
+    // Debug flag - temporarily enabled to debug session issues
+    let debugMode = true;
     
     function debugLog(...args) {
         if (debugMode) {
