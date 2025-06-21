@@ -4,6 +4,169 @@
 // Simple template cache
 const templateCache = new Map();
 
+// Navigation loading state management
+const navigationState = {
+    isInitializing: true,
+    disabledTabs: new Set(),
+    readyTabs: new Set()
+};
+
+/**
+ * Initialize navigation loading state - disable all tabs until system is ready
+ */
+function initNavigationLoadingState() {
+    console.log('🔄 Initializing navigation loading state...');
+    
+    // Get all navigation tabs
+    const navTabs = document.querySelectorAll('.navbar-nav .nav-link');
+    
+    navTabs.forEach(tab => {
+        // Store original onclick handlers
+        if (tab.onclick) {
+            tab.dataset.originalOnclick = tab.onclick.toString();
+        }
+        if (tab.href && tab.href.startsWith('javascript:')) {
+            tab.dataset.originalHref = tab.href;
+            tab.href = 'javascript:void(0)'; // Disable the javascript link
+        }
+        
+        // Disable the tab
+        tab.classList.add('disabled');
+        tab.style.opacity = '0.5';
+        tab.style.pointerEvents = 'none';
+        tab.title = 'Loading... Please wait';
+        
+        // Add loading indicator
+        const icon = tab.querySelector('i');
+        if (icon) {
+            icon.className = 'bi bi-hourglass-split me-2'; // Loading icon
+            icon.classList.add('spinner');
+        }
+        
+        navigationState.disabledTabs.add(tab.id);
+    });
+    
+    // Add CSS for spinner animation
+    const style = document.createElement('style');
+    style.textContent = `
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .nav-link.disabled {
+            cursor: not-allowed !important;
+        }
+        .nav-link.ready {
+            transition: all 0.3s ease;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    console.log('🚫 Navigation tabs disabled during initialization');
+}
+
+/**
+ * Enable a specific navigation tab when its module is ready
+ */
+function enableNavigationTab(tabId, originalIcon = null) {
+    const tab = document.getElementById(tabId);
+    if (!tab) return;
+    
+    console.log(`✅ Enabling navigation tab: ${tabId}`);
+    
+    // Restore functionality
+    tab.classList.remove('disabled');
+    tab.classList.add('ready');
+    tab.style.opacity = '1';
+    tab.style.pointerEvents = 'auto';
+    tab.title = '';
+    
+    // Restore original onclick handler
+    if (tab.dataset.originalOnclick) {
+        tab.onclick = new Function(tab.dataset.originalOnclick.replace('function()', '').replace(/^\s*{\s*/, '').replace(/\s*}\s*$/, ''));
+    }
+    
+    // Restore original href
+    if (tab.dataset.originalHref) {
+        tab.href = tab.dataset.originalHref;
+    }
+    
+    // Restore original icon
+    const icon = tab.querySelector('i');
+    if (icon && originalIcon) {
+        icon.className = originalIcon;
+        icon.classList.remove('spinner');
+    }
+    
+    navigationState.disabledTabs.delete(tabId);
+    navigationState.readyTabs.add(tabId);
+    
+    // Add ready indicator (brief green glow)
+    tab.style.boxShadow = '0 0 8px rgba(25, 135, 84, 0.4)';
+    setTimeout(() => {
+        tab.style.boxShadow = '';
+    }, 2000);
+}
+
+/**
+ * Get the original icon class for a tab
+ */
+function getOriginalIconForTab(tabId) {
+    const iconMap = {
+        'team-balancer-tab': 'bi bi-people-fill me-2',
+        'tournament-bracket-tab': 'bi bi-trophy me-2',
+        'random-picker-tab': 'bi bi-shuffle me-2',
+        'player-list-tab': 'bi bi-list-ul me-1',
+        'registration-tab': 'bi bi-clipboard2-check me-1',
+        'masterlist-tab': 'bi bi-shield-check me-1'
+    };
+    return iconMap[tabId] || 'bi bi-circle me-2';
+}
+
+/**
+ * Complete navigation initialization - all tabs are ready
+ */
+function completeNavigationInitialization() {
+    if (navigationState.disabledTabs.size === 0) {
+        console.log('✅ All navigation tabs are ready!');
+        navigationState.isInitializing = false;
+        
+        // Show success message briefly
+        if (window.showNotification) {
+            window.showNotification('System initialized successfully! All features are now available.', 'success');
+        } else {
+            // Fallback notification
+            console.log('✅ System initialized successfully! All features are now available.');
+            
+            // Show a simple toast notification
+            const toast = document.createElement('div');
+            toast.className = 'alert alert-success position-fixed';
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; opacity: 0.9;';
+            toast.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>System ready! All features are now available.';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+        
+        // Auto-load the first tab (Team Balancer) if no tab is active
+        const activeTab = document.querySelector('.nav-link.active');
+        if (!activeTab) {
+            const teamBalancerTab = document.getElementById('team-balancer-tab');
+            if (teamBalancerTab && teamBalancerTab.onclick) {
+                setTimeout(() => {
+                    console.log('🎯 Auto-loading Team Balancer tab...');
+                    teamBalancerTab.click();
+                }, 500);
+            }
+        }
+    }
+}
+
 // Make sure we have global functions for each component
 if (typeof initTeamBalancer !== 'function') {
     window.initTeamBalancer = async function() {
@@ -448,6 +611,8 @@ async function loadTournamentBracket() {
             if (typeof window.initTournamentBracketPage === 'function') {
                 console.log('🏆 Initializing tournament bracket page...');
                 await window.initTournamentBracketPage();
+                enableNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
+                completeNavigationInitialization();
             } else {
                 console.log('⚠️ Tournament bracket page function not available yet');
             }
@@ -504,6 +669,27 @@ function showError(container, title, message) {
  * Initialize the navigation
  */
 function initNavigation() {
+    // Initialize loading state first
+    initNavigationLoadingState();
+    
+    // Set up a timeout to force enable tabs if initialization takes too long
+    setTimeout(() => {
+        if (navigationState.isInitializing && navigationState.disabledTabs.size > 0) {
+            console.warn('⚠️ Some tabs are still disabled after 10 seconds, force enabling...');
+            
+            // Force enable remaining tabs
+            navigationState.disabledTabs.forEach(tabId => {
+                const tab = document.getElementById(tabId);
+                if (tab) {
+                    const originalIcon = getOriginalIconForTab(tabId);
+                    enableNavigationTab(tabId, originalIcon);
+                }
+            });
+            
+            completeNavigationInitialization();
+        }
+    }, 10000); // 10 second timeout
+    
     // Initializing navigation
     
     // Get session ID from session manager for link updates
@@ -811,6 +997,7 @@ async function initializeModule(moduleFileName) {
             case 'teamBalancer':
                 if (typeof window.initTeamBalancer === 'function') {
                     await window.initTeamBalancer();
+                    enableNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
                     // Team Balancer initialized
                 } else {
                     // initTeamBalancer function not found
@@ -820,6 +1007,7 @@ async function initializeModule(moduleFileName) {
             case 'randompicker':
                 if (typeof window.initRandomPicker === 'function') {
                     await window.initRandomPicker();
+                    enableNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
                     // Random Picker initialized
                 } else {
                     // initRandomPicker function not found
@@ -829,6 +1017,7 @@ async function initializeModule(moduleFileName) {
             case 'playerList':
                 if (typeof window.initPlayerList === 'function') {
                     await window.initPlayerList();
+                    enableNavigationTab('player-list-tab', 'bi bi-list-ul me-1');
                     // Player List initialized
                 } else {
                     // initPlayerList function not found
@@ -838,6 +1027,7 @@ async function initializeModule(moduleFileName) {
             case 'registration':
                 if (typeof window.initRegistration === 'function') {
                     await window.initRegistration();
+                    enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
                     // Registration initialized
                 } else {
                     // initRegistration function not found
@@ -847,15 +1037,24 @@ async function initializeModule(moduleFileName) {
             case 'masterlist':
                 if (typeof window.initMasterlist === 'function') {
                     await window.initMasterlist();
+                    enableNavigationTab('masterlist-tab', 'bi bi-shield-check me-1');
                     // Masterlist initialized
                 } else {
                     // initMasterlist function not found
                 }
                 break;
                 
+            case 'tournamentBrackets':
+                // Tournament bracket is handled separately in loadTournamentBracket
+                enableNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
+                break;
+                
             default:
                 // No specific initialization for module
         }
+        
+        // Check if all tabs are now ready
+        completeNavigationInitialization();
     } catch (error) {
         // Error initializing module
     }
