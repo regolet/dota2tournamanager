@@ -240,10 +240,7 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tournament bracket if this page is loaded directly
-        if (typeof window.initTournamentBracketPage === 'function') {
-            window.initTournamentBracketPage();
-        }
-    });
+    // Tournament bracket initialization is handled by navigation.js
+    // This prevents automatic initialization when the page template is loaded
+    // Only initialize when explicitly called by the navigation system
 </script> 
