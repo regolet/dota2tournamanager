@@ -178,8 +178,7 @@ class PerformanceMonitor {
             avgResponseTime,
             activeRequests: stats.activeRequests,
             uptime: stats.uptime,
-            memoryUsage: stats.memory.heapUsed || 0,
-            databaseHealth: stats.database
+            memoryUsage: stats.memory.heapUsed || 0
         };
     }
 
