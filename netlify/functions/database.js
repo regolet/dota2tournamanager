@@ -1466,12 +1466,16 @@ export async function getTeamConfigurations(adminUserId = null) {
     
     return teams.map(team => {
       let parsedTeams = [];
-      try {
-        if (team.teams_data) {
-          parsedTeams = JSON.parse(team.teams_data);
+      if (team.teams_data) {
+        if (typeof team.teams_data === 'string') {
+          try {
+            parsedTeams = JSON.parse(team.teams_data);
+          } catch (e) {
+            console.error(`[DB] Failed to parse teams_data string for teamSetId ${team.team_set_id}:`, e);
+          }
+        } else if (typeof team.teams_data === 'object') {
+          parsedTeams = team.teams_data;
         }
-      } catch (e) {
-        console.error(`[DB] Failed to parse teams_data for teamSetId ${team.team_set_id}:`, e);
       }
 
       return {
@@ -1511,6 +1515,20 @@ export async function getTeamConfigurationById(teamSetId) {
     }
     
     const team = teams[0];
+    
+    let parsedTeams = [];
+    if (team.teams_data) {
+      if (typeof team.teams_data === 'string') {
+        try {
+          parsedTeams = JSON.parse(team.teams_data);
+        } catch (e) {
+          console.error(`[DB] Failed to parse teams_data string for teamSetId ${team.team_set_id}:`, e);
+        }
+      } else if (typeof team.teams_data === 'object') {
+        parsedTeams = team.teams_data;
+      }
+    }
+
     return {
       id: team.id,
       teamSetId: team.team_set_id,
@@ -1523,7 +1541,7 @@ export async function getTeamConfigurationById(teamSetId) {
       totalPlayers: team.total_players,
       averageMmr: team.average_mmr,
       registrationSessionId: team.registration_session_id,
-      teams: JSON.parse(team.teams_data),
+      teams: parsedTeams,
       createdAt: team.created_at,
       updatedAt: team.updated_at
     };
