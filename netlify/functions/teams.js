@@ -10,11 +10,12 @@ import {
 
 export async function handler(event, context) {
   console.log('Teams API called:', event.httpMethod, event.path);
+  console.log('Headers:', JSON.stringify(event.headers, null, 2));
 
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-Id',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Content-Type': 'application/json'
   };
@@ -30,8 +31,14 @@ export async function handler(event, context) {
 
   try {
     // Validate session for all operations
-    const sessionId = event.headers.authorization?.replace('Bearer ', '');
+    const sessionId = event.headers.authorization?.replace('Bearer ', '') || 
+                     event.headers['x-session-id'] || 
+                     event.headers['X-Session-Id'];
+                     
+    console.log('Session ID extracted:', sessionId ? 'Present' : 'Missing');
+    
     if (!sessionId) {
+      console.log('No session token provided');
       return {
         statusCode: 401,
         headers,
@@ -39,8 +46,12 @@ export async function handler(event, context) {
       };
     }
 
+    console.log('Validating session...');
     const sessionValidation = await validateSession(sessionId);
+    console.log('Session validation result:', sessionValidation.valid);
+    
     if (!sessionValidation.valid) {
+      console.log('Invalid session:', sessionValidation.message);
       return {
         statusCode: 401,
         headers,
@@ -50,6 +61,7 @@ export async function handler(event, context) {
 
     const adminUserId = sessionValidation.session.user_id;
     const adminUsername = sessionValidation.user?.username || 'Unknown';
+    console.log('Admin user:', adminUserId, adminUsername);
 
     // Handle different HTTP methods
     switch (event.httpMethod) {
@@ -75,44 +87,58 @@ export async function handler(event, context) {
 
   } catch (error) {
     console.error('Teams API error:', error);
+    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message 
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }
 }
 
 async function handleGet(event, adminUserId, headers) {
-  const { teamSetId } = event.queryStringParameters || {};
+  console.log('HandleGet called with adminUserId:', adminUserId);
   
-  if (teamSetId) {
-    // Get specific team configuration
-    const teamConfig = await getTeamConfigurationById(teamSetId);
-    if (!teamConfig) {
+  try {
+    const { teamSetId } = event.queryStringParameters || {};
+    console.log('Query parameters:', event.queryStringParameters);
+    
+    if (teamSetId) {
+      console.log('Getting specific team configuration:', teamSetId);
+      // Get specific team configuration
+      const teamConfig = await getTeamConfigurationById(teamSetId);
+      if (!teamConfig) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Team configuration not found' })
+        };
+      }
+      
       return {
-        statusCode: 404,
+        statusCode: 200,
         headers,
-        body: JSON.stringify({ error: 'Team configuration not found' })
+        body: JSON.stringify(teamConfig)
+      };
+    } else {
+      console.log('Getting all team configurations for admin:', adminUserId);
+      // Get all team configurations for this admin
+      const teamConfigs = await getTeamConfigurations(adminUserId);
+      console.log('Retrieved team configurations:', teamConfigs.length);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(teamConfigs)
       };
     }
-    
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(teamConfig)
-    };
-  } else {
-    // Get all team configurations for this admin
-    const teamConfigs = await getTeamConfigurations(adminUserId);
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(teamConfigs)
-    };
+  } catch (error) {
+    console.error('HandleGet error:', error);
+    console.error('HandleGet error stack:', error.stack);
+    throw error; // Re-throw to be caught by main handler
   }
 }
 
