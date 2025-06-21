@@ -61,7 +61,10 @@
         if (element.innerHTML && 
             !element.id?.includes('security-alert') && 
             !element.id?.includes('db-health') &&
+            !element.id?.includes('team-') &&
             !element.classList?.contains('nav-item') &&
+            !element.classList?.contains('col-12') &&
+            !element.closest('#balanced-teams-display') &&
             /<script|javascript:|vbscript:|on\w+=/i.test(element.innerHTML)) {
             console.warn('🚨 Potential XSS detected in element:', element);
             element.innerHTML = element.textContent; // Convert to safe text
@@ -98,15 +101,15 @@
         let suspiciousActivities = 0;
         const maxSuspiciousActivities = 10;
         
-        // Monitor console usage (potential devtools abuse) - increased threshold for debug mode
+        // Monitor console usage (potential devtools abuse) - disabled for normal operation
         let consoleCount = 0;
         const originalConsoleLog = console.log;
         console.log = function(...args) {
             consoleCount++;
-            // Increased threshold to 100 to account for debug logging
-            if (consoleCount > 100) {
-                reportSuspiciousActivity('excessive_console_usage');
-            }
+            // Disabled console monitoring to prevent false positives during team balancing
+            // if (consoleCount > 1000) {
+            //     reportSuspiciousActivity('excessive_console_usage');
+            // }
             return originalConsoleLog.apply(this, args);
         };
 
