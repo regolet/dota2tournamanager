@@ -1445,15 +1445,15 @@ export async function getTeamConfigurations(adminUserId = null) {
   try {
     await initializeDatabase();
     
-    console.log(`[DB] Getting all team configs (bypassing admin ID for debugging)`);
+    console.log(`[DB] Getting all team configs (bypassing admin ID AND is_active for debugging)`);
     
+    // DEBUG: Temporarily remove WHERE clause to see if any teams exist at all
     let teams = await sql`
       SELECT * FROM teams 
-      WHERE is_active = true
       ORDER BY created_at DESC
     `;
     
-    console.log(`[DB] Found ${teams.length} total team configurations`);
+    console.log(`[DB] Found ${teams.length} total team configurations (active and inactive)`);
     
     return teams.map(team => ({
       id: team.id,
@@ -1467,7 +1467,8 @@ export async function getTeamConfigurations(adminUserId = null) {
       totalPlayers: team.total_players,
       averageMmr: team.average_mmr,
       registrationSessionId: team.registration_session_id,
-      teams: JSON.parse(team.teams_data),
+      teams: team.teams_data ? JSON.parse(team.teams_data) : [], // Add defensive parsing
+      isActive: team.is_active, // Include status for debugging
       createdAt: team.created_at,
       updatedAt: team.updated_at
     }));
