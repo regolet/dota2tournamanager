@@ -112,4 +112,13 @@
 .form-control:focus {
     border-color: #0d6efd;
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.bg-success-light {
+    background-color: rgba(25, 135, 84, 0.15) !important;
+}
+
+.set-winner-btn-1:hover, .set-winner-btn-2:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease-in-out;
 } 
