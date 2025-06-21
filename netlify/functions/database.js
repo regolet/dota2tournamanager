@@ -1395,9 +1395,13 @@ export async function deleteAdminUser(userId) {
 // Teams management operations
 export async function saveTeamConfiguration(adminUserId, adminUsername, teamData) {
   try {
+    console.log('Saving team configuration for admin:', adminUserId, adminUsername);
+    console.log('Team data:', JSON.stringify(teamData, null, 2));
+    
     await initializeDatabase();
     
     const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('Generated team set ID:', teamSetId);
     
     await sql`
       INSERT INTO teams (
@@ -1412,10 +1416,45 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
       )
     `;
     
+    console.log('Team configuration saved successfully with ID:', teamSetId);
     return { success: true, teamSetId };
   } catch (error) {
     console.error('Error saving team configuration:', error);
-    return { success: false, message: 'Error saving team configuration' };
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // If it's a table not found error, try to reinitialize the database
+    if (error.message && (error.message.includes('relation "teams" does not exist') || 
+                         error.message.includes('table') || 
+                         error.message.includes('does not exist'))) {
+      console.log('Teams table does not exist - attempting to reinitialize database');
+      try {
+        await initializeDatabase();
+        console.log('Database reinitialized - retrying team save');
+        
+        const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await sql`
+          INSERT INTO teams (
+            team_set_id, admin_user_id, admin_username, title, description, 
+            balance_method, total_teams, total_players, average_mmr, 
+            registration_session_id, teams_data
+          ) VALUES (
+            ${teamSetId}, ${adminUserId}, ${adminUsername}, ${teamData.title}, 
+            ${teamData.description || ''}, ${teamData.balanceMethod}, 
+            ${teamData.totalTeams}, ${teamData.totalPlayers}, ${teamData.averageMmr},
+            ${teamData.registrationSessionId || null}, ${JSON.stringify(teamData.teams)}
+          )
+        `;
+        
+        console.log('Team configuration saved successfully after retry with ID:', teamSetId);
+        return { success: true, teamSetId };
+      } catch (retryError) {
+        console.error('Error on retry:', retryError);
+        return { success: false, message: 'Database initialization failed - please try again' };
+      }
+    }
+    
+    return { success: false, message: `Error saving team configuration: ${error.message}` };
   }
 }
 

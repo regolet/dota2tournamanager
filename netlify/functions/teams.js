@@ -156,51 +156,74 @@ async function handleGet(event, adminUserId, headers) {
 }
 
 async function handlePost(event, adminUserId, adminUsername, headers) {
-  const teamData = JSON.parse(event.body);
-  
-  // Validate required fields
-  if (!teamData.title || !teamData.teams || !Array.isArray(teamData.teams)) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Missing required fields: title, teams' })
+  try {
+    console.log('HandlePost called for admin:', adminUserId, adminUsername);
+    console.log('Request body:', event.body);
+    
+    const teamData = JSON.parse(event.body);
+    console.log('Parsed team data:', JSON.stringify(teamData, null, 2));
+    
+    // Validate required fields
+    if (!teamData.title || !teamData.teams || !Array.isArray(teamData.teams)) {
+      console.log('Validation failed - missing required fields');
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Missing required fields: title, teams' })
+      };
+    }
+
+    // Calculate team statistics
+    const totalTeams = teamData.teams.length;
+    const totalPlayers = teamData.teams.reduce((sum, team) => sum + team.players.length, 0);
+    const allMmrs = teamData.teams.flatMap(team => team.players.map(p => p.peakmmr || 0));
+    const averageMmr = allMmrs.length > 0 ? Math.round(allMmrs.reduce((sum, mmr) => sum + mmr, 0) / allMmrs.length) : 0;
+
+    console.log('Team statistics calculated:', { totalTeams, totalPlayers, averageMmr });
+
+    const teamConfigData = {
+      title: teamData.title,
+      description: teamData.description || '',
+      balanceMethod: teamData.balanceMethod || 'highRanked',
+      totalTeams,
+      totalPlayers,
+      averageMmr,
+      registrationSessionId: teamData.registrationSessionId || null,
+      teams: teamData.teams
     };
-  }
 
-  // Calculate team statistics
-  const totalTeams = teamData.teams.length;
-  const totalPlayers = teamData.teams.reduce((sum, team) => sum + team.players.length, 0);
-  const allMmrs = teamData.teams.flatMap(team => team.players.map(p => p.peakmmr || 0));
-  const averageMmr = allMmrs.length > 0 ? Math.round(allMmrs.reduce((sum, mmr) => sum + mmr, 0) / allMmrs.length) : 0;
-
-  const teamConfigData = {
-    title: teamData.title,
-    description: teamData.description || '',
-    balanceMethod: teamData.balanceMethod || 'highRanked',
-    totalTeams,
-    totalPlayers,
-    averageMmr,
-    registrationSessionId: teamData.registrationSessionId || null,
-    teams: teamData.teams
-  };
-
-  const result = await saveTeamConfiguration(adminUserId, adminUsername, teamConfigData);
-  
-  if (result.success) {
-    return {
-      statusCode: 201,
-      headers,
-      body: JSON.stringify({ 
-        success: true, 
-        teamSetId: result.teamSetId,
-        message: 'Team configuration saved successfully' 
-      })
-    };
-  } else {
+    console.log('Calling saveTeamConfiguration...');
+    const result = await saveTeamConfiguration(adminUserId, adminUsername, teamConfigData);
+    console.log('SaveTeamConfiguration result:', result);
+    
+    if (result.success) {
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify({ 
+          success: true, 
+          teamSetId: result.teamSetId,
+          message: 'Team configuration saved successfully' 
+        })
+      };
+    } else {
+      console.log('SaveTeamConfiguration failed:', result.message);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: result.message })
+      };
+    }
+  } catch (error) {
+    console.error('HandlePost error:', error);
+    console.error('HandlePost error stack:', error.stack);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: result.message })
+      body: JSON.stringify({ 
+        error: 'Failed to process team save request',
+        details: error.message
+      })
     };
   }
 }
