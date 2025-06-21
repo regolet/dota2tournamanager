@@ -1464,22 +1464,33 @@ export async function getTeamConfigurations(adminUserId = null) {
     
     console.log(`[DB] Found ${teams.length} team configurations matching query.`);
     
-    return teams.map(team => ({
-      id: team.id,
-      teamSetId: team.team_set_id,
-      adminUserId: team.admin_user_id,
-      adminUsername: team.admin_username,
-      title: team.title,
-      description: team.description,
-      balanceMethod: team.balance_method,
-      totalTeams: team.total_teams,
-      totalPlayers: team.total_players,
-      averageMmr: team.average_mmr,
-      registrationSessionId: team.registration_session_id,
-      teams: team.teams_data ? JSON.parse(team.teams_data) : [],
-      createdAt: team.created_at,
-      updatedAt: team.updated_at
-    }));
+    return teams.map(team => {
+      let parsedTeams = [];
+      try {
+        if (team.teams_data) {
+          parsedTeams = JSON.parse(team.teams_data);
+        }
+      } catch (e) {
+        console.error(`[DB] Failed to parse teams_data for teamSetId ${team.team_set_id}:`, e);
+      }
+
+      return {
+        id: team.id,
+        teamSetId: team.team_set_id,
+        adminUserId: team.admin_user_id,
+        adminUsername: team.admin_username,
+        title: team.title,
+        description: team.description,
+        balanceMethod: team.balance_method,
+        totalTeams: team.total_teams,
+        totalPlayers: team.total_players,
+        averageMmr: team.average_mmr,
+        registrationSessionId: team.registration_session_id,
+        teams: parsedTeams,
+        createdAt: team.created_at,
+        updatedAt: team.updated_at
+      };
+    });
   } catch (error) {
     console.error('[DB] CRITICAL: Error getting team configurations:', error);
     return []; // Return empty on error to prevent frontend crash
