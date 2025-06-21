@@ -1382,13 +1382,11 @@ export async function deleteAdminUser(userId) {
 // Teams management operations
 export async function saveTeamConfiguration(adminUserId, adminUsername, teamData) {
   try {
-    console.log('Saving team configuration for admin:', adminUserId, adminUsername);
-    console.log('Team data:', JSON.stringify(teamData, null, 2));
+    console.log(`[DB] Saving team config for admin: ${adminUserId} (${adminUsername})`);
     
     await initializeDatabase();
     
     const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('Generated team set ID:', teamSetId);
     
     await sql`
       INSERT INTO teams (
@@ -1403,21 +1401,19 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
       )
     `;
     
-    console.log('Team configuration saved successfully with ID:', teamSetId);
+    console.log(`[DB] Team config saved successfully with ID: ${teamSetId}`);
     return { success: true, teamSetId };
   } catch (error) {
-    console.error('Error saving team configuration:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('[DB] Error saving team configuration:', error);
     
     // If it's a table not found error, try to reinitialize the database
     if (error.message && (error.message.includes('relation "teams" does not exist') || 
                          error.message.includes('table') || 
                          error.message.includes('does not exist'))) {
-      console.log('Teams table does not exist - attempting to reinitialize database');
+      console.log('[DB] Teams table does not exist - reinitializing');
       try {
         await initializeDatabase();
-        console.log('Database reinitialized - retrying team save');
+        console.log('[DB] Reinitialized - retrying save');
         
         const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         await sql`
@@ -1433,11 +1429,11 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
           )
         `;
         
-        console.log('Team configuration saved successfully after retry with ID:', teamSetId);
+        console.log(`[DB] Team config saved successfully on retry with ID: ${teamSetId}`);
         return { success: true, teamSetId };
       } catch (retryError) {
-        console.error('Error on retry:', retryError);
-        return { success: false, message: 'Database initialization failed - please try again' };
+        console.error('[DB] Error on retry:', retryError);
+        return { success: false, message: 'Database initialization failed' };
       }
     }
     
@@ -1448,6 +1444,8 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
 export async function getTeamConfigurations(adminUserId = null) {
   try {
     await initializeDatabase();
+    
+    console.log(`[DB] Getting team configs for admin: ${adminUserId || 'all'}`);
     
     let teams;
     if (adminUserId) {
@@ -1463,6 +1461,8 @@ export async function getTeamConfigurations(adminUserId = null) {
         ORDER BY created_at DESC
       `;
     }
+    
+    console.log(`[DB] Found ${teams.length} team configurations`);
     
     return teams.map(team => ({
       id: team.id,
@@ -1481,7 +1481,7 @@ export async function getTeamConfigurations(adminUserId = null) {
       updatedAt: team.updated_at
     }));
   } catch (error) {
-    console.error('Error getting team configurations:', error);
+    console.error('[DB] Error getting team configurations:', error);
     return [];
   }
 }
