@@ -110,10 +110,7 @@ async function loadMasterlistData() {
             
             showMasterlistNotification(`Loaded ${window.masterlistPlayers.length} players from masterlist`, 'success');
             
-            // Enable only this tab now that masterlist is loaded
-            if (typeof enableOnlyNavigationTab === 'function') {
-                enableOnlyNavigationTab('masterlist-tab');
-            }
+            // Masterlist is loaded - tab will be enabled when clicked
         } else {
             throw new Error(data.message || 'Failed to load masterlist');
         }

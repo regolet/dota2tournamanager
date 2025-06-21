@@ -55,10 +55,7 @@ async function initPlayerList() {
         
         console.log('Player list module initialized successfully');
         
-        // Enable only this tab now that player list is loaded
-        if (typeof enableOnlyNavigationTab === 'function') {
-            enableOnlyNavigationTab('player-list-tab');
-        }
+        // Player list is loaded - tab will be enabled when clicked
     } catch (error) {
         console.error('Error initializing player list:', error);
         showNotification('Failed to initialize player list module', 'error');

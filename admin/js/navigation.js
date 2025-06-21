@@ -118,19 +118,15 @@ function disableAllNavigationTabs() {
 }
 
 /**
- * Enable only the specified navigation tab (disable all others)
+ * Enable only the specified navigation tab
  */
 function enableOnlyNavigationTab(tabId, originalIcon = null) {
-    // First disable all tabs
-    disableAllNavigationTabs();
-    
-    // Then enable only the specified tab
     const tab = document.getElementById(tabId);
     if (!tab) return;
     
-    console.log(`✅ Enabling only navigation tab: ${tabId}`);
+    console.log(`✅ Enabling navigation tab: ${tabId}`);
     
-    // Restore functionality for this tab only
+    // Enable this specific tab
     tab.classList.remove('disabled', 'loading');
     tab.classList.add('ready');
     tab.style.opacity = '1';
@@ -942,39 +938,40 @@ function initNavigation() {
     
     if (teamBalancerTab) {
         teamBalancerTab.addEventListener('click', function(e) {
-
             e.preventDefault();
+            disableAllNavigationTabs();
             loadTeamBalancer();
         });
-            }
+    }
     
     if (randomPickerTab) {
         randomPickerTab.addEventListener('click', function(e) {
-
             e.preventDefault();
+            disableAllNavigationTabs();
             loadRandomPicker();
         });
-            }
+    }
     
     if (playerListTab) {
         playerListTab.addEventListener('click', function(e) {
-
             e.preventDefault();
+            disableAllNavigationTabs();
             loadPlayerList();
         });
-            }
+    }
     
     if (registrationTab) {
         registrationTab.addEventListener('click', function(e) {
-
             e.preventDefault();
+            disableAllNavigationTabs();
             loadRegistration();
         });
-            }
+    }
     
     if (masterlistTab) {
         masterlistTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            disableAllNavigationTabs();
             try {
                 await loadMasterlist();
             } catch (error) {

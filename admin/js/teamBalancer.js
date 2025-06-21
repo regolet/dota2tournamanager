@@ -479,10 +479,7 @@ async function loadPlayersForBalancer() {
                     showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
                 }
                 
-                // Enable only this tab now that players are loaded
-                if (typeof enableOnlyNavigationTab === 'function') {
-                    enableOnlyNavigationTab('team-balancer-tab');
-                }
+                // Players are loaded - tab will be enabled when clicked
             } else {
                 console.error('Failed to load players:', data.message || 'Unknown error');
                 showNotification(data.message || 'Failed to load players', 'error');

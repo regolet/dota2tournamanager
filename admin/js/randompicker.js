@@ -194,10 +194,7 @@ async function initRandomPicker() {
         
         console.log('Random picker initialized successfully');
         
-        // Enable only this tab now that random picker is loaded
-        if (typeof enableOnlyNavigationTab === 'function') {
-            enableOnlyNavigationTab('random-picker-tab');
-        }
+        // Random picker is loaded - tab will be enabled when clicked
     } catch (error) {
         console.error('Error initializing random picker:', error);
         showNotification('Failed to initialize random picker', 'error');
