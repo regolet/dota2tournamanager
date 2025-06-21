@@ -8,7 +8,8 @@ const templateCache = new Map();
 const navigationState = {
     isInitializing: true,
     disabledTabs: new Set(),
-    readyTabs: new Set()
+    readyTabs: new Set(),
+    hasShownWelcomeNotification: false
 };
 
 /**
@@ -55,6 +56,19 @@ function getOriginalIconForTab(tabId) {
 }
 
 /**
+ * Show welcome notification when user first interacts with system
+ */
+function showWelcomeNotificationOnce() {
+    if (!navigationState.hasShownWelcomeNotification && window.showNotification) {
+        navigationState.hasShownWelcomeNotification = true;
+        // Add a delay to ensure content is loaded
+        setTimeout(() => {
+            window.showNotification('System ready! Content loaded successfully.', 'success');
+        }, 1500);
+    }
+}
+
+/**
  * Enable a specific navigation tab - simplified
  */
 function enableNavigationTab(tabId, originalIcon = null) {
@@ -67,11 +81,6 @@ function enableNavigationTab(tabId, originalIcon = null) {
 function completeNavigationInitialization() {
     navigationState.isInitializing = false;
     
-    // Show success message briefly
-    if (window.showNotification) {
-        window.showNotification('System initialized! Click any tab to access features.', 'success');
-    }
-    
     // Enable the appropriate tab after system initialization
     enableActiveTabAfterInit();
 }
@@ -79,35 +88,37 @@ function completeNavigationInitialization() {
 /**
  * Enable the active tab after system initialization completes - simplified
  */
-function enableActiveTabAfterInit() {
+async function enableActiveTabAfterInit() {
     // Wait a moment for DOM to be fully ready
-    setTimeout(() => {
+    setTimeout(async () => {
         const activeTab = document.querySelector('.nav-link.active');
+        
+        let loadResult = false;
         
         if (activeTab && activeTab.id) {
             // Load the content for the active tab
             switch (activeTab.id) {
                 case 'team-balancer-tab':
-                    loadTeamBalancer();
+                    loadResult = await loadTeamBalancer();
                     break;
                 case 'tournament-bracket-tab':
-                    loadTournamentBracket();
+                    loadResult = await loadTournamentBracket();
                     break;
                 case 'random-picker-tab':
-                    loadRandomPicker();
+                    loadResult = await loadRandomPicker();
                     break;
                 case 'player-list-tab':
-                    loadPlayerList();
+                    loadResult = await loadPlayerList();
                     break;
                 case 'registration-tab':
-                    loadRegistration();
+                    loadResult = await loadRegistration();
                     break;
                 case 'masterlist-tab':
-                    loadMasterlist();
+                    loadResult = await loadMasterlist();
                     break;
                 default:
                     // Unknown tab, fallback to team balancer
-                    loadTeamBalancer();
+                    loadResult = await loadTeamBalancer();
             }
         } else {
             // No active tab found, auto-load team balancer
@@ -116,9 +127,12 @@ function enableActiveTabAfterInit() {
                 teamBalancerTab.click();
             } else {
                 // Fallback if button not found
-                loadTeamBalancer();
+                loadResult = await loadTeamBalancer();
             }
         }
+        
+        // Don't show notification on auto-initialization
+        // It will be shown when user manually clicks a tab
     }, 200); // Give DOM time to be ready
 }
 
@@ -768,6 +782,7 @@ function initNavigation() {
         teamBalancerTab.addEventListener('click', async function(e) {
             e.preventDefault();
             await loadTeamBalancer();
+            showWelcomeNotificationOnce();
         });
     }
     
@@ -775,6 +790,7 @@ function initNavigation() {
         tournamentBracketTab.addEventListener('click', async function(e) {
             e.preventDefault();
             await loadTournamentBracket();
+            showWelcomeNotificationOnce();
         });
     }
     
@@ -782,6 +798,7 @@ function initNavigation() {
         randomPickerTab.addEventListener('click', async function(e) {
             e.preventDefault();
             await loadRandomPicker();
+            showWelcomeNotificationOnce();
         });
     }
     
@@ -789,6 +806,7 @@ function initNavigation() {
         playerListTab.addEventListener('click', async function(e) {
             e.preventDefault();
             await loadPlayerList();
+            showWelcomeNotificationOnce();
         });
     }
     
@@ -796,6 +814,7 @@ function initNavigation() {
         registrationTab.addEventListener('click', async function(e) {
             e.preventDefault();
             await loadRegistration();
+            showWelcomeNotificationOnce();
         });
     }
     
@@ -804,6 +823,7 @@ function initNavigation() {
             e.preventDefault();
             try {
                 await loadMasterlist();
+                showWelcomeNotificationOnce();
             } catch (error) {
                 // Silent error handling
             }
