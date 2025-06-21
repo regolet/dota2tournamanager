@@ -30,12 +30,15 @@ export async function handler(event, context) {
   }
 
   try {
+    // Debug: Log all headers to see what we're receiving
+    console.log('Teams API Headers:', JSON.stringify(event.headers, null, 2));
+    
     // Validate session for all operations
     const sessionId = event.headers.authorization?.replace('Bearer ', '') || 
                      event.headers['x-session-id'] || 
                      event.headers['X-Session-Id'];
                      
-    console.log('Session ID extracted:', sessionId ? 'Present' : 'Missing');
+    console.log('Session ID extracted:', sessionId ? `Present: ${sessionId}` : 'Missing');
     
     if (!sessionId) {
       console.log('No session token provided');
