@@ -50,7 +50,7 @@
                 return;
             }
 
-            const response = await fetch('/admin/api/database-health', {
+            const response = await fetch('/.netlify/functions/database-health', {
                 headers: {
                     'X-Session-Id': sessionId
                 }
@@ -373,7 +373,7 @@
             showDatabaseStatus('maintenance', 'Running database maintenance...');
 
             const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            const response = await fetch('/admin/api/database-health?action=maintenance', {
+            const response = await fetch('/.netlify/functions/database-health?action=maintenance', {
                 method: 'POST',
                 headers: {
                     'X-Session-Id': sessionId,

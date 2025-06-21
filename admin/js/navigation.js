@@ -970,7 +970,7 @@ async function handlePasswordChange(e) {
             return;
         }
         
-        const response = await fetch('/admin/api/change-password', {
+        const response = await fetch('/.netlify/functions/change-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

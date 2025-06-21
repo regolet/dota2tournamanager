@@ -183,7 +183,7 @@ class SessionManager {
         try {
             if (this.sessionId) {
                 // SessionManager: Calling server logout API
-                await this.authenticatedFetch('/admin/api/logout', {
+                await this.authenticatedFetch('/.netlify/functions/logout', {
                     method: 'POST'
                 });
                 // SessionManager: Server logout successful

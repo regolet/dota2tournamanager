@@ -1643,7 +1643,7 @@ async function saveTeams() {
             }))
         };
 
-        const response = await fetch('/admin/api/teams', {
+        const response = await fetch('/.netlify/functions/teams', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

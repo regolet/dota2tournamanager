@@ -406,7 +406,7 @@ function setupPasswordChangeModal() {
         try {
             const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
             
-            const response = await fetch('/admin/api/change-password', {
+            const response = await fetch('/.netlify/functions/change-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
