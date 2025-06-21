@@ -1647,7 +1647,7 @@ async function saveTeams() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionId}`
+                'X-Session-Id': sessionId
             },
             body: JSON.stringify(teamData)
         });
