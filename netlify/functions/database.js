@@ -148,6 +148,18 @@ async function initializeDatabase() {
       )
     `;
 
+    // Create tournaments table for storing generated tournament brackets
+    await sql`
+      CREATE TABLE IF NOT EXISTS tournaments (
+        id VARCHAR(255) PRIMARY KEY,
+        team_set_id VARCHAR(255),
+        tournament_data JSONB NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
     // Insert default registration settings if table is empty
     const settingsCount = await sql`SELECT COUNT(*) as count FROM registration_settings`;
     if (settingsCount[0].count == 0) {
@@ -232,6 +244,10 @@ async function createBasicIndexes() {
     await sql`CREATE INDEX IF NOT EXISTS idx_teams_set_id ON teams(team_set_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_teams_active ON teams(is_active)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_teams_session ON teams(registration_session_id)`;
+    
+    // Tournaments table indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_tournaments_team_set ON tournaments(team_set_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_tournaments_active ON tournaments(is_active)`;
     
     console.log('Basic database indexes created successfully');
     
@@ -1601,5 +1617,65 @@ export async function deleteTeamConfiguration(teamSetId) {
   } catch (error) {
     console.error('Error deleting team configuration:', error);
     return { success: false, message: 'Error deleting team configuration' };
+  }
+}
+
+// Tournament Bracket operations
+export async function saveTournament(tournamentData) {
+  try {
+    await initializeDatabase();
+    
+    await sql`
+      INSERT INTO tournaments (id, team_set_id, tournament_data, is_active)
+      VALUES (
+        ${tournamentData.id},
+        ${tournamentData.teamSetId || null},
+        ${JSON.stringify(tournamentData)},
+        true
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        tournament_data = ${JSON.stringify(tournamentData)},
+        updated_at = NOW()
+    `;
+    
+    return { success: true, tournamentId: tournamentData.id };
+  } catch (error) {
+    console.error('[DB] Error saving tournament:', error);
+    return { success: false, message: 'Error saving tournament' };
+  }
+}
+
+export async function getTournament(tournamentId) {
+  try {
+    await initializeDatabase();
+    
+    const tournaments = await sql`
+      SELECT tournament_data FROM tournaments
+      WHERE id = ${tournamentId} AND is_active = true
+    `;
+    
+    if (tournaments.length === 0) {
+      return null;
+    }
+    
+    const tournament = tournaments[0];
+    
+    let parsedData = null;
+    if (tournament.tournament_data) {
+      if (typeof tournament.tournament_data === 'string') {
+        try {
+          parsedData = JSON.parse(tournament.tournament_data);
+        } catch (e) {
+          console.error(`[DB] Failed to parse tournament_data string for tournamentId ${tournamentId}:`, e);
+        }
+      } else if (typeof tournament.tournament_data === 'object') {
+        parsedData = tournament.tournament_data;
+      }
+    }
+    
+    return parsedData;
+  } catch (error) {
+    console.error('Error getting tournament:', error);
+    return null;
   }
 } 
