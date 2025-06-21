@@ -444,10 +444,10 @@ async function loadTournamentBracket() {
     // After Tournament Bracket is loaded, initialize the tournament bracket system
     if (result) {
         // Wait a moment for DOM to be fully ready
-        setTimeout(() => {
+        setTimeout(async () => {
             if (typeof window.initTournamentBracketPage === 'function') {
                 console.log('🏆 Initializing tournament bracket page...');
-                window.initTournamentBracketPage();
+                await window.initTournamentBracketPage();
             } else {
                 console.log('⚠️ Tournament bracket page function not available yet');
             }
