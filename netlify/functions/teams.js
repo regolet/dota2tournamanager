@@ -138,7 +138,20 @@ async function handleGet(event, adminUserId, headers) {
   } catch (error) {
     console.error('HandleGet error:', error);
     console.error('HandleGet error stack:', error.stack);
-    throw error; // Re-throw to be caught by main handler
+    
+    // If it's a database table error, return empty array instead of failing
+    if (error.message && (error.message.includes('relation "teams" does not exist') || 
+                         error.message.includes('table') || 
+                         error.message.includes('does not exist'))) {
+      console.log('Teams table does not exist yet - returning empty array');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([])
+      };
+    }
+    
+    throw error; // Re-throw other errors to be caught by main handler
   }
 }
 
