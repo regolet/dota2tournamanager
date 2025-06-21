@@ -212,26 +212,58 @@ function completeNavigationInitialization() {
         }, 3000);
     }
     
-    // Auto-load the first tab (Team Balancer) if no tab is active
-    const activeTab = document.querySelector('.nav-link.active');
-    if (!activeTab) {
-        const teamBalancerTab = document.getElementById('team-balancer-tab');
-        if (teamBalancerTab) {
-            setTimeout(() => {
-                console.log('🎯 Auto-loading Team Balancer tab...');
+    // Enable the appropriate tab after system initialization
+    enableActiveTabAfterInit();
+}
+
+/**
+ * Enable the active tab after system initialization completes
+ */
+function enableActiveTabAfterInit() {
+    // Wait a moment for DOM to be fully ready
+    setTimeout(() => {
+        const activeTab = document.querySelector('.nav-link.active');
+        
+        if (activeTab && activeTab.id) {
+            console.log(`🎯 Found active tab after init: ${activeTab.id} - loading and enabling it`);
+            
+            // Load the content for the active tab and enable it
+            switch (activeTab.id) {
+                case 'team-balancer-tab':
+                    loadTeamBalancer();
+                    break;
+                case 'tournament-bracket-tab':
+                    loadTournamentBracket();
+                    break;
+                case 'random-picker-tab':
+                    loadRandomPicker();
+                    break;
+                case 'player-list-tab':
+                    loadPlayerList();
+                    break;
+                case 'registration-tab':
+                    loadRegistration();
+                    break;
+                case 'masterlist-tab':
+                    loadMasterlist();
+                    break;
+                default:
+                    // Unknown tab, fallback to team balancer
+                    console.log('🎯 Unknown active tab, loading Team Balancer as fallback');
+                    loadTeamBalancer();
+            }
+        } else {
+            // No active tab found, auto-load team balancer
+            console.log('🎯 No active tab found, auto-loading Team Balancer...');
+            const teamBalancerTab = document.getElementById('team-balancer-tab');
+            if (teamBalancerTab) {
                 teamBalancerTab.click();
-            }, 500);
+            } else {
+                // Fallback if button not found
+                loadTeamBalancer();
+            }
         }
-    } else {
-        // If there's already an active tab, make sure it's enabled
-        const activeTabId = activeTab.id;
-        if (activeTabId) {
-            console.log(`🎯 Found active tab: ${activeTabId} - ensuring it's enabled`);
-            setTimeout(() => {
-                enableOnlyNavigationTab(activeTabId);
-            }, 100);
-        }
-    }
+    }, 200); // Give DOM time to be ready
 }
 
 // Make sure we have global functions for each component
@@ -730,7 +762,6 @@ async function loadTournamentBracket() {
                 console.log('🏆 Initializing tournament bracket page...');
                 await window.initTournamentBracketPage();
                 enableOnlyNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
-                completeNavigationInitialization();
             } else {
                 console.log('⚠️ Tournament bracket page function not available yet');
                 // Still enable the tab even if initialization failed
@@ -792,7 +823,7 @@ function initNavigation() {
     // Initialize loading state first
     initNavigationLoadingState();
     
-    // Set up a shorter timeout as fallback since modules now enable themselves when ready
+    // Set up a shorter timeout as fallback to force enable tabs if needed
     setTimeout(() => {
         if (navigationState.isInitializing && navigationState.disabledTabs.size > 0) {
             console.warn('⚠️ Some tabs are still disabled after 3 seconds, force enabling remaining tabs...');
@@ -805,10 +836,8 @@ function initNavigation() {
                     enableOnlyNavigationTab(tabId, originalIcon);
                 }
             });
-            
-            completeNavigationInitialization();
         }
-    }, 3000); // 3 second fallback timeout (most tabs should enable themselves by now)
+    }, 3000); // 3 second fallback timeout
     
     // Initializing navigation
     
@@ -941,6 +970,12 @@ function initNavigation() {
     
     // Set up role-based access control
     setupRoleBasedAccess();
+    
+    // Complete initialization after everything is set up
+    setTimeout(() => {
+        console.log('🚀 Completing navigation initialization...');
+        completeNavigationInitialization();
+    }, 1000); // Wait for system to be fully ready
     
     // Set up navigation tabs
     const teamBalancerTab = document.getElementById('team-balancer-tab');
