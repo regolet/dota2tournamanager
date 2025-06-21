@@ -324,22 +324,7 @@ async function loadTeamBalancer() {
     updateActiveTab('team-balancer');
 
     // Load team balancer template and JavaScript
-    const result = await loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
-    
-    // After Team Balancer is loaded, initialize the tournament bracket system
-    if (result) {
-        // Wait a moment for DOM to be fully ready
-        setTimeout(() => {
-            if (typeof window.initTournamentBrackets === 'function') {
-                console.log('🏆 Initializing tournament brackets after Team Balancer load...');
-                window.initTournamentBrackets();
-            } else {
-                console.log('⚠️ Tournament brackets function not available yet');
-            }
-        }, 100);
-    }
-    
-    return result;
+    return await loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
 }
 
 /**
@@ -437,6 +422,39 @@ async function loadRegistration() {
         console.error('Error loading registration:', error);
         return false;
     }
+}
+
+/**
+ * Loads and displays the tournament bracket section
+ */
+async function loadTournamentBracket() {
+    // Loading Tournament Bracket
+    
+    // Clean up registration resources if switching from registration tab
+    if (typeof cleanupRegistration === 'function') {
+        cleanupRegistration();
+    }
+
+    // Update active tab immediately
+    updateActiveTab('tournament-bracket');
+
+    // Load tournament bracket template and JavaScript
+    const result = await loadTabContent('./tournament-bracket.html', 'main-content', '/admin/js/tournamentBrackets.js');
+    
+    // After Tournament Bracket is loaded, initialize the tournament bracket system
+    if (result) {
+        // Wait a moment for DOM to be fully ready
+        setTimeout(() => {
+            if (typeof window.initTournamentBracketPage === 'function') {
+                console.log('🏆 Initializing tournament bracket page...');
+                window.initTournamentBracketPage();
+            } else {
+                console.log('⚠️ Tournament bracket page function not available yet');
+            }
+        }, 100);
+    }
+    
+    return result;
 }
 
 /**
@@ -843,16 +861,14 @@ async function initializeModule(moduleFileName) {
     }
 }
 
-// Make functions globally available
+// Expose functions globally
 window.loadTeamBalancer = loadTeamBalancer;
+window.loadTournamentBracket = loadTournamentBracket;
 window.loadRandomPicker = loadRandomPicker;
+window.loadMasterlist = loadMasterlist;
 window.loadPlayerList = loadPlayerList;
 window.loadRegistration = loadRegistration;
-window.loadMasterlist = loadMasterlist;
-window.updateActiveTab = updateActiveTab;
 window.initNavigation = initNavigation;
-window.initializeModule = initializeModule;
-window.showChangePasswordModal = showChangePasswordModal;
 
 /**
  * Show the change password modal

@@ -1,0 +1,252 @@
+<!-- tournament-bracket.html -->
+<section id="tournament-bracket" class="mb-5 px-3" style="min-height: calc(100vh - 300px); display: flex; flex-direction: column;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">
+            <i class="bi bi-trophy me-2"></i>Tournament Bracket Management
+        </h2>
+        <div class="btn-group" role="group">
+            <button id="import-teams-btn" class="btn btn-outline-primary">
+                <i class="bi bi-people me-1"></i>Import Teams
+            </button>
+            <button id="refresh-bracket-btn" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Tournament Selector -->
+    <div class="session-selector-container mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-funnel me-2 text-primary"></i>
+                            <label for="tournament-bracket-session-selector" class="form-label mb-0 me-3">
+                                Select Tournament:
+                            </label>
+                            <select id="tournament-bracket-session-selector" class="form-select" style="max-width: 400px;">
+                                <option value="">Loading tournaments...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button id="refresh-bracket-sessions" class="btn btn-outline-primary btn-sm me-2">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                        <span id="bracket-team-count" class="badge bg-secondary">0 teams</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 flex-grow-1">
+        <!-- Left Column: Tournament Setup -->
+        <div class="col-12 col-lg-4">
+            <!-- Tournament Creation Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
+                    <h3 class="h5 mb-0 text-primary">
+                        <i class="bi bi-plus-circle me-2"></i>Create Tournament
+                    </h3>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted mb-1">Tournament Name</label>
+                        <input type="text" id="tournament-name" class="form-control form-control-sm" 
+                               placeholder="Enter tournament name" value="Dota 2 Tournament">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small text-muted mb-1">Tournament Format</label>
+                        <select id="tournament-format" class="form-select form-select-sm">
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small text-muted mb-1">Description (Optional)</label>
+                        <textarea id="tournament-description" class="form-control form-control-sm" 
+                                  rows="2" placeholder="Tournament description..."></textarea>
+                    </div>
+                    
+                    <button id="create-tournament" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-plus-circle me-1"></i>Create Tournament
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tournament Stats -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
+                    <h3 class="h5 mb-0 text-primary">
+                        <i class="bi bi-bar-chart me-2"></i>Tournament Stats
+                    </h3>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="fs-4 fw-bold text-primary" id="tournament-team-count">0</div>
+                                <small class="text-muted">Teams Available</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="fs-4 fw-bold text-info" id="tournament-estimated-rounds">0</div>
+                                <small class="text-muted">Estimated Rounds</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="fs-4 fw-bold text-success" id="tournament-estimated-duration">0h</div>
+                                <small class="text-muted">Est. Duration</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="fs-4 fw-bold text-warning" id="tournament-current-round">0</div>
+                                <small class="text-muted">Current Round</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tournament Controls -->
+            <div class="card border-0 shadow-sm" id="tournament-controls" style="display: none;">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
+                    <h3 class="h5 mb-0 text-primary">
+                        <i class="bi bi-gear me-2"></i>Tournament Controls
+                    </h3>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="d-grid gap-2">
+                        <button id="next-round-btn" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-arrow-right me-1"></i>Next Round
+                        </button>
+                        <button id="export-bracket-btn" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-download me-1"></i>Export Bracket
+                        </button>
+                        <button id="reset-tournament-btn" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Tournament
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Tournament Display -->
+        <div class="col-12 col-lg-8 d-flex flex-column">
+            <!-- Tournament Display Card -->
+            <div class="card border-0 shadow-sm flex-grow-1 d-flex flex-column">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
+                    <h3 class="h5 mb-0 text-primary">
+                        <i class="bi bi-diagram-3 me-2"></i>Tournament Bracket
+                    </h3>
+                </div>
+                <div class="card-body p-3 flex-grow-1 d-flex flex-column">
+                    <!-- Tournament Header -->
+                    <div id="tournament-header" class="mb-4" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4 id="tournament-title" class="mb-1"></h4>
+                                <p id="tournament-info" class="text-muted mb-0"></p>
+                            </div>
+                            <div class="badge bg-primary fs-6" id="tournament-status">Ready</div>
+                        </div>
+                    </div>
+
+                    <!-- Tournament Content -->
+                    <div id="tournament-content" class="flex-grow-1 d-flex flex-column">
+                        <!-- Default State -->
+                        <div id="tournament-empty-state" class="d-flex flex-column justify-content-center align-items-center text-center py-5">
+                            <i class="bi bi-trophy fs-1 text-muted mb-3"></i>
+                            <h5 class="text-muted mb-2">No Tournament Created</h5>
+                            <p class="text-muted mb-4">Create a tournament to get started with bracket management</p>
+                            <div class="text-muted small">
+                                <div class="mb-2">📋 <strong>Step 1:</strong> Import teams from Team Balancer or add manually</div>
+                                <div class="mb-2">🏆 <strong>Step 2:</strong> Choose tournament format and create tournament</div>
+                                <div class="mb-2">⚔️ <strong>Step 3:</strong> Manage matches and track results</div>
+                            </div>
+                        </div>
+
+                        <!-- Tournament Bracket Visualization -->
+                        <div id="tournament-bracket-visualization" class="flex-grow-1" style="display: none;">
+                            <!-- Bracket will be rendered here -->
+                        </div>
+
+                        <!-- Tournament Standings -->
+                        <div id="tournament-standings" class="mt-4" style="display: none;">
+                            <h6 class="mb-3">
+                                <i class="bi bi-list-ol me-2"></i>Current Standings
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Team</th>
+                                            <th>W-L</th>
+                                            <th>Avg MMR</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="standings-table-body">
+                                        <!-- Standings will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Match Result Modal -->
+<div class="modal fade" id="matchResultModal" tabindex="-1" aria-labelledby="matchResultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="matchResultModalLabel">
+                    <i class="bi bi-flag me-2"></i>Report Match Result
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Select Winner:</label>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-primary" id="team1-winner-btn">
+                            <span id="team1-name">Team 1</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="team2-winner-btn">
+                            <span id="team2-name">Team 2</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="match-notes" class="form-label">Match Notes (Optional):</label>
+                    <textarea class="form-control" id="match-notes" rows="3" 
+                              placeholder="Add any notes about the match..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-match-result">Save Result</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tournament bracket if this page is loaded directly
+        if (typeof window.initTournamentBracketPage === 'function') {
+            window.initTournamentBracketPage();
+        }
+    });
+</script> 
