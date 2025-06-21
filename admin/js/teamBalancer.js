@@ -479,13 +479,9 @@ async function loadPlayersForBalancer() {
                     showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
                 }
                 
-                // Enable navigation tabs now that players are loaded
-                if (typeof enableNavigationTab === 'function') {
-                    enableNavigationTab('team-balancer-tab');
-                    // Trigger completion check for all tabs
-                    if (typeof completeNavigationInitialization === 'function') {
-                        completeNavigationInitialization();
-                    }
+                // Enable only this tab now that players are loaded
+                if (typeof enableOnlyNavigationTab === 'function') {
+                    enableOnlyNavigationTab('team-balancer-tab');
                 }
             } else {
                 console.error('Failed to load players:', data.message || 'Unknown error');

@@ -90,30 +90,52 @@ function showTabLoadingState(tabId, loadingText = 'Initializing...') {
 }
 
 /**
- * Enable a specific navigation tab when its module is ready
+ * Disable all navigation tabs
  */
-function enableNavigationTab(tabId, originalIcon = null) {
+function disableAllNavigationTabs() {
+    const navTabs = document.querySelectorAll('.navbar-nav .nav-link');
+    
+    navTabs.forEach(tab => {
+        tab.classList.add('disabled');
+        tab.classList.remove('ready');
+        tab.style.opacity = '0.5';
+        tab.style.pointerEvents = 'none';
+        tab.title = 'Loading... Please wait';
+        
+        // Add loading indicator
+        const icon = tab.querySelector('i');
+        if (icon) {
+            // Store original icon if not already stored
+            if (!icon.dataset.originalClass) {
+                icon.dataset.originalClass = icon.className;
+            }
+            icon.className = 'bi bi-hourglass-split me-2 spinner';
+        }
+        
+        navigationState.disabledTabs.add(tab.id);
+        navigationState.readyTabs.delete(tab.id);
+    });
+}
+
+/**
+ * Enable only the specified navigation tab (disable all others)
+ */
+function enableOnlyNavigationTab(tabId, originalIcon = null) {
+    // First disable all tabs
+    disableAllNavigationTabs();
+    
+    // Then enable only the specified tab
     const tab = document.getElementById(tabId);
     if (!tab) return;
     
-    console.log(`✅ Enabling navigation tab: ${tabId}`);
+    console.log(`✅ Enabling only navigation tab: ${tabId}`);
     
-    // Restore functionality
+    // Restore functionality for this tab only
     tab.classList.remove('disabled', 'loading');
     tab.classList.add('ready');
     tab.style.opacity = '1';
     tab.style.pointerEvents = 'auto';
     tab.title = '';
-    
-    // Restore original onclick handler
-    if (tab.dataset.originalOnclick) {
-        tab.onclick = new Function(tab.dataset.originalOnclick.replace('function()', '').replace(/^\s*{\s*/, '').replace(/\s*}\s*$/, ''));
-    }
-    
-    // Restore original href
-    if (tab.dataset.originalHref) {
-        tab.href = tab.dataset.originalHref;
-    }
     
     // Restore original icon
     const icon = tab.querySelector('i');
@@ -122,6 +144,9 @@ function enableNavigationTab(tabId, originalIcon = null) {
             icon.className = originalIcon;
         } else if (icon.dataset.originalClass) {
             icon.className = icon.dataset.originalClass;
+        } else {
+            // Fallback to get original icon
+            icon.className = getOriginalIconForTab(tabId);
         }
         icon.classList.remove('spinner');
     }
@@ -152,42 +177,48 @@ function getOriginalIconForTab(tabId) {
 }
 
 /**
- * Complete navigation initialization - all tabs are ready
+ * Enable a specific navigation tab (legacy function for backward compatibility)
+ */
+function enableNavigationTab(tabId, originalIcon = null) {
+    // Just call the new function that enables only this tab
+    enableOnlyNavigationTab(tabId, originalIcon);
+}
+
+/**
+ * Complete navigation initialization - system is ready
  */
 function completeNavigationInitialization() {
-    if (navigationState.disabledTabs.size === 0) {
-        console.log('✅ All navigation tabs are ready!');
-        navigationState.isInitializing = false;
+    console.log('✅ Navigation system ready!');
+    navigationState.isInitializing = false;
+    
+    // Show success message briefly
+    if (window.showNotification) {
+        window.showNotification('System initialized! Click any tab to access features.', 'success');
+    } else {
+        // Fallback notification
+        console.log('✅ System initialized! Click any tab to access features.');
         
-        // Show success message briefly
-        if (window.showNotification) {
-            window.showNotification('System initialized successfully! All features are now available.', 'success');
-        } else {
-            // Fallback notification
-            console.log('✅ System initialized successfully! All features are now available.');
-            
-            // Show a simple toast notification
-            const toast = document.createElement('div');
-            toast.className = 'alert alert-success position-fixed';
-            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; opacity: 0.9;';
-            toast.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>System ready! All features are now available.';
-            document.body.appendChild(toast);
-            
+        // Show a simple toast notification
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success position-fixed';
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; opacity: 0.9;';
+        toast.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>System ready! Click any tab to access features.';
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    
+    // Auto-load the first tab (Team Balancer) if no tab is active
+    const activeTab = document.querySelector('.nav-link.active');
+    if (!activeTab) {
+        const teamBalancerTab = document.getElementById('team-balancer-tab');
+        if (teamBalancerTab) {
             setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-        
-        // Auto-load the first tab (Team Balancer) if no tab is active
-        const activeTab = document.querySelector('.nav-link.active');
-        if (!activeTab) {
-            const teamBalancerTab = document.getElementById('team-balancer-tab');
-            if (teamBalancerTab && teamBalancerTab.onclick) {
-                setTimeout(() => {
-                    console.log('🎯 Auto-loading Team Balancer tab...');
-                    teamBalancerTab.click();
-                }, 500);
-            }
+                console.log('🎯 Auto-loading Team Balancer tab...');
+                teamBalancerTab.click();
+            }, 500);
         }
     }
 }
@@ -519,7 +550,7 @@ async function loadTeamBalancer() {
     
         // Ensure tab is enabled after successful load
     if (result) {
-        enableNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
+        enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
     }
     
     return result;
@@ -547,7 +578,7 @@ async function loadRandomPicker() {
     
     // Ensure tab is enabled after successful load
     if (result) {
-        enableNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
+        enableOnlyNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
     }
     
     return result;
@@ -575,7 +606,7 @@ async function loadMasterlist() {
     
     // Ensure tab is enabled after successful load
     if (result) {
-        enableNavigationTab('masterlist-tab', 'bi bi-shield-check me-1');
+        enableOnlyNavigationTab('masterlist-tab', 'bi bi-shield-check me-1');
     }
     
     return result;
@@ -610,7 +641,7 @@ async function loadPlayerList() {
             await new Promise(resolve => setTimeout(resolve, 50));
             await window.initPlayerList();
         }
-        enableNavigationTab('player-list-tab', 'bi bi-list-ul me-1');
+        enableOnlyNavigationTab('player-list-tab', 'bi bi-list-ul me-1');
     }
     
     return result;
@@ -639,7 +670,7 @@ async function loadRegistration() {
             if (typeof window.initRegistration === 'function') {
                 await window.initRegistration();
             }
-            enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
+            enableOnlyNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
             return true;
         }
 
@@ -648,14 +679,14 @@ async function loadRegistration() {
         
         // Ensure tab is enabled after successful load
         if (result) {
-            enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
+            enableOnlyNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
         }
         
         return result;
     } catch (error) {
         console.error('Error loading registration:', error);
         // Still enable the tab even if there was an error
-        enableNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
+        enableOnlyNavigationTab('registration-tab', 'bi bi-clipboard2-check me-1');
         return false;
     }
 }
@@ -687,12 +718,12 @@ async function loadTournamentBracket() {
             if (typeof window.initTournamentBracketPage === 'function') {
                 console.log('🏆 Initializing tournament bracket page...');
                 await window.initTournamentBracketPage();
-                enableNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
+                enableOnlyNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
                 completeNavigationInitialization();
             } else {
                 console.log('⚠️ Tournament bracket page function not available yet');
                 // Still enable the tab even if initialization failed
-                enableNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
+                enableOnlyNavigationTab('tournament-bracket-tab', 'bi bi-trophy me-2');
             }
         }, 100);
     }
@@ -760,7 +791,7 @@ function initNavigation() {
                 const tab = document.getElementById(tabId);
                 if (tab) {
                     const originalIcon = getOriginalIconForTab(tabId);
-                    enableNavigationTab(tabId, originalIcon);
+                    enableOnlyNavigationTab(tabId, originalIcon);
                 }
             });
             

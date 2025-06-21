@@ -55,13 +55,9 @@ async function initPlayerList() {
         
         console.log('Player list module initialized successfully');
         
-        // Enable navigation tabs now that player list is loaded
-        if (typeof enableNavigationTab === 'function') {
-            enableNavigationTab('player-list-tab');
-            // Trigger completion check for all tabs
-            if (typeof completeNavigationInitialization === 'function') {
-                completeNavigationInitialization();
-            }
+        // Enable only this tab now that player list is loaded
+        if (typeof enableOnlyNavigationTab === 'function') {
+            enableOnlyNavigationTab('player-list-tab');
         }
     } catch (error) {
         console.error('Error initializing player list:', error);

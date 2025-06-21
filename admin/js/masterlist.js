@@ -110,13 +110,9 @@ async function loadMasterlistData() {
             
             showMasterlistNotification(`Loaded ${window.masterlistPlayers.length} players from masterlist`, 'success');
             
-            // Enable navigation tabs now that masterlist is loaded
-            if (typeof enableNavigationTab === 'function') {
-                enableNavigationTab('masterlist-tab');
-                // Trigger completion check for all tabs
-                if (typeof completeNavigationInitialization === 'function') {
-                    completeNavigationInitialization();
-                }
+            // Enable only this tab now that masterlist is loaded
+            if (typeof enableOnlyNavigationTab === 'function') {
+                enableOnlyNavigationTab('masterlist-tab');
             }
         } else {
             throw new Error(data.message || 'Failed to load masterlist');

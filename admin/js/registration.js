@@ -41,13 +41,9 @@ async function initRegistration() {
             
             console.log('Registration module initialized successfully');
             
-            // Enable navigation tabs now that registration is loaded
-            if (typeof enableNavigationTab === 'function') {
-                enableNavigationTab('registration-tab');
-                // Trigger completion check for all tabs
-                if (typeof completeNavigationInitialization === 'function') {
-                    completeNavigationInitialization();
-                }
+            // Enable only this tab now that registration is loaded
+            if (typeof enableOnlyNavigationTab === 'function') {
+                enableOnlyNavigationTab('registration-tab');
             }
         } catch (error) {
             console.error('Error initializing registration module:', error);
