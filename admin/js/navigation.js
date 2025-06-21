@@ -324,7 +324,22 @@ async function loadTeamBalancer() {
     updateActiveTab('team-balancer');
 
     // Load team balancer template and JavaScript
-    return loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
+    const result = await loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
+    
+    // After Team Balancer is loaded, initialize the tournament bracket system
+    if (result) {
+        // Wait a moment for DOM to be fully ready
+        setTimeout(() => {
+            if (typeof window.initTournamentBrackets === 'function') {
+                console.log('🏆 Initializing tournament brackets after Team Balancer load...');
+                window.initTournamentBrackets();
+            } else {
+                console.log('⚠️ Tournament brackets function not available yet');
+            }
+        }, 100);
+    }
+    
+    return result;
 }
 
 /**
