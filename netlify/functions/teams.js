@@ -73,8 +73,8 @@ export async function handler(event, context) {
       };
     }
 
-    const adminUserId = sessionValidation.session?.user_id;
-    const adminUsername = sessionValidation.user?.username || 'Unknown';
+    const adminUserId = sessionValidation.userId;
+    const adminUsername = sessionValidation.username || 'Unknown';
     
     if (!adminUserId) {
       console.error('No admin user ID in session:', sessionValidation);
