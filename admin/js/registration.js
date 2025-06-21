@@ -648,29 +648,29 @@ async function initRegistration() {
         
         // Also try direct function calls for immediate refresh
         setTimeout(() => {
-            // Refresh Player List if loaded
-            if (typeof window.loadPlayers === 'function') {
+            // Refresh Player List if loaded and DOM elements exist
+            if (typeof window.loadPlayers === 'function' && document.getElementById('players-table-body')) {
                 console.log('📋 Refreshing Player List...');
                 window.loadPlayers(true);
-            } else if (window.playerListModule && typeof window.playerListModule.loadPlayers === 'function') {
+            } else if (window.playerListModule && typeof window.playerListModule.loadPlayers === 'function' && document.getElementById('players-table-body')) {
                 console.log('📋 Refreshing Player List module...');
                 window.playerListModule.loadPlayers(true);
             }
             
-            // Refresh Team Balancer if loaded
-            if (typeof window.loadPlayersForBalancer === 'function') {
+            // Refresh Team Balancer if loaded and DOM elements exist
+            if (typeof window.loadPlayersForBalancer === 'function' && document.getElementById('available-players-list')) {
                 console.log('⚖️ Refreshing Team Balancer...');
                 window.loadPlayersForBalancer();
-            } else if (window.teamBalancerModule && typeof window.teamBalancerModule.loadPlayersForBalancer === 'function') {
+            } else if (window.teamBalancerModule && typeof window.teamBalancerModule.loadPlayersForBalancer === 'function' && document.getElementById('available-players-list')) {
                 console.log('⚖️ Refreshing Team Balancer module...');
                 window.teamBalancerModule.loadPlayersForBalancer();
             }
             
-            // Refresh Random Picker if loaded
-            if (typeof window.loadPlayersForPicker === 'function') {
+            // Refresh Random Picker if loaded and DOM elements exist
+            if (typeof window.loadPlayersForPicker === 'function' && document.getElementById('random-picker-players')) {
                 console.log('🎲 Refreshing Random Picker...');
                 window.loadPlayersForPicker();
-            } else if (window.randomPickerModule && typeof window.randomPickerModule.loadPlayersForPicker === 'function') {
+            } else if (window.randomPickerModule && typeof window.randomPickerModule.loadPlayersForPicker === 'function' && document.getElementById('random-picker-players')) {
                 console.log('🎲 Refreshing Random Picker module...');
                 window.randomPickerModule.loadPlayersForPicker();
             }
@@ -690,7 +690,7 @@ async function initRegistration() {
             // Show success notification
             if (window.showNotification) {
                 window.showNotification(
-                    `Registration ${actionType} - All player lists and tournament data refreshed`, 
+                    `Registration ${actionType} - Player lists refreshed where available`, 
                     'info'
                 );
             }
