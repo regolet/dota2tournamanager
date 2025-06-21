@@ -221,7 +221,15 @@ async function initRegistration() {
                         <button class="btn btn-outline-info" onclick="editSession('${session.sessionId}')" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-outline-danger" onclick="deleteSession('${session.sessionId}', '${escapeHtml(session.title)}')" title="Delete">
+                        ${session.isActive ? 
+                            `<button class="btn btn-outline-warning" onclick="closeSession('${session.sessionId}', '${escapeHtml(session.title).replace(/'/g, '\\\'')}')" title="Close Registration">
+                                <i class="bi bi-stop-circle"></i>
+                            </button>` : 
+                            `<button class="btn btn-outline-success" onclick="reopenSession('${session.sessionId}', '${escapeHtml(session.title).replace(/'/g, '\\\'')}')" title="Reopen Registration">
+                                <i class="bi bi-play-circle"></i>
+                            </button>`
+                        }
+                        <button class="btn btn-outline-danger" onclick="deleteSession('${session.sessionId}', '${escapeHtml(session.title).replace(/'/g, '\\\'')}')" title="Delete">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -404,6 +412,82 @@ async function initRegistration() {
         }
     }
     
+    /**
+     * Close registration session
+     */
+    async function closeSession(sessionId, title) {
+        if (!confirm(`Are you sure you want to close registration for "${title}"?`)) {
+            return;
+        }
+        
+        try {
+            const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+            
+            const response = await fetch(`/.netlify/functions/registration-sessions`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': adminSessionId
+                },
+                body: JSON.stringify({ 
+                    sessionId: sessionId,
+                    isActive: false
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert(`Registration "${title}" closed successfully`, 'success');
+                loadRegistrationSessions(); // Reload the list
+                notifyPlayerListsToRefresh('closed');
+            } else {
+                showAlert(data.message || 'Failed to close registration', 'danger');
+            }
+        } catch (error) {
+            console.error('Error closing registration session:', error);
+            showAlert('Error closing registration', 'danger');
+        }
+    }
+
+    /**
+     * Reopen registration session
+     */
+    async function reopenSession(sessionId, title) {
+        if (!confirm(`Are you sure you want to reopen registration for "${title}"?`)) {
+            return;
+        }
+        
+        try {
+            const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+            
+            const response = await fetch(`/.netlify/functions/registration-sessions`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': adminSessionId
+                },
+                body: JSON.stringify({ 
+                    sessionId: sessionId,
+                    isActive: true
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert(`Registration "${title}" reopened successfully`, 'success');
+                loadRegistrationSessions(); // Reload the list
+                notifyPlayerListsToRefresh('reopened');
+            } else {
+                showAlert(data.message || 'Failed to reopen registration', 'danger');
+            }
+        } catch (error) {
+            console.error('Error reopening registration session:', error);
+            showAlert('Error reopening registration', 'danger');
+        }
+    }
+
     function copySessionLink(sessionId) {
         const url = `${window.location.origin}/register/?session=${sessionId}`;
         copyToClipboard(url);
@@ -588,9 +672,11 @@ async function initRegistration() {
     }
     
     // Expose functions globally that need to be called from HTML
-window.initRegistration = initRegistration;
+    window.initRegistration = initRegistration;
     window.editSession = editSession;
     window.deleteSession = deleteSession;
+    window.closeSession = closeSession;
+    window.reopenSession = reopenSession;
     window.copySessionLink = copySessionLink;
     window.openSessionLink = openSessionLink;
     window.resetRegistrationModule = resetRegistrationModule;
