@@ -122,9 +122,13 @@ function disableAllNavigationTabs() {
  */
 function enableOnlyNavigationTab(tabId, originalIcon = null) {
     const tab = document.getElementById(tabId);
-    if (!tab) return;
+    if (!tab) {
+        console.error(`❌ Tab not found: ${tabId}`);
+        return;
+    }
     
     console.log(`✅ Enabling navigation tab: ${tabId}`);
+    console.log(`Tab before enabling:`, tab.className, `opacity: ${tab.style.opacity}`, `pointerEvents: ${tab.style.pointerEvents}`);
     
     // Enable this specific tab
     tab.classList.remove('disabled', 'loading');
@@ -149,6 +153,8 @@ function enableOnlyNavigationTab(tabId, originalIcon = null) {
     
     navigationState.disabledTabs.delete(tabId);
     navigationState.readyTabs.add(tabId);
+    
+    console.log(`Tab after enabling:`, tab.className, `opacity: ${tab.style.opacity}`, `pointerEvents: ${tab.style.pointerEvents}`);
     
     // Add ready indicator (brief green glow)
     tab.style.boxShadow = '0 0 8px rgba(25, 135, 84, 0.4)';
@@ -215,6 +221,15 @@ function completeNavigationInitialization() {
                 console.log('🎯 Auto-loading Team Balancer tab...');
                 teamBalancerTab.click();
             }, 500);
+        }
+    } else {
+        // If there's already an active tab, make sure it's enabled
+        const activeTabId = activeTab.id;
+        if (activeTabId) {
+            console.log(`🎯 Found active tab: ${activeTabId} - ensuring it's enabled`);
+            setTimeout(() => {
+                enableOnlyNavigationTab(activeTabId);
+            }, 100);
         }
     }
 }
@@ -937,34 +952,38 @@ function initNavigation() {
     
     
     if (teamBalancerTab) {
-        teamBalancerTab.addEventListener('click', function(e) {
+        teamBalancerTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            console.log('🎯 Team Balancer tab clicked - disabling all tabs');
             disableAllNavigationTabs();
-            loadTeamBalancer();
+            await loadTeamBalancer();
         });
     }
     
     if (randomPickerTab) {
-        randomPickerTab.addEventListener('click', function(e) {
+        randomPickerTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            console.log('🎯 Random Picker tab clicked - disabling all tabs');
             disableAllNavigationTabs();
-            loadRandomPicker();
+            await loadRandomPicker();
         });
     }
     
     if (playerListTab) {
-        playerListTab.addEventListener('click', function(e) {
+        playerListTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            console.log('🎯 Player List tab clicked - disabling all tabs');
             disableAllNavigationTabs();
-            loadPlayerList();
+            await loadPlayerList();
         });
     }
     
     if (registrationTab) {
-        registrationTab.addEventListener('click', function(e) {
+        registrationTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            console.log('🎯 Registration tab clicked - disabling all tabs');
             disableAllNavigationTabs();
-            loadRegistration();
+            await loadRegistration();
         });
     }
     
