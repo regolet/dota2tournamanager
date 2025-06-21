@@ -944,6 +944,7 @@ function initNavigation() {
     
     // Set up navigation tabs
     const teamBalancerTab = document.getElementById('team-balancer-tab');
+    const tournamentBracketTab = document.getElementById('tournament-bracket-tab');
     const randomPickerTab = document.getElementById('random-picker-tab');
     const playerListTab = document.getElementById('player-list-tab');
     const registrationTab = document.getElementById('registration-tab');
@@ -957,6 +958,15 @@ function initNavigation() {
             console.log('🎯 Team Balancer tab clicked - disabling all tabs');
             disableAllNavigationTabs();
             await loadTeamBalancer();
+        });
+    }
+    
+    if (tournamentBracketTab) {
+        tournamentBracketTab.addEventListener('click', async function(e) {
+            e.preventDefault();
+            console.log('🎯 Tournament Bracket tab clicked - disabling all tabs');
+            disableAllNavigationTabs();
+            await loadTournamentBracket();
         });
     }
     
@@ -990,6 +1000,7 @@ function initNavigation() {
     if (masterlistTab) {
         masterlistTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            console.log('🎯 Masterlist tab clicked - disabling all tabs');
             disableAllNavigationTabs();
             try {
                 await loadMasterlist();
@@ -1008,6 +1019,8 @@ function initNavigation() {
         
         if (tabId === 'team-balancer-tab') {
             loadTeamBalancer();
+        } else if (tabId === 'tournament-bracket-tab') {
+            loadTournamentBracket();
         } else if (tabId === 'random-picker-tab') {
             loadRandomPicker();
         } else if (tabId === 'player-list-tab') {
