@@ -57,9 +57,11 @@
             }
         });
 
-        // Check for dangerous content (but ignore our own security modal)
+        // Check for dangerous content (but ignore safe dynamic content)
         if (element.innerHTML && 
             !element.id?.includes('security-alert') && 
+            !element.id?.includes('db-health') &&
+            !element.classList?.contains('nav-item') &&
             /<script|javascript:|vbscript:|on\w+=/i.test(element.innerHTML)) {
             console.warn('🚨 Potential XSS detected in element:', element);
             element.innerHTML = element.textContent; // Convert to safe text
