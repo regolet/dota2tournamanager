@@ -95,13 +95,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Redirect with appropriate delay
                 if (sessionVerified) {
-                    // Session verified, redirect immediately
-                    window.location.href = '/admin/index.html';
+                    // Session verified, redirect immediately with login flag
+                    window.location.href = '/admin/index.html?from=login';
                 } else {
-                    // Session not verified, redirect with delay and hope for the best
+                    // Session not verified, redirect with delay and login flag
                     console.warn('Session could not be verified, redirecting with delay');
                     setTimeout(() => {
-                        window.location.href = '/admin/index.html';
+                        window.location.href = '/admin/index.html?from=login';
                     }, 750);
                 }
             } else {
