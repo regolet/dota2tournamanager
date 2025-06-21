@@ -750,12 +750,12 @@ function initNavigation() {
     // Initialize loading state first
     initNavigationLoadingState();
     
-    // Set up a timeout to force enable tabs if initialization takes too long
+    // Set up a shorter timeout as fallback since modules now enable themselves when ready
     setTimeout(() => {
         if (navigationState.isInitializing && navigationState.disabledTabs.size > 0) {
-            console.warn('⚠️ Some tabs are still disabled after 10 seconds, force enabling...');
+            console.warn('⚠️ Some tabs are still disabled after 3 seconds, force enabling remaining tabs...');
             
-            // Force enable remaining tabs
+            // Force enable any remaining tabs
             navigationState.disabledTabs.forEach(tabId => {
                 const tab = document.getElementById(tabId);
                 if (tab) {
@@ -766,7 +766,7 @@ function initNavigation() {
             
             completeNavigationInitialization();
         }
-    }, 10000); // 10 second timeout
+    }, 3000); // 3 second fallback timeout (most tabs should enable themselves by now)
     
     // Initializing navigation
     

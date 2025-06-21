@@ -54,6 +54,15 @@ async function initPlayerList() {
         setupRegistrationUpdateListener();
         
         console.log('Player list module initialized successfully');
+        
+        // Enable navigation tabs now that player list is loaded
+        if (typeof enableNavigationTab === 'function') {
+            enableNavigationTab('player-list-tab');
+            // Trigger completion check for all tabs
+            if (typeof completeNavigationInitialization === 'function') {
+                completeNavigationInitialization();
+            }
+        }
     } catch (error) {
         console.error('Error initializing player list:', error);
         showNotification('Failed to initialize player list module', 'error');

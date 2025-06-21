@@ -478,6 +478,15 @@ async function loadPlayersForBalancer() {
                 } else {
                     showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
                 }
+                
+                // Enable navigation tabs now that players are loaded
+                if (typeof enableNavigationTab === 'function') {
+                    enableNavigationTab('team-balancer-tab');
+                    // Trigger completion check for all tabs
+                    if (typeof completeNavigationInitialization === 'function') {
+                        completeNavigationInitialization();
+                    }
+                }
             } else {
                 console.error('Failed to load players:', data.message || 'Unknown error');
                 showNotification(data.message || 'Failed to load players', 'error');
