@@ -621,8 +621,6 @@ function displayPlayersForBalancer(players) {
  */
 function autoBalance() {
     try {
-        
-        
         // Get and disable the generate button to prevent multiple clicks
         const generateBtn = document.getElementById('generate-teams');
         if (generateBtn) {
@@ -654,8 +652,6 @@ function autoBalance() {
         
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
-
-        
 
         // High Ranked Balance, Perfect MMR Balance, and High/Low Shuffle calculate teams based on ALL available players
         // Other methods exclude already reserved players
@@ -845,19 +841,13 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     
     const maxPlayersForTeams = numTeams * teamSize;
     
-    console.log(`👑 High Ranked Balance: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
-    console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
-
     // Step 1: Separate players for teams vs reserves (with randomness)
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     
-    // Add randomness to reserve selection from lowest MMR candidates
     const reserveCandidates = sortedPlayers.slice(maxPlayersForTeams);
     const playersForReserves = [...reserveCandidates].sort(() => Math.random() - 0.5); // Shuffle reserves for variety
     
     if (playersForReserves.length > 0) {
-        console.log(`👑 Moving ${playersForReserves.length} lowest MMR players to reserves (MMR range: ${playersForReserves[0]?.peakmmr || 0} - ${playersForReserves[playersForReserves.length - 1]?.peakmmr || 0})`);
-        
         // Move lowest MMR players to reserves
         playersForReserves.forEach(player => {
             // Remove from available players
@@ -885,25 +875,17 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     const tierSize = Math.ceil(playersForTeams.length / (numTeams * 2)); // Create roughly 2 tiers per team
     const shuffledPlayersForTeams = [];
     
-    console.log(`👑 Creating MMR tiers of size ${tierSize} for randomness...`);
-    
     for (let i = 0; i < playersForTeams.length; i += tierSize) {
         const tier = playersForTeams.slice(i, i + tierSize);
         // Shuffle within each tier to add randomness while maintaining MMR proximity
         const shuffledTier = tier.sort(() => Math.random() - 0.5);
         shuffledPlayersForTeams.push(...shuffledTier);
-        
-        const tierMmrRange = tier.length > 0 ? 
-            `${tier[0]?.peakmmr || 0} - ${tier[tier.length - 1]?.peakmmr || 0}` : 'N/A';
-        console.log(`👑 Tier ${Math.floor(i / tierSize) + 1}: ${tier.length} players (MMR: ${tierMmrRange}) - shuffled`);
     }
     
     // Step 3: Snake draft with the tier-shuffled players
     let currentTeam = 0;
     let direction = 1; // 1 for forward, -1 for backward (snake pattern)
     let playersUsed = 0;
-    
-    console.log(`👑 Starting snake draft with ${shuffledPlayersForTeams.length} tier-shuffled players...`);
     
     for (const player of shuffledPlayersForTeams) {
         if (playersUsed >= maxPlayersForTeams) {
@@ -913,8 +895,6 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
         state.balancedTeams[currentTeam].players.push(player);
         state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
         playersUsed++;
-
-        console.log(`👑 Snake draft: ${player.name} (${player.peakmmr} MMR) → Team ${currentTeam + 1} [${playersUsed}/${maxPlayersForTeams}]`);
 
         // Move to next team using snake pattern
         if (direction === 1) {
@@ -931,11 +911,6 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
             }
         }
     }
-    
-    // Step 4: Log final results
-    console.log(`🐍 High Ranked Balance completed:`);
-    console.log(`   • ${playersUsed} highest MMR players distributed across ${numTeams} teams`);
-
 }
 
 /**
@@ -947,19 +922,13 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
     
     const maxPlayersForTeams = numTeams * teamSize;
     
-    console.log(`⚖️ Perfect MMR Balance: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
-    console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
-
     // Step 1: Separate players for teams vs reserves (with randomness)
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     
-    // Add randomness to reserve selection from lowest MMR candidates  
     const reserveCandidates = sortedPlayers.slice(maxPlayersForTeams);
     const playersForReserves = [...reserveCandidates].sort(() => Math.random() - 0.5); // Shuffle reserves for variety
     
     if (playersForReserves.length > 0) {
-        console.log(`⚖️ Moving ${playersForReserves.length} lowest MMR players to reserves (MMR range: ${playersForReserves[0]?.peakmmr || 0} - ${playersForReserves[playersForReserves.length - 1]?.peakmmr || 0})`);
-        
         // Move lowest MMR players to reserves
         playersForReserves.forEach(player => {
             // Remove from available players
@@ -984,14 +953,11 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
     }
     
     // Step 2: Distribute players for optimal MMR balance (deterministic, no randomness)
-    console.log(`⚖️ Distributing ${playersForTeams.length} players for closest possible MMR balance...`);
-    
     // Distribute each player to the team with the lowest current total MMR
     for (const player of playersForTeams) {
         // Find the team with the lowest total MMR that still has space
         const availableTeams = state.balancedTeams.filter(team => team.players.length < teamSize);
         if (availableTeams.length === 0) {
-            console.log(`⚖️ All teams are full (${teamSize} players each)`);
             break;
         }
         
@@ -1002,23 +968,7 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
         // Add player to the target team
         targetTeam.players.push(player);
         targetTeam.totalMmr += player.peakmmr || 0;
-        
-        console.log(`⚖️ Added ${player.name} (${player.peakmmr} MMR) to team with ${targetTeam.totalMmr - (player.peakmmr || 0)} MMR (new total: ${targetTeam.totalMmr})`);
     }
-    
-    // Step 3: Log final results
-    console.log(`⚖️ Perfect MMR Balance completed:`);
-    console.log(`   • ${playersForTeams.length} highest MMR players distributed across ${numTeams} teams`);
-    console.log(`   • ${playersForReserves.length} lowest MMR players moved to reserves`);
-    console.log(`   • Deterministic distribution for optimal MMR balance`);
-    
-    // Log team composition
-    state.balancedTeams.forEach((team, index) => {
-        const avgMmr = team.players.length > 0 ? Math.round(team.totalMmr / team.players.length) : 0;
-        const mmrRange = team.players.length > 0 ? 
-            `${Math.max(...team.players.map(p => p.peakmmr || 0))} - ${Math.min(...team.players.map(p => p.peakmmr || 0))}` : 'N/A';
-        console.log(`   Team ${index + 1}: ${team.players.length} players, Avg MMR: ${avgMmr}, Total MMR: ${team.totalMmr}, Range: ${mmrRange}`);
-    });
 }
 
 /**
@@ -1030,9 +980,6 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
     
     const maxPlayersForTeams = numTeams * teamSize;
     
-    console.log(`🔄 High/Low Shuffle: ${players.length} total players, need ${maxPlayersForTeams} for teams`);
-    console.log(`Highest MMR: ${sortedPlayers[0]?.peakmmr || 0}, Lowest MMR: ${sortedPlayers[sortedPlayers.length - 1]?.peakmmr || 0}`);
-
     // Step 1: Select players for teams and reserves (prioritize LOW MMR for teams)
     // Strategy: Take top players for teams, but prioritize keeping LOW MMR in teams
     
@@ -1041,8 +988,6 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
     
     const playersNeededForTeams = maxPlayersForTeams; // exactly 40 for 8 teams
     const playersToReserve = sortedPlayers.length - playersNeededForTeams; // exactly 1 for 41 total
-    
-    console.log(`🔄 High/Low Shuffle: Need ${playersNeededForTeams} players for ${numTeams} teams, ${playersToReserve} to reserves`);
     
     // Strategy: Randomized selection from middle tier for reserves (NON-DETERMINISTIC)
     const guaranteedTopCount = Math.floor(playersNeededForTeams * 0.4); // Keep top 40% guaranteed
@@ -1076,19 +1021,7 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
         ...guaranteedBottomPlayers
     ];
     
-    console.log(`🔄 Player selection strategy (NON-DETERMINISTIC randomization):`);
-    console.log(`   Guaranteed TOP ${guaranteedTopCount} players (highest MMR) - ALWAYS for teams`);
-    console.log(`   Guaranteed BOTTOM ${guaranteedBottomCount} players (lowest MMR - PRIORITY) - ALWAYS for teams`);
-    console.log(`   Flexible middle tier: ${flexibleCandidates.length} candidates (MMR range: ${flexibleCandidates[0]?.peakmmr || 0} - ${flexibleCandidates[flexibleCandidates.length - 1]?.peakmmr || 0})`);
-    console.log(`   After MULTI-SHUFFLE randomization:`);
-    console.log(`     → Selected for teams: ${flexiblePlayersForTeams.length} random middle-tier players`);
-    console.log(`     → Moving to reserves: ${playersForReserves.length} random middle-tier players`);
-    console.log(`   Reserve randomness: Multiple shuffle rounds + timestamp seed for different results each generation`);
-    
     if (playersForReserves.length > 0) {
-        const reserveMMRs = playersForReserves.map(p => p.peakmmr || 0).sort((a, b) => b - a);
-        console.log(`🔄 Moving ${playersForReserves.length} flexible players to reserves (MMR range: ${reserveMMRs[0]} - ${reserveMMRs[reserveMMRs.length - 1]})`);
-        
         // Move players to reserves
         playersForReserves.forEach(player => {
             // Remove from available players
@@ -1124,17 +1057,10 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
     const midTierPlayers = teamPlayersResorted.slice(highTierSize, highTierSize + midTierSize);
     const lowTierPlayers = teamPlayersResorted.slice(-lowTierSize);
     
-    console.log(`🔄 Player tiers created:`);
-    console.log(`   High Tier (Slot 1): ${highTierPlayers.length} players (MMR: ${highTierPlayers[0]?.peakmmr || 0} - ${highTierPlayers[highTierPlayers.length - 1]?.peakmmr || 0})`);
-    console.log(`   Mid Tier (Slots 2-4): ${midTierPlayers.length} players (MMR: ${midTierPlayers[0]?.peakmmr || 0} - ${midTierPlayers[midTierPlayers.length - 1]?.peakmmr || 0})`);
-    console.log(`   Low Tier (Slot 5): ${lowTierPlayers.length} players (MMR: ${lowTierPlayers[0]?.peakmmr || 0} - ${lowTierPlayers[lowTierPlayers.length - 1]?.peakmmr || 0})`);
-    
     // Step 3: Shuffle each tier for randomness
     const shuffledHighTier = [...highTierPlayers].sort(() => Math.random() - 0.5);
     const shuffledMidTier = [...midTierPlayers].sort(() => Math.random() - 0.5);
     const shuffledLowTier = [...lowTierPlayers].sort(() => Math.random() - 0.5);
-    
-    console.log(`🔄 All tiers shuffled for randomness`);
     
     // Step 4: Distribute players by positional priority
     for (let teamIndex = 0; teamIndex < numTeams; teamIndex++) {
@@ -1145,7 +1071,6 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
             const highPlayer = shuffledHighTier.shift();
             team.players.push(highPlayer);
             team.totalMmr += highPlayer.peakmmr || 0;
-            console.log(`🔄 Team ${teamIndex + 1} Slot 1 (High): ${highPlayer.name} (${highPlayer.peakmmr} MMR)`);
         }
         
         // Slot 5: Low MMR player (priority) - assign early to ensure each team gets one
@@ -1153,7 +1078,6 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
             const lowPlayer = shuffledLowTier.shift();
             team.players.push(lowPlayer);
             team.totalMmr += lowPlayer.peakmmr || 0;
-            console.log(`🔄 Team ${teamIndex + 1} Slot 5 (Low): ${lowPlayer.name} (${lowPlayer.peakmmr} MMR)`);
         }
     }
     
@@ -1168,29 +1092,12 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
                 const midPlayer = shuffledMidTier[midTierIndex++];
                 team.players.push(midPlayer);
                 team.totalMmr += midPlayer.peakmmr || 0;
-                console.log(`🔄 Team ${teamIndex + 1} Slot ${team.players.length} (Mid): ${midPlayer.name} (${midPlayer.peakmmr} MMR)`);
                 slotFilled = true;
             }
         }
         // If no slots were filled, break to avoid infinite loop
         if (!slotFilled) break;
     }
-    
-    // Step 6: Log final results
-    console.log(`🔄 High/Low Shuffle completed:`);
-    console.log(`   • ${playersForTeams.length} players distributed across ${numTeams} teams with LOW MMR priority`);
-    console.log(`   • ${playersForReserves.length} players moved to reserves (mostly mid-tier MMR)`);
-    console.log(`   • LOW MMR players prioritized for teams, MID-TIER players sent to reserves`);
-    console.log(`   • Randomness applied within each MMR tier`);
-    console.log(`   • Position Priority: Slot 1 (High MMR) → Slots 2-4 (Mid MMR) → Slot 5 (Low MMR - PRIORITY)`);
-    
-    // Log team composition
-    state.balancedTeams.forEach((team, index) => {
-        const avgMmr = team.players.length > 0 ? Math.round(team.totalMmr / team.players.length) : 0;
-        const mmrRange = team.players.length > 0 ? 
-            `${Math.max(...team.players.map(p => p.peakmmr || 0))} - ${Math.min(...team.players.map(p => p.peakmmr || 0))}` : 'N/A';
-        console.log(`   Team ${index + 1}: ${team.players.length} players, Avg MMR: ${avgMmr}, Total MMR: ${team.totalMmr}, Range: ${mmrRange}`);
-    });
 }
 
 /**
@@ -1310,8 +1217,6 @@ function displayBalancedTeams() {
         if (exportBtn) {
             exportBtn.disabled = false;
         }
-        
-        console.log('✅ Teams displayed with new compact table layout');
     }, 10);
 }
 
@@ -1319,8 +1224,6 @@ function displayBalancedTeams() {
  * Setup player action buttons
  */
 function setupPlayerActionButtons() {
-
-    
     // Remove player buttons
     const removePlayerButtons = document.querySelectorAll('.remove-player');
     
@@ -1332,8 +1235,6 @@ function setupPlayerActionButtons() {
         });
     });
 }
-
-
 
 /**
  * Remove player from list
@@ -1598,8 +1499,6 @@ async function saveTeams() {
 function setupTeamBalancerRegistrationListener() {
     // Listen for custom registration update events
     window.addEventListener('registrationUpdated', function(event) {
-        console.log('⚖️ Team Balancer received registration update event:', event.detail);
-        
         // Reload registration sessions to get updated limits and status
         loadRegistrationSessions().then(() => {
             // Reload players to reflect any new availability
@@ -1612,7 +1511,6 @@ function setupTeamBalancerRegistrationListener() {
     
     // Also expose refresh function globally for direct calls
     window.refreshTeamBalancerData = function() {
-        console.log('⚖️ Direct refresh requested for Team Balancer');
         loadRegistrationSessions().then(() => {
             if (state.currentSessionId) {
                 loadPlayersForBalancer();
