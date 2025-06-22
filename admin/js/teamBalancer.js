@@ -261,8 +261,61 @@ function setupTeamBalancerEventListeners() {
         refreshSessionsBtn.addEventListener('click', loadRegistrationSessions);
     }
 
+    // Event delegation for remove player buttons (prevents memory leaks)
+    const playerListContainer = document.getElementById('player-list')?.closest('table') || 
+                               document.querySelector('#team-balancer table');
+    if (playerListContainer) {
+        playerListContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-player')) {
+                const button = e.target.closest('.remove-player');
+                const playerId = button.getAttribute('data-id');
+                const playerIndex = parseInt(button.getAttribute('data-index'));
+                removePlayerFromList(playerId, playerIndex);
+            }
+        });
+    }
+
+    // Event delegation for restore player buttons (prevents memory leaks)
+    const reservedListContainer = document.getElementById('reserved-players-list')?.closest('table') || 
+                                 document.querySelector('#reserved-players table');
+    if (reservedListContainer) {
+        reservedListContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.restore-player')) {
+                const button = e.target.closest('.restore-player');
+                const playerIndex = parseInt(button.getAttribute('data-index'));
+                restorePlayerFromReserved(playerIndex);
+            }
+        });
+    }
+
     // Setup existing team balancer buttons with session validation
     setupBalancerButtons();
+}
+
+/**
+ * Remove player from list
+ */
+function removePlayerFromList(playerId, playerIndex) {
+    // Find player by ID instead of using index (fixes sorting bug)
+    const playerRealIndex = state.availablePlayers.findIndex(p => p.id === playerId);
+    
+    if (playerRealIndex >= 0 && playerRealIndex < state.availablePlayers.length) {
+        const player = state.availablePlayers[playerRealIndex];
+
+        
+        if (confirm(`Are you sure you want to remove ${player.name} from the team balancer?`)) {
+            // Remove from available players using the correct index
+            state.availablePlayers.splice(playerRealIndex, 1);
+            
+            // Refresh display
+            displayPlayersForBalancer(state.availablePlayers);
+            
+            showNotification(`${player.name} removed from team balancer`, 'info');
+        }
+    } else {
+        console.error(`Player not found with ID: ${playerId}. Available players: ${state.availablePlayers.length}`);
+        showNotification('Error: Player not found', 'error');
+    }
 }
 
 /**
@@ -752,8 +805,7 @@ function displayPlayersForBalancer(players) {
 
     playersList.innerHTML = playersHtml;
     
-    // Setup action buttons after adding players
-    setupPlayerActionButtons();
+    // Note: Event listeners are now handled by event delegation in setupTeamBalancerEventListeners
 }
 
 /**
@@ -1217,48 +1269,6 @@ function displayBalancedTeams() {
 }
 
 /**
- * Setup player action buttons
- */
-function setupPlayerActionButtons() {
-    // Remove player buttons
-    const removePlayerButtons = document.querySelectorAll('.remove-player');
-    
-    removePlayerButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            const playerId = e.currentTarget.getAttribute('data-id');
-            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
-            removePlayerFromList(playerId, playerIndex);
-        });
-    });
-}
-
-/**
- * Remove player from list
- */
-function removePlayerFromList(playerId, playerIndex) {
-    // Find player by ID instead of using index (fixes sorting bug)
-    const playerRealIndex = state.availablePlayers.findIndex(p => p.id === playerId);
-    
-    if (playerRealIndex >= 0 && playerRealIndex < state.availablePlayers.length) {
-        const player = state.availablePlayers[playerRealIndex];
-
-        
-        if (confirm(`Are you sure you want to remove ${player.name} from the team balancer?`)) {
-            // Remove from available players using the correct index
-            state.availablePlayers.splice(playerRealIndex, 1);
-            
-            // Refresh display
-            displayPlayersForBalancer(state.availablePlayers);
-            
-            showNotification(`${player.name} removed from team balancer`, 'info');
-        }
-    } else {
-        console.error(`Player not found with ID: ${playerId}. Available players: ${state.availablePlayers.length}`);
-        showNotification('Error: Player not found', 'error');
-    }
-}
-
-/**
  * Display reserved players
  */
 function displayReservedPlayers() {
@@ -1312,13 +1322,7 @@ function displayReservedPlayers() {
     
     reservedList.innerHTML = reservedHtml;
     
-    // Setup restore buttons
-    document.querySelectorAll('.restore-player').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const playerIndex = parseInt(e.currentTarget.getAttribute('data-index'));
-            restorePlayerFromReserved(playerIndex);
-        });
-    });
+    // Note: Event listeners are now handled by event delegation in setupTeamBalancerEventListeners
 }
 
 /**
