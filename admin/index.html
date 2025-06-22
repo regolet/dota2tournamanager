@@ -86,51 +86,52 @@
 </head>
 <body>
     <header class="bg-white shadow-sm sticky-top">
-        <div class="container">
+        <div class="container-fluid">
             <nav class="navbar navbar-expand-lg navbar-light">
-                <div class="container">
-                    <a class="navbar-brand fw-bold" href="#">
-                        <i class="bi bi-joystick me-2"></i>Dota 2 Tournament
-                    </a>
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" 
-                            aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="mainNavbar">
-                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                            <li class="nav-item">
-                                <a class="nav-link" href="javascript:loadTeamBalancer()" id="team-balancer-tab">
-                                    <i class="bi bi-people-fill me-2"></i>Team Balancer
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="javascript:loadTournamentBracket()" id="tournament-bracket-tab">
-                                    <i class="bi bi-trophy me-2"></i>Tournament Bracket
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="javascript:loadRandomPicker()" id="random-picker-tab">
-                                    <i class="bi bi-shuffle me-2"></i>Random Picker
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" id="player-list-tab" data-section="player-list">
-                                    <i class="bi bi-list-ul me-1"></i>Player List
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" id="registration-tab" data-section="registration-manager">
-                                    <i class="bi bi-clipboard2-check me-1"></i>Registration
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" id="masterlist-tab" data-section="masterlist">
-                                    <i class="bi bi-shield-check me-1"></i>Masterlist
-                                </a>
-                            </li>
-                        </ul>
-                        <!-- Profile dropdown will be added by navigation.js -->
-                    </div>
+                <a class="navbar-brand fw-bold" href="#">
+                    <i class="bi bi-joystick me-2"></i>Dota 2 Tournament
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" 
+                        aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="mainNavbar">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" href="javascript:void(0);" onclick="loadTeamBalancer()" id="team-balancer-tab">
+                                <i class="bi bi-people-fill me-2"></i>Team Balancer
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="javascript:void(0);" onclick="loadTournamentBracket()" id="tournament-bracket-tab">
+                                <i class="bi bi-trophy me-2"></i>Tournament Bracket
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="javascript:void(0);" onclick="loadRandomPicker()" id="random-picker-tab">
+                                <i class="bi bi-shuffle me-2"></i>Random Picker
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="player-list-tab" data-section="player-list">
+                                <i class="bi bi-list-ul me-1"></i>Player List
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="registration-tab" data-section="registration-manager">
+                                <i class="bi bi-clipboard2-check me-1"></i>Registration
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="masterlist-tab" data-section="masterlist">
+                                <i class="bi bi-shield-check me-1"></i>Masterlist
+                            </a>
+                        </li>
+                    </ul>
+                    <!-- Profile dropdown will be added by navigation.js here -->
+                    <ul class="navbar-nav ms-auto" id="profile-nav-container">
+                        <!-- Profile dropdown content goes here -->
+                    </ul>
                 </div>
             </nav>
         </div>

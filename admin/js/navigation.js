@@ -660,11 +660,11 @@ function initNavigation() {
     }
 
     // Add profile dropdown to navbar
-    const navbar = document.querySelector('.navbar-nav');
+    const navbar = document.querySelector('#profile-nav-container');
     if (navbar) {
         // Create profile dropdown
         const profileDropdown = document.createElement('li');
-        profileDropdown.className = 'nav-item dropdown ms-auto';
+        profileDropdown.className = 'nav-item dropdown';
         profileDropdown.innerHTML = `
             <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-person-circle me-1"></i> Admin
