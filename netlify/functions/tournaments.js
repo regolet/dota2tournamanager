@@ -82,9 +82,16 @@ export async function handler(event, context) {
                 // If no ID, get the list of tournaments based on user role
                 const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
                 const tournaments = await getTournaments(targetUserId);
+
+                // Manually format the date to avoid JSON serialization issues
+                const formattedTournaments = tournaments.map(t => ({
+                    ...t,
+                    created_at: t.created_at.toISOString(),
+                }));
+
                 return {
                     statusCode: 200,
-                    body: JSON.stringify(tournaments),
+                    body: JSON.stringify(formattedTournaments),
                     headers
                 };
             }
