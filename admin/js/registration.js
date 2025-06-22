@@ -183,20 +183,10 @@ async function initRegistration() {
     }
     
     function displayRegistrationSessions() {
-        const tableBody = document.getElementById('registration-sessions-table');
+        const tableBody = document.getElementById('registration-sessions-table-body');
         
-        if (!tableBody) return;
-        
-        if (state.registrationSessions.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">
-                        <i class="bi bi-inbox me-2"></i>
-                        No registration links created yet.
-                        <br><small>Click "Create New Link" to get started.</small>
-                    </td>
-                </tr>
-            `;
+        if (!tableBody) {
+            console.error('Registration sessions table body not found');
             return;
         }
         
@@ -205,6 +195,14 @@ async function initRegistration() {
         // Get current user info for permission checks
         const currentUser = window.sessionManager?.getUser();
         const isSuperAdmin = currentUser?.role === 'superadmin';
+        
+        console.log('🔍 Registration: Permission check debug:', {
+            currentUser: currentUser,
+            isSuperAdmin: isSuperAdmin,
+            userRole: currentUser?.role,
+            userId: currentUser?.id,
+            username: currentUser?.username
+        });
         
         state.registrationSessions.forEach(session => {
             const row = document.createElement('tr');
@@ -233,6 +231,16 @@ async function initRegistration() {
             // Permission checks
             const canModify = isSuperAdmin || session.adminUserId === currentUser?.id;
             const canDelete = isSuperAdmin; // Only superadmins can delete
+            
+            console.log('🔍 Registration: Session permission check:', {
+                sessionId: session.sessionId,
+                sessionTitle: session.title,
+                sessionAdminUserId: session.adminUserId,
+                sessionAdminUsername: session.adminUsername,
+                canModify: canModify,
+                canDelete: canDelete,
+                isActive: session.isActive
+            });
             
             row.innerHTML = `
                 <td>
