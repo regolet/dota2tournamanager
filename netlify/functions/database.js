@@ -1700,7 +1700,10 @@ export async function getTournaments(adminUserId = null) {
       query = sql`
         SELECT 
           t.id,
-          (t.tournament_data::json)->>'name' as name,
+          CASE 
+            WHEN jsonb_typeof(t.tournament_data) = 'object' THEN (t.tournament_data->>'name')
+            ELSE NULL 
+          END as name,
           t.created_at
         FROM tournaments t
         WHERE t.admin_user_id = ${adminUserId}
@@ -1710,7 +1713,10 @@ export async function getTournaments(adminUserId = null) {
       query = sql`
         SELECT 
           t.id,
-          (t.tournament_data::json)->>'name' as name,
+          CASE 
+            WHEN jsonb_typeof(t.tournament_data) = 'object' THEN (t.tournament_data->>'name')
+            ELSE NULL 
+          END as name,
           t.created_at
         FROM tournaments t
         ORDER BY t.created_at DESC
