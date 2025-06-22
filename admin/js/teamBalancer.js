@@ -189,7 +189,13 @@ async function loadRegistrationSessions() {
             return;
         }
 
-        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        const apiResponse = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        
+        if (!apiResponse.ok) {
+            throw new Error(`HTTP error! status: ${apiResponse.status}`);
+        }
+        
+        const data = await apiResponse.json();
 
         if (data && data.success && Array.isArray(data.sessions)) {
             state.registrationSessions = data.sessions;

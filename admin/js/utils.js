@@ -11,93 +11,15 @@ async function fetchWithAuth(endpoint, options = {}) {
     // Get session ID from session manager or localStorage
     const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
     
-    console.log('🔐 fetchWithAuth called:', {
-        url: url,
-        sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'null',
-        hasSessionManager: !!window.sessionManager,
-        hasLocalStorage: !!localStorage.getItem('adminSessionId'),
-        method: options.method || 'GET'
-    });
-    
     // Making request
-    
-    try {
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                'x-session-id': sessionId, // Add session ID for authentication
-                ...options.headers,
-            },
-            credentials: 'include'
-        });
-        
-        console.log('📡 fetchWithAuth response received:', {
-            url: url,
-            status: response.status,
-            statusText: response.statusText,
-            ok: response.ok,
-            headers: Object.fromEntries(response.headers.entries())
-        });
-        
-        // Response status
-        
-        // Try to get response text first for debugging
-        const responseText = await response.text();
-        console.log('📄 fetchWithAuth response text:', {
-            url: url,
-            textLength: responseText.length,
-            textPreview: responseText.substring(0, 200) + (responseText.length > 200 ? '...' : '')
-        });
-        
-        let responseData;
-        
-        try {
-            responseData = responseText ? JSON.parse(responseText) : null;
-            console.log('✅ fetchWithAuth JSON parsed successfully:', {
-                url: url,
-                hasData: !!responseData,
-                dataKeys: responseData ? Object.keys(responseData) : []
-            });
-        } catch (e) {
-            // Failed to parse JSON response
-            console.error('❌ fetchWithAuth JSON parse error:', {
-                url: url,
-                error: e.message,
-                responseText: responseText.substring(0, 500)
-            });
-            throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
-        }
-        
-        if (!response.ok) {
-            console.error('❌ fetchWithAuth HTTP error:', {
-                url: url,
-                status: response.status,
-                statusText: response.statusText,
-                responseData: responseData
-            });
-            const errorMessage = responseData?.message || 
-                               responseData?.error || 
-                               `HTTP ${response.status} ${response.statusText}`;
-            throw new Error(errorMessage);
-        }
-        
-        console.log('✅ fetchWithAuth successful:', {
-            url: url,
-            dataKeys: responseData ? Object.keys(responseData) : [],
-            success: responseData?.success
-        });
-        
-        return responseData;
-    } catch (error) {
-        // API Error
-        console.error('❌ fetchWithAuth error:', {
-            url: url,
-            error: error.message,
-            stack: error.stack
-        });
-        throw error;
-    }
+    return fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            'x-session-id': sessionId, // Add session ID for authentication
+            ...options.headers,
+        },
+    });
 }
 
 // Add styles for notifications if they don't exist
