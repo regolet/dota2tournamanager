@@ -1638,7 +1638,7 @@ export async function saveTournament(tournamentData) {
 
     const result = await sql`
       INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
-      VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournament_data}, NOW(), NOW())
+      VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${JSON.stringify(tournament_data)}, NOW(), NOW())
       ON CONFLICT (id) 
       DO UPDATE SET
         tournament_data = EXCLUDED.tournament_data,

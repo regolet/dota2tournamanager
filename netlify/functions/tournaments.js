@@ -41,9 +41,17 @@ export async function handler(event, context) {
         const { userId: adminUserId, role: adminRole } = session;
 
         if (event.httpMethod === 'POST') {
-            const data = JSON.parse(event.body);
-            data.admin_user_id = adminUserId;
-            const result = await saveTournament(data);
+            const clientData = JSON.parse(event.body);
+            
+            const dbPayload = {
+                id: clientData.id,
+                admin_user_id: adminUserId,
+                team_set_id: clientData.team_set_id,
+                tournament_data: clientData // Pass the entire client object as the data
+            };
+
+            const result = await saveTournament(dbPayload);
+
             if (result.success) {
                 return {
                     statusCode: 200,
