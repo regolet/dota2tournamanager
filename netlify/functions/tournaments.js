@@ -86,7 +86,7 @@ export async function handler(event, context) {
                 // Manually format the date to avoid JSON serialization issues
                 const formattedTournaments = tournaments.map(t => ({
                     ...t,
-                    created_at: t.created_at.toISOString(),
+                    created_at: t.created_at ? t.created_at.toISOString() : null,
                 }));
 
                 return {
