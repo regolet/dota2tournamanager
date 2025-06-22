@@ -1710,7 +1710,7 @@ export async function getTournaments(adminUserId = null) {
         ORDER BY t.created_at DESC
       `;
     }
-    const result = await sql`${query}`;
+    const result = await query;
     return result;
   } catch (error) {
     // If table doesn't exist, return empty array gracefully
