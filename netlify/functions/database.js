@@ -1465,20 +1465,20 @@ export async function getTeamConfigurations(adminUserId = null) {
     if (adminUserId) {
       console.log(`[DB] Getting team configs for admin_user_id: ${adminUserId}`);
       teams = await sql`
-        SELECT * FROM teams 
+        SELECT DISTINCT ON (team_set_id) * FROM teams 
         WHERE admin_user_id = ${adminUserId} AND is_active = true
-        ORDER BY created_at DESC
+        ORDER BY team_set_id, created_at DESC
       `;
     } else {
       console.log(`[DB] Getting all active team configs (no admin_user_id provided)`);
       teams = await sql`
-        SELECT * FROM teams 
+        SELECT DISTINCT ON (team_set_id) * FROM teams 
         WHERE is_active = true
-        ORDER BY created_at DESC
+        ORDER BY team_set_id, created_at DESC
       `;
     }
     
-    console.log(`[DB] Found ${teams.length} team configurations matching query.`);
+    console.log(`[DB] Found ${teams.length} unique team configurations matching query.`);
     
     return teams.map(team => {
       let parsedTeams = [];
