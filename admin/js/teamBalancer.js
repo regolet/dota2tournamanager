@@ -753,16 +753,6 @@ function displayPlayersForBalancer(players) {
     if (playerCountElement) {
         const count = players ? players.length : 0;
         playerCountElement.textContent = count;
-        
-        // Also update the header to show total players
-        const playerListHeader = document.querySelector('#team-balancer .h5');
-        if (playerListHeader) {
-            playerListHeader.innerHTML = `
-                <i class="bi bi-people me-2"></i>Player List
-                <span id="player-count" class="badge bg-primary ms-1">${count}</span>
-                <span class="badge bg-secondary ms-1">Total: ${count}</span>
-            `;
-        }
     }
 
     if (!players || players.length === 0) {
