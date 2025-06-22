@@ -385,6 +385,140 @@ function setupBalancerButtons() {
         saveTeamsBtn.removeAttribute('onclick');
         saveTeamsBtn.addEventListener('click', saveTeams);
     }
+
+    // Load Teams button
+    const loadTeamsBtn = document.getElementById('load-teams-btn');
+    if (loadTeamsBtn) {
+        loadTeamsBtn.addEventListener('click', showLoadTeamsModal);
+    }
+}
+
+/**
+ * Show a modal to select a saved team set to load.
+ */
+async function showLoadTeamsModal() {
+    try {
+        const response = await fetchWithAuth('/.netlify/functions/teams');
+        const result = await response.json();
+
+        if (!result.success || !result.teams || result.teams.length === 0) {
+            showNotification('No saved teams found.', 'info');
+            return;
+        }
+
+        const savedTeams = result.teams;
+
+        // Create Modal HTML
+        let modal = document.getElementById('loadTeamsModal');
+        if (modal) {
+            modal.remove();
+        }
+
+        const teamsListHtml = savedTeams.map(teamSet => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0">${escapeHtml(teamSet.title)}</h6>
+                    <small class="text-muted">
+                        Saved on: ${new Date(teamSet.createdAt).toLocaleString()} | ${teamSet.teams.length} teams
+                    </small>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="window.teamBalancerModule.loadSelectedTeams('${teamSet._id}')">
+                    <i class="bi bi-download me-1"></i> Load
+                </button>
+            </li>
+        `).join('');
+
+        const modalHtml = `
+            <div class="modal fade" id="loadTeamsModal" tabindex="-1" aria-labelledby="loadTeamsModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="loadTeamsModalLabel">
+                                <i class="bi bi-folder2-open me-2"></i>Load Saved Teams
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Select a team set to load into the team balancer. This will replace any current teams and player lists.</p>
+                            <ul class="list-group">
+                                ${teamsListHtml}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const loadTeamsModal = new bootstrap.Modal(document.getElementById('loadTeamsModal'));
+        loadTeamsModal.show();
+
+    } catch (error) {
+        console.error('Error loading saved teams:', error);
+        showNotification('Error fetching saved teams.', 'error');
+    }
+}
+
+/**
+ * Load a selected team set into the balancer.
+ * @param {string} teamSetId The ID of the team set to load.
+ */
+async function loadSelectedTeams(teamSetId) {
+    try {
+        // Close the modal
+        const modalElement = document.getElementById('loadTeamsModal');
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+        }
+        showNotification('Loading selected teams...', 'info');
+
+        const response = await fetchWithAuth(`/.netlify/functions/teams?id=${teamSetId}`);
+        const result = await response.json();
+
+        if (!result.success || !result.teamSet) {
+            throw new Error(result.message || 'Failed to load the selected team set.');
+        }
+
+        const { teamSet } = result;
+        
+        // 1. Update session
+        state.currentSessionId = teamSet.sourceSessionId;
+        const sessionSelector = document.getElementById('team-balancer-session-selector');
+        if (sessionSelector) {
+            sessionSelector.value = state.currentSessionId;
+        }
+
+        // 2. Load all players for that session
+        await loadPlayersForBalancer();
+        
+        // After loading, all players are in state.availablePlayers
+        const allPlayers = [...state.availablePlayers];
+
+        // 3. Set balanced teams
+        state.balancedTeams = teamSet.teams;
+
+        // 4. Determine reserved and available players
+        const playersInTeams = state.balancedTeams.flatMap(team => team.players);
+        const playerInTeamsIds = new Set(playersInTeams.map(p => p.id));
+
+        state.reservedPlayers = allPlayers.filter(p => !playerInTeamsIds.has(p.id));
+        state.availablePlayers = []; // All players are either in teams or reserved
+
+        // 5. Refresh all displays
+        displayPlayersForBalancer(state.availablePlayers);
+        displayReservedPlayers();
+        displayBalancedTeams();
+        
+        showNotification(`Successfully loaded "${teamSet.title}".`, 'success');
+
+    } catch (error) {
+        console.error('Error loading team set:', error);
+        showNotification(error.message || 'An error occurred while loading teams.', 'error');
+    }
 }
 
 /**
@@ -1152,6 +1286,9 @@ function displayBalancedTeams() {
                     Balanced Teams (${state.balancedTeams.length})
                 </h5>
                 <div class="btn-group" role="group">
+                    <button id="load-teams-btn" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-folder2-open me-1"></i>Load
+                    </button>
                     <button id="save-teams-btn" class="btn btn-sm btn-outline-success">
                         <i class="bi bi-floppy me-1"></i>Save
                     </button>
@@ -1423,85 +1560,49 @@ function exportTeams() {
  * Save teams to database for tournament bracket use
  */
 async function saveTeams() {
-    if (!state.balancedTeams || state.balancedTeams.length === 0) {
-        showNotification('No teams to save', 'warning');
+    if (state.balancedTeams.length === 0) {
+        showNotification('No teams to save.', 'warning');
         return;
     }
 
-    // Show save dialog
-    const title = prompt('Enter a name for this team configuration:', 
-        `${state.registrationSessions.find(s => s.sessionId === state.currentSessionId)?.title || 'Tournament'} Teams`);
-    
-    if (!title) {
-        return; // User cancelled
-    }
+    const sessionTitle = document.getElementById('team-balancer-session-selector').selectedOptions[0]?.textContent.split(' (')[0] || 'Balanced Teams';
+    const teamSetTitle = `${sessionTitle} - ${new Date().toLocaleString()}`;
+
+
+    const teamsPayload = {
+        title: teamSetTitle,
+        teams: state.balancedTeams,
+        sourceSessionId: state.currentSessionId
+    };
+
+    console.log('💾 Saving teams payload:', JSON.stringify(teamsPayload, null, 2));
 
     try {
-        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-        
-        if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
-            return;
-        }
-
-        // Calculate team statistics
-        const totalPlayers = state.balancedTeams.reduce((sum, team) => sum + team.players.length, 0);
-        const allMmrs = state.balancedTeams.flatMap(team => team.players.map(p => p.peakmmr || 0));
-        const averageMmr = allMmrs.length > 0 ? Math.round(allMmrs.reduce((sum, mmr) => sum + mmr, 0) / allMmrs.length) : 0;
-
-        // Get balance method from current settings
-        const balanceMethodSelect = document.getElementById('balance-type');
-        const balanceMethod = balanceMethodSelect ? balanceMethodSelect.value : 'highRanked';
-
-        const teamData = {
-            title: title.trim(),
-            description: `Teams generated on ${new Date().toLocaleDateString()} using ${balanceMethod} method`,
-            balanceMethod: balanceMethod,
-            totalTeams: state.balancedTeams.length,
-            totalPlayers: totalPlayers,
-            averageMmr: averageMmr,
-            registrationSessionId: state.currentSessionId,
-            teams: state.balancedTeams.map((team, index) => ({
-                teamNumber: index + 1,
-                name: `Team ${index + 1}`,
-                totalMmr: team.totalMmr,
-                averageMmr: Math.round(team.totalMmr / team.players.length),
-                players: team.players.map(player => ({
-                    id: player.id,
-                    name: player.name,
-                    dota2id: player.dota2id,
-                    peakmmr: player.peakmmr || 0,
-                    isManual: player.isManual || false
-                }))
-            }))
-        };
-
-        const response = await fetch('/.netlify/functions/teams', {
+        const response = await fetchWithAuth('/.netlify/functions/teams', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-session-id': sessionId
-            },
-            body: JSON.stringify(teamData)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(teamsPayload)
         });
 
-        const data = await response.json();
+        const result = await response.json();
 
-        if (data.success) {
-            showNotification(data.message || 'Teams saved successfully!', 'success');
+        if (response.ok && result.success) {
+            showNotification('Teams saved successfully!', 'success');
             
-            // Redirect to tournament bracket tab
-            if (window.showTab) {
-                window.showTab('tournament-bracket');
+            // Switch to the tournament bracket tab
+            const tournamentTab = document.querySelector('a[href="#tournament-bracket"]');
+            if (tournamentTab) {
+                // Use Bootstrap's tab API to show the tab
+                const tab = new bootstrap.Tab(tournamentTab);
+                tab.show();
             }
-            
-        } else {
-            showNotification(data.message || 'Failed to save teams.', 'error');
-        }
 
+        } else {
+            throw new Error(result.message || 'Failed to save teams');
+        }
     } catch (error) {
         console.error('Error saving teams:', error);
-        showNotification('Error saving teams to database', 'error');
+        showNotification(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -1560,7 +1661,8 @@ window.teamBalancerModule = {
     autoBalance,
     clearTeams,
     exportTeams,
-    saveTeams
+    saveTeams,
+    loadSelectedTeams
 };
 
     // Expose init function globally for navigation system
