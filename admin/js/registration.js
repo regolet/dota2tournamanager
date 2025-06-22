@@ -407,36 +407,38 @@ async function initRegistration() {
     }
     
     async function deleteSession(sessionId, title) {
-        if (!confirm(`Are you sure you want to delete the registration link for "${title}"?`)) {
-        return;
-    }
-    
-        try {
-            const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            
-            const response = await fetch('/.netlify/functions/registration-sessions', {
-                method: 'DELETE',
-            headers: {
-                    'Content-Type': 'application/json',
-                    'x-session-id': adminSessionId
-                },
-                body: JSON.stringify({ sessionId })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showAlert(`Registration link "${title}" deleted successfully`, 'success');
-                await loadRegistrationSessions();
-                
-                // Notify other components about the deletion
-                notifyPlayerListsToRefresh('deleted');
-        } else {
-                showAlert(data.message || 'Failed to delete registration link', 'danger');
+        // Superadmin check
+        const user = window.sessionManager?.getUser();
+        if (!user || user.role !== 'superadmin') {
+            showAlert('You do not have permission to delete registration links.', 'warning');
+            return;
         }
-    } catch (error) {
-            console.error('Error deleting registration session:', error);
-            showAlert('Error deleting registration link', 'danger');
+
+        if (!confirm(`Are you sure you want to permanently delete "${title}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                showAlert(`Registration "${title}" has been deleted.`, 'success');
+                loadRegistrationSessions();
+                notifyPlayerListsToRefresh('deleted');
+            } else {
+                throw new Error(result.error || 'Failed to delete registration link');
+            }
+        } catch (error) {
+            showAlert(`Error: ${error.message}`, 'danger');
         }
     }
     
@@ -444,37 +446,28 @@ async function initRegistration() {
      * Close registration session
      */
     async function closeSession(sessionId, title) {
-        if (!confirm(`Are you sure you want to close registration for "${title}"?`)) {
+        if (!confirm(`Are you sure you want to close the registration for "${title}"?`)) {
             return;
         }
-        
+
         try {
-            const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            
-            const response = await fetch(`/.netlify/functions/registration-sessions`, {
+            const response = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-session-id': adminSessionId
-                },
-                body: JSON.stringify({ 
-                    sessionId: sessionId,
-                    isActive: false
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isActive: false })
             });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showAlert(`Registration "${title}" closed successfully`, 'success');
-                loadRegistrationSessions(); // Reload the list
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                showAlert(`Registration for "${title}" has been closed.`, 'success');
+                loadRegistrationSessions();
                 notifyPlayerListsToRefresh('closed');
             } else {
-                showAlert(data.message || 'Failed to close registration', 'danger');
+                throw new Error(result.error || 'Failed to close registration');
             }
         } catch (error) {
-            console.error('Error closing registration session:', error);
-            showAlert('Error closing registration', 'danger');
+            showAlert(`Error: ${error.message}`, 'danger');
         }
     }
 
@@ -482,37 +475,28 @@ async function initRegistration() {
      * Reopen registration session
      */
     async function reopenSession(sessionId, title) {
-        if (!confirm(`Are you sure you want to reopen registration for "${title}"?`)) {
+        if (!confirm(`Are you sure you want to reopen the registration for "${title}"?`)) {
             return;
         }
-        
+
         try {
-            const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            
-            const response = await fetch(`/.netlify/functions/registration-sessions`, {
+            const response = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-session-id': adminSessionId
-                },
-                body: JSON.stringify({ 
-                    sessionId: sessionId,
-                    isActive: true
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isActive: true })
             });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showAlert(`Registration "${title}" reopened successfully`, 'success');
-                loadRegistrationSessions(); // Reload the list
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                showAlert(`Registration for "${title}" has been reopened.`, 'success');
+                loadRegistrationSessions();
                 notifyPlayerListsToRefresh('reopened');
             } else {
-                showAlert(data.message || 'Failed to reopen registration', 'danger');
+                throw new Error(result.error || 'Failed to reopen registration');
             }
         } catch (error) {
-            console.error('Error reopening registration session:', error);
-            showAlert('Error reopening registration', 'danger');
+            showAlert(`Error: ${error.message}`, 'danger');
         }
     }
 
