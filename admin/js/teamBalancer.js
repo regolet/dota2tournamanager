@@ -8,7 +8,8 @@
         availablePlayers: [],
         balancedTeams: [],
         reservedPlayers: [],
-        isAutoBalancing: false // Add execution guard
+        isAutoBalancing: false, // Add execution guard
+        isSaving: false // Add saving guard
     };
 
 // Helper functions for MMR calculations
@@ -1451,9 +1452,20 @@ function exportTeams() {
  * Save teams to database for tournament bracket use
  */
 async function saveTeams() {
+    if (state.isSaving) {
+        showNotification('Already saving teams...', 'warning');
+        return;
+    }
     if (state.balancedTeams.length === 0) {
         showNotification('No teams to save.', 'warning');
         return;
+    }
+
+    state.isSaving = true;
+    const saveButton = document.getElementById('save-teams-btn');
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
     }
 
     const currentSession = state.registrationSessions.find(s => s.sessionId === state.currentSessionId);
@@ -1493,6 +1505,12 @@ async function saveTeams() {
     } catch (error) {
         console.error('Error saving teams:', error);
         showNotification(`Error: ${error.message}`, 'error');
+    } finally {
+        state.isSaving = false;
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.innerHTML = '<i class="bi bi-floppy me-1"></i>Save';
+        }
     }
 }
 
