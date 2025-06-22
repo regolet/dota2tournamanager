@@ -231,10 +231,6 @@ function updateSessionSelector() {
         return new Date(b.createdAt) - new Date(a.createdAt);
     });
 
-    // Create a container for the session list with delete buttons
-    const listContainer = document.createElement('div');
-    listContainer.id = 'session-list-container';
-
     sortedSessions.forEach(session => {
         const option = document.createElement('option');
         option.value = session.sessionId;
@@ -242,27 +238,20 @@ function updateSessionSelector() {
         if (!session.isActive) {
             option.textContent += ' [Inactive]';
         }
+        // Add dataset for the delete button
+        option.dataset.sessionId = session.sessionId;
         selector.appendChild(option);
-
-        if (userRole === 'superadmin') {
-            const sessionItem = document.createElement('div');
-            sessionItem.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
-            sessionItem.innerHTML = `
-                <span>${escapeHtml(session.title)}</span>
-                <button class="btn btn-sm btn-outline-danger" onclick="window.teamBalancerModule.deleteTournamentSession('${session.sessionId}', this)">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `;
-            listContainer.appendChild(sessionItem);
-        }
     });
 
-    // Replace or add the list container in the DOM
+    // Remove the old list container if it exists
     const existingListContainer = document.getElementById('session-list-container');
     if (existingListContainer) {
-        existingListContainer.replaceWith(listContainer);
-    } else if (userRole === 'superadmin') {
-        selector.closest('.card-body').appendChild(listContainer);
+        existingListContainer.remove();
+    }
+
+    // Add a single delete button next to the dropdown for superadmin
+    if (userRole === 'superadmin') {
+        addDeleteButtonToBalancerSelector();
     }
 
 
@@ -279,6 +268,47 @@ function updateSessionSelector() {
         if (typeof window.enableOnlyNavigationTab === 'function') {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
         }
+    }
+}
+
+/**
+ * Add delete button for team balancer tournament selector
+ */
+function addDeleteButtonToBalancerSelector() {
+    const selector = document.getElementById('team-balancer-session-selector');
+    if (!selector) return;
+
+    // Prevent adding multiple buttons
+    if (selector.parentElement.querySelector('.delete-tournament-session-btn')) {
+        return;
+    }
+
+    let container = selector.closest('.d-flex');
+    if (container) {
+        // Use input-group for proper alignment
+        if (!container.classList.contains('input-group')) {
+            container.classList.add('input-group');
+        }
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-outline-danger delete-tournament-session-btn';
+        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+        deleteBtn.title = 'Delete selected tournament';
+        container.appendChild(deleteBtn);
+
+        deleteBtn.addEventListener('click', async () => {
+            const selectedOption = selector.options[selector.selectedIndex];
+            const sessionId = selectedOption?.dataset.sessionId;
+
+            if (!sessionId || selector.value === '') {
+                showNotification('Please select a tournament to delete.', 'warning');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to permanently delete the tournament "${selectedOption.textContent}"? This will also delete all associated players.`)) {
+                await deleteTournamentSession(sessionId, deleteBtn);
+            }
+        });
     }
 }
 
