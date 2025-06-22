@@ -399,14 +399,12 @@ function setupBalancerButtons() {
 async function showLoadTeamsModal() {
     try {
         const response = await fetchWithAuth('/.netlify/functions/teams');
-        const result = await response.json();
+        const savedTeams = await response.json();
 
-        if (!result.success || !result.teams || result.teams.length === 0) {
+        if (!Array.isArray(savedTeams) || savedTeams.length === 0) {
             showNotification('No saved teams found.', 'info');
             return;
         }
-
-        const savedTeams = result.teams;
 
         // Create Modal HTML
         let modal = document.getElementById('loadTeamsModal');
@@ -419,10 +417,10 @@ async function showLoadTeamsModal() {
                 <div>
                     <h6 class="mb-0">${escapeHtml(teamSet.title)}</h6>
                     <small class="text-muted">
-                        Saved on: ${new Date(teamSet.createdAt).toLocaleString()} | ${teamSet.teams.length} teams
+                        Saved on: ${new Date(teamSet.createdAt).toLocaleString()} | ${teamSet.totalTeams} teams, ${teamSet.totalPlayers} players
                     </small>
                 </div>
-                <button class="btn btn-sm btn-primary" onclick="window.teamBalancerModule.loadSelectedTeams('${teamSet._id}')">
+                <button class="btn btn-sm btn-primary" onclick="window.teamBalancerModule.loadSelectedTeams('${teamSet.teamSetId}')">
                     <i class="bi bi-download me-1"></i> Load
                 </button>
             </li>
@@ -476,17 +474,15 @@ async function loadSelectedTeams(teamSetId) {
         }
         showNotification('Loading selected teams...', 'info');
 
-        const response = await fetchWithAuth(`/.netlify/functions/teams?id=${teamSetId}`);
-        const result = await response.json();
+        const response = await fetchWithAuth(`/netlify/functions/teams?teamSetId=${teamSetId}`);
+        const teamSet = await response.json();
 
-        if (!result.success || !result.teamSet) {
-            throw new Error(result.message || 'Failed to load the selected team set.');
+        if (!teamSet) {
+            throw new Error('Failed to load the selected team set.');
         }
 
-        const { teamSet } = result;
-        
         // 1. Update session
-        state.currentSessionId = teamSet.sourceSessionId;
+        state.currentSessionId = teamSet.registrationSessionId;
         const sessionSelector = document.getElementById('team-balancer-session-selector');
         if (sessionSelector) {
             sessionSelector.value = state.currentSessionId;
