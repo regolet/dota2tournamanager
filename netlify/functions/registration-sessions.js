@@ -149,11 +149,15 @@ async function handleGet(event, adminRole, adminUserId, headers) {
       body: JSON.stringify(session || { error: 'Session not found' })
     };
   } else {
-    console.log('📡 Registration-sessions: Getting all sessions for admin');
-    const sessions = await getRegistrationSessions(adminUserId);
+    // Superadmin gets all sessions, regular admins get only their own
+    const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
+    console.log(`📡 Registration-sessions: Getting sessions for ${adminRole}. Target User ID: ${targetUserId || 'all'}`);
+    
+    const sessions = await getRegistrationSessions(targetUserId);
+    
     console.log('📡 Registration-sessions: All sessions result:', {
       count: sessions.length,
-      adminUserId: adminUserId ? `${adminUserId.substring(0, 10)}...` : 'null'
+      adminUserId: targetUserId ? `${targetUserId.substring(0, 10)}...` : 'all'
     });
     return {
       statusCode: 200,

@@ -207,14 +207,8 @@ async function createSessionSelector() {
  */
 async function loadRegistrationSessions() {
     try {
-        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-        
-        if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
-            return;
-        }
-        
-        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        const response = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        const data = await response.json();
 
         if (data.success && data.sessions) {
             registrationSessions = data.sessions;
