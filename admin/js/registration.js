@@ -242,7 +242,7 @@ async function initRegistration() {
             const progress = Math.min((session.playerCount / session.maxPlayers) * 100, 100);
             
             // Permission checks
-            const canModify = isSuperAdmin || session.adminUserId === currentUser?.id;
+            const canModify = isSuperAdmin || session.adminUserId === currentUser?.userId;
             const canDelete = isSuperAdmin; // Only superadmins can delete
             
             console.log('🔍 Registration: Session permission check:', {
@@ -413,7 +413,7 @@ async function initRegistration() {
                 
                 // Check if current user can modify this session
                 const currentUser = window.sessionManager?.getUser();
-                const canModify = currentUser?.role === 'superadmin' || session.adminUserId === currentUser?.id;
+                const canModify = currentUser?.role === 'superadmin' || session.adminUserId === currentUser?.userId;
                 
                 if (!canModify) {
                     showAlert('You do not have permission to edit this registration session. You can only edit your own sessions.', 'warning');

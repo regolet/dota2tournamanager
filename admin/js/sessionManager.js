@@ -186,8 +186,17 @@
         },
         getUser: () => {
             try {
-                return JSON.parse(localStorage.getItem("adminUser") || "{}");
-            } catch {
+                const userData = JSON.parse(localStorage.getItem("adminUser") || "{}");
+                console.log('🔐 SessionManager: getUser called:', {
+                    hasUserData: !!userData,
+                    userData: userData,
+                    userId: userData?.id,
+                    username: userData?.username,
+                    role: userData?.role
+                });
+                return userData;
+            } catch (error) {
+                console.error('❌ SessionManager: Error in getUser:', error);
                 return {};
             }
         },
