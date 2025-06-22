@@ -1465,8 +1465,6 @@ async function saveTeams() {
         sourceSessionId: state.currentSessionId
     };
 
-    console.log('💾 Saving teams payload:', JSON.stringify(teamsPayload, null, 2));
-
     try {
         const response = await fetchWithAuth('/.netlify/functions/teams', {
             method: 'POST',
