@@ -84,10 +84,20 @@ export async function handler(event, context) {
                 const tournaments = await getTournaments(targetUserId);
 
                 // Manually format the date to avoid JSON serialization issues
-                const formattedTournaments = tournaments.map(t => ({
-                    ...t,
-                    created_at: t.created_at ? t.created_at.toISOString() : null,
-                }));
+                const formattedTournaments = tournaments.map(t => {
+                    let createdAt = t.created_at;
+                    if (createdAt && typeof createdAt === 'string') {
+                        // If it's a string from the DB, it might not be in ISO format.
+                        // E.g., '2025-06-22 17:50:51.775822'
+                        // Convert to ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ' by replacing space and adding Z
+                        createdAt = new Date(createdAt.replace(' ', 'T') + 'Z');
+                    }
+
+                    return {
+                        ...t,
+                        created_at: createdAt && !isNaN(createdAt) ? createdAt.toISOString() : null,
+                    };
+                });
 
                 return {
                     statusCode: 200,
