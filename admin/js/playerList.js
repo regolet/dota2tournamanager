@@ -207,8 +207,7 @@ async function createSessionSelector() {
  */
 async function loadRegistrationSessions() {
     try {
-        const response = await fetchWithAuth('/.netlify/functions/registration-sessions');
-        const data = await response.json();
+        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
 
         if (data.success && data.sessions) {
             registrationSessions = data.sessions;

@@ -189,8 +189,7 @@ async function loadRegistrationSessions() {
             return;
         }
 
-        const response = await fetchWithAuth('/.netlify/functions/registration-sessions');
-        const data = await response.json();
+        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
 
         if (data.success && data.sessions) {
             state.registrationSessions = data.sessions;

@@ -125,8 +125,7 @@ async function initRegistration() {
             }
             
             console.log('📡 Registration: Calling fetchWithAuth for registration sessions...');
-            const response = await fetchWithAuth('/.netlify/functions/registration-sessions');
-            const data = await response.json();
+            const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
             
             console.log('📊 Registration: Response received:', {
                 hasData: !!data,
