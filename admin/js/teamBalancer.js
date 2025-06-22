@@ -189,10 +189,16 @@ async function loadRegistrationSessions() {
             return;
         }
 
-        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        const response = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
 
         // Add detailed logging to inspect the API response
-        console.log('Team Balancer: Fetched registration sessions data:', data);
+        console.log('Team Balancer: Fetched and parsed registration sessions data:', data);
 
         if (data && data.success && Array.isArray(data.sessions)) {
             state.registrationSessions = data.sessions;
