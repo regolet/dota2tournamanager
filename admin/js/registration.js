@@ -183,10 +183,23 @@ async function initRegistration() {
     }
     
     function displayRegistrationSessions() {
-        const tableBody = document.getElementById('registration-sessions-table-body');
+        const tableBody = document.getElementById('registration-sessions-table');
         
         if (!tableBody) {
             console.error('Registration sessions table body not found');
+            return;
+        }
+        
+        if (state.registrationSessions.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox me-2"></i>
+                        No registration links created yet.
+                        <br><small>Click "Create New Link" to get started.</small>
+                    </td>
+                </tr>
+            `;
             return;
         }
         
