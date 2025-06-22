@@ -903,18 +903,29 @@ function autoBalance() {
         }
 
         // Distribute players based on selected balance method
-        distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
+        const reservePlayers = distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
         
         // Handle reserve logic based on method
         if (balanceMethod === 'highRanked' || balanceMethod === 'perfectMmr' || balanceMethod === 'highLowShuffle') {
-            // These methods handle their own reserve logic
-            // Update state based on what the distribution function did
-            const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
-            const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
-            
-            // Update available and reserved players
-            state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
-            state.reservedPlayers = allPlayers.filter(p => !playerIdsInTeams.has(p.id));
+            // These methods handle their own reserve logic and return reserve players
+            if (reservePlayers && reservePlayers.length > 0) {
+                // Update available and reserved players based on what's in teams vs reserves
+                const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
+                const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
+                
+                // Update available and reserved players
+                state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
+                state.reservedPlayers = reservePlayers;
+                
+                showNotification(`${reservePlayers.length} low MMR player(s) moved to reserved list`, 'info');
+            } else {
+                // No reserve players, all players are in teams
+                const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
+                const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
+                
+                state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
+                state.reservedPlayers = [];
+            }
         } else {
             // Other methods - handle leftover players
             const playersUsedInTeams = state.balancedTeams.reduce((total, team) => total + team.players.length, 0);
@@ -977,19 +988,15 @@ function autoBalance() {
 function distributePlayersByMethod(players, method, numTeams, teamSize) {
     switch (method) {
         case 'highRanked':
-            distributeHighRankedBalance(players, numTeams, teamSize);
-            break;
+            return distributeHighRankedBalance(players, numTeams, teamSize);
         case 'perfectMmr':
-            distributePerfectMmrBalance(players, numTeams, teamSize);
-            break;
+            return distributePerfectMmrBalance(players, numTeams, teamSize);
         case 'highLowShuffle':
-            distributeHighLowShuffle(players, numTeams, teamSize);
-            break;
+            return distributeHighLowShuffle(players, numTeams, teamSize);
         case 'random':
-            distributeRandomTeams(players, numTeams, teamSize);
-            break;
+            return distributeRandomTeams(players, numTeams, teamSize);
         default:
-            distributeHighRankedBalance(players, numTeams, teamSize);
+            return distributeHighRankedBalance(players, numTeams, teamSize);
     }
 }
 
@@ -1032,6 +1039,10 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
             }
         }
     }
+    
+    // Step 4: Return reserve players for proper state management
+    // The autoBalance function will handle moving these to the reserved list
+    return playersForReserves;
 }
 
 /**
@@ -1069,6 +1080,9 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
         targetTeam.totalMmr += player.peakmmr || 0;
         teamMmrTotals[targetTeamIndex] += player.peakmmr || 0;
     }
+    
+    // Step 3: Return reserve players for proper state management
+    return playersForReserves;
 }
 
 /**
@@ -1154,6 +1168,9 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
             team.totalMmr += midPlayer.peakmmr || 0;
         }
     }
+    
+    // Step 6: Return reserve players for proper state management
+    return playersForReserves;
 }
 
 /**
@@ -1173,6 +1190,11 @@ function distributeRandomTeams(players, numTeams, teamSize) {
         // Move to next team (round-robin)
         currentTeam = (currentTeam + 1) % numTeams;
     }
+    
+    // Return any leftover players as reserves
+    const maxPlayersForTeams = numTeams * teamSize;
+    const leftoverPlayers = shuffledPlayers.slice(maxPlayersForTeams);
+    return leftoverPlayers;
 }
 
 /**
