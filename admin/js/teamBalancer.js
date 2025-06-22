@@ -7,7 +7,8 @@
         registrationSessions: [],
         availablePlayers: [],
         balancedTeams: [],
-        reservedPlayers: []
+        reservedPlayers: [],
+        isAutoBalancing: false // Add execution guard
     };
 
 // Helper functions for MMR calculations
@@ -759,6 +760,15 @@ function displayPlayersForBalancer(players) {
  * Auto balance teams based on MMR
  */
 function autoBalance() {
+    // Prevent multiple simultaneous executions
+    if (state.isAutoBalancing) {
+        showNotification('Team balancing already in progress. Please wait...', 'warning');
+        return;
+    }
+    
+    // Set execution guard
+    state.isAutoBalancing = true;
+    
     try {
         // Get and disable the generate button to prevent multiple clicks
         const generateBtn = document.getElementById('generate-teams');
@@ -941,6 +951,14 @@ function autoBalance() {
         showNotification('Error creating balanced teams', 'error');
         
         // Re-enable the generate button on error
+        const generateBtn = document.getElementById('generate-teams');
+        if (generateBtn) {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
+        }
+    } finally {
+        // Reset execution guard and ensure button is re-enabled
+        state.isAutoBalancing = false;
         const generateBtn = document.getElementById('generate-teams');
         if (generateBtn) {
             generateBtn.disabled = false;
