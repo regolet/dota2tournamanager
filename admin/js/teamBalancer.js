@@ -474,7 +474,7 @@ async function loadSelectedTeams(teamSetId) {
         }
         showNotification('Loading selected teams...', 'info');
 
-        const response = await fetchWithAuth(`/netlify/functions/teams?teamSetId=${teamSetId}`);
+        const response = await fetchWithAuth(`/.netlify/functions/teams?teamSetId=${teamSetId}`);
         const teamSet = await response.json();
 
         if (!teamSet) {
