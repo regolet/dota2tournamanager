@@ -83,18 +83,36 @@ export async function handler(event, context) {
                 const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
                 const tournaments = await getTournaments(targetUserId);
 
-                // Manually format the date to avoid JSON serialization issues
+                // Manually format the date and extract tournament name safely
                 const formattedTournaments = tournaments.map(t => {
+                    let tournamentName = null;
+                    let tournamentData = t.tournament_data;
+
+                    if (tournamentData) {
+                        // It might be a string if coming from some DB clients, or already an object
+                        if (typeof tournamentData === 'string') {
+                            try {
+                                tournamentData = JSON.parse(tournamentData);
+                            } catch (e) {
+                                console.error('Error parsing tournament_data', e);
+                                tournamentData = null;
+                            }
+                        }
+                        // Check if it's a non-null object with a name property
+                        if (tournamentData && typeof tournamentData === 'object' && tournamentData.name) {
+                            tournamentName = tournamentData.name;
+                        }
+                    }
+
                     let createdAt = t.created_at;
                     if (createdAt && typeof createdAt === 'string') {
-                        // If it's a string from the DB, it might not be in ISO format.
-                        // E.g., '2025-06-22 17:50:51.775822'
                         // Convert to ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ' by replacing space and adding Z
                         createdAt = new Date(createdAt.replace(' ', 'T') + 'Z');
                     }
-
+                    
                     return {
-                        ...t,
+                        id: t.id,
+                        name: tournamentName,
                         created_at: createdAt && !isNaN(createdAt) ? createdAt.toISOString() : null,
                     };
                 });

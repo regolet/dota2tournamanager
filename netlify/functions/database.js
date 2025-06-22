@@ -1698,26 +1698,14 @@ export async function getTournaments(adminUserId = null) {
     let query;
     if (adminUserId) {
       query = sql`
-        SELECT 
-          t.id,
-          CASE 
-            WHEN jsonb_typeof(t.tournament_data) = 'object' THEN (t.tournament_data->>'name')
-            ELSE NULL 
-          END as name,
-          t.created_at
+        SELECT *
         FROM tournaments t
         WHERE t.admin_user_id = ${adminUserId}
         ORDER BY t.created_at DESC
       `;
     } else {
       query = sql`
-        SELECT 
-          t.id,
-          CASE 
-            WHEN jsonb_typeof(t.tournament_data) = 'object' THEN (t.tournament_data->>'name')
-            ELSE NULL 
-          END as name,
-          t.created_at
+        SELECT *
         FROM tournaments t
         ORDER BY t.created_at DESC
       `;
