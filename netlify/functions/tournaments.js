@@ -1,5 +1,5 @@
-// Function to handle tournament data operations (GET, POST)
-import { saveTournament, getTournament, getTournaments, validateSession } from './database.js';
+// Function to handle tournament data operations (GET, POST, DELETE)
+import { saveTournament, getTournament, getTournaments, validateSession, deleteTournament } from './database.js';
 
 export async function handler(event, context) {
     const headers = {
@@ -13,7 +13,7 @@ export async function handler(event, context) {
             statusCode: 204,
             headers: {
                 ...headers,
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
             },
             body: ''
         };
@@ -81,6 +81,40 @@ export async function handler(event, context) {
                 return {
                     statusCode: 200,
                     body: JSON.stringify(tournaments),
+                    headers
+                };
+            }
+        }
+
+        if (event.httpMethod === 'DELETE') {
+            if (session.role !== 'superadmin') {
+                return {
+                    statusCode: 403,
+                    body: JSON.stringify({ message: 'Forbidden: You do not have permission to delete this resource.' }),
+                    headers
+                };
+            }
+
+            const tournamentId = event.queryStringParameters?.id;
+            if (!tournamentId) {
+                return {
+                    statusCode: 400,
+                    body: JSON.stringify({ message: 'Tournament ID is required' }),
+                    headers
+                };
+            }
+
+            const result = await deleteTournament(tournamentId);
+            if (result.success) {
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({ success: true, message: 'Tournament deleted successfully' }),
+                    headers
+                };
+            } else {
+                return {
+                    statusCode: 500,
+                    body: JSON.stringify({ message: result.message }),
                     headers
                 };
             }

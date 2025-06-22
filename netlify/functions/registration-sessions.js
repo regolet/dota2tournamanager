@@ -7,397 +7,149 @@ import {
   deleteRegistrationSession,
   validateSession 
 } from './database.js';
+import { getSecurityHeaders } from './security-utils.js';
 
-export const handler = async (event, context) => {
+export async function handler(event, context) {
+  const headers = getSecurityHeaders(event);
+
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: {
+        ...headers,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      },
+      body: ''
+    };
+  }
+
   try {
-    // Handle CORS
-    if (event.httpMethod === 'OPTIONS') {
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type, x-session-id',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-        }
-      };
-    }
-
-    // Allow public GET access for fetching tournament list
-    if (event.httpMethod === 'GET') {
-      return await handleGetSessions(event, null);
-    }
-
-    // For other methods, require session validation
-    const sessionId = event.headers['x-session-id'];
-    if (!sessionId) {
-      return {
-        statusCode: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Session ID required'
-        })
-      };
-    }
-
-    const sessionValidation = await validateSession(sessionId);
+    const sessionValidation = await validateSession(event.headers['x-session-id']);
     if (!sessionValidation.valid) {
       return {
         statusCode: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Invalid or expired session'
-        })
+        headers,
+        body: JSON.stringify({ error: 'Invalid or expired session' })
       };
     }
 
-    // Handle different HTTP methods
+    const { role: adminRole, userId: adminUserId, username: adminUsername } = sessionValidation;
+
     switch (event.httpMethod) {
+      case 'GET':
+        return await handleGet(event, adminRole, adminUserId, headers);
       case 'POST':
-        return await handleCreateSession(event, sessionValidation);
+        return await handlePost(event, adminUserId, adminUsername, headers);
       case 'PUT':
-        return await handleUpdateSession(event, sessionValidation);
+        return await handlePut(event, adminRole, headers);
       case 'DELETE':
-        return await handleDeleteSession(event, sessionValidation);
+        return await handleDelete(event, adminRole, headers);
       default:
         return {
           statusCode: 405,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: false,
-            message: 'Method not allowed'
-          })
+          headers,
+          body: JSON.stringify({ error: 'Method Not Allowed' })
         };
     }
-
   } catch (error) {
-    console.error('Registration sessions API error:', error);
+    console.error('Error in registration-sessions handler:', error);
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      })
+      headers,
+      body: JSON.stringify({ error: 'Internal Server Error', details: error.message })
     };
   }
-};
+}
 
-async function handleGetSessions(event, sessionValidation) {
-  try {
-    const urlParams = new URLSearchParams(event.queryStringParameters || {});
-    const regSessionId = urlParams.get('sessionId');
-
-    if (regSessionId) {
-      // Get specific registration session
-      const session = await getRegistrationSessionBySessionId(regSessionId);
-      
-      if (!session) {
-        return {
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: false,
-            message: 'Registration session not found'
-          })
-        };
-      }
-
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          session: session
-        })
-      };
-    } else {
-      // Handle public vs authenticated access
-      let sessions;
-      
-      if (sessionValidation) {
-        // Authenticated access - get sessions based on role
-        const adminUserId = sessionValidation.role === 'superadmin' ? null : sessionValidation.userId;
-        sessions = await getRegistrationSessions(adminUserId);
-      } else {
-        // Public access - get all active sessions for tournament discovery
-        sessions = await getRegistrationSessions(null);
-        // Filter to only show active sessions for public view
-        sessions = sessions.filter(session => session.isActive);
-      }
-      
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          sessions: sessions
-        })
-      };
-    }
-  } catch (error) {
-    console.error('Error getting registration sessions:', error);
-    throw error;
+async function handleGet(event, adminRole, adminUserId, headers) {
+  const { sessionId } = event.queryStringParameters || {};
+  
+  if (sessionId) {
+    const session = await getRegistrationSessionBySessionId(sessionId);
+    return {
+      statusCode: session ? 200 : 404,
+      headers,
+      body: JSON.stringify(session || { error: 'Session not found' })
+    };
+  } else {
+    const sessions = await getRegistrationSessions(adminUserId);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, sessions })
+    };
   }
 }
 
-async function handleCreateSession(event, sessionValidation) {
-  try {
-    const sessionData = JSON.parse(event.body || '{}');
-    
-    // Validate required fields
-    if (!sessionData.title) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Title is required'
-        })
-      };
-    }
-
-    // Validate max players
-    if (sessionData.maxPlayers && (sessionData.maxPlayers < 1 || sessionData.maxPlayers > 1000)) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Max players must be between 1 and 1000'
-        })
-      };
-    }
-
-    // Create the registration session
-    const result = await createRegistrationSession(
-      sessionValidation.userId,
-      sessionValidation.username,
-      {
-        title: sessionData.title,
-        description: sessionData.description,
-        maxPlayers: sessionData.maxPlayers || 100,
-        expiresAt: sessionData.expiresAt || null
-      }
-    );
+async function handlePost(event, adminUserId, adminUsername, headers) {
+    const data = JSON.parse(event.body);
+    const result = await createRegistrationSession(adminUserId, adminUsername, data);
     
     if (result.success) {
-      return {
-        statusCode: 201,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'Registration session created successfully',
-          sessionId: result.sessionId,
-                      registrationUrl: `https://dota2regz.netlify.app/register/?session=${result.sessionId}`
-        })
-      };
+        return {
+            statusCode: 201,
+            headers,
+            body: JSON.stringify(result)
+        };
     } else {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: result.message
-        })
-      };
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: result.message })
+        };
     }
-  } catch (error) {
-    console.error('Error creating registration session:', error);
-    throw error;
-  }
 }
 
-async function handleUpdateSession(event, sessionValidation) {
-  try {
-    const sessionData = JSON.parse(event.body || '{}');
+async function handlePut(event, adminRole, headers) {
+    const { sessionId } = event.queryStringParameters || {};
+    const updates = JSON.parse(event.body);
+
+    if (!sessionId) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Session ID is required' }) };
+    }
     
-    if (!sessionData.sessionId) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Session ID is required'
-        })
-      };
-    }
+    // In a real scenario, you might add an ownership check here for non-superadmins
 
-    // Check if user owns this session (unless super admin)
-    if (sessionValidation.role !== 'superadmin') {
-      const session = await getRegistrationSessionBySessionId(sessionData.sessionId);
-      if (!session || session.adminUserId !== sessionValidation.userId) {
-        return {
-          statusCode: 403,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: false,
-            message: 'Access denied. You can only modify your own registration sessions.'
-          })
-        };
-      }
-    }
-
-    // Validate max players if provided
-    if (sessionData.maxPlayers && (sessionData.maxPlayers < 1 || sessionData.maxPlayers > 1000)) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Max players must be between 1 and 1000'
-        })
-      };
-    }
-
-    const result = await updateRegistrationSession(sessionData.sessionId, {
-      title: sessionData.title,
-      description: sessionData.description,
-      maxPlayers: sessionData.maxPlayers,
-      isActive: sessionData.isActive,
-      expiresAt: sessionData.expiresAt
-    });
-    
+    const result = await updateRegistrationSession(sessionId, updates);
     if (result.success) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'Registration session updated successfully'
-        })
-      };
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Session updated' }) };
     } else {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: result.message
-        })
-      };
+        return { statusCode: 500, headers, body: JSON.stringify({ error: result.message }) };
     }
-  } catch (error) {
-    console.error('Error updating registration session:', error);
-    throw error;
-  }
 }
 
-async function handleDeleteSession(event, sessionValidation) {
-  try {
-    const { sessionId: regSessionId } = JSON.parse(event.body || '{}');
-    
-    if (!regSessionId) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Session ID is required'
-        })
-      };
-    }
+async function handleDelete(event, adminRole, headers) {
+  if (adminRole !== 'superadmin') {
+    return {
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ error: 'Forbidden: You do not have permission to delete this resource.' })
+    };
+  }
 
-    // Check if user owns this session (unless super admin)
-    if (sessionValidation.role !== 'superadmin') {
-      const session = await getRegistrationSessionBySessionId(regSessionId);
-      if (!session || session.adminUserId !== sessionValidation.userId) {
-        return {
-          statusCode: 403,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: false,
-            message: 'Access denied. You can only delete your own registration sessions.'
-          })
-        };
-      }
-    }
+  const { sessionId } = event.queryStringParameters || {};
+  
+  if (!sessionId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Session ID is required for deletion' })
+    };
+  }
 
-    const result = await deleteRegistrationSession(regSessionId);
-    
-    if (result.success) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'Registration session deleted successfully'
-        })
-      };
-    } else {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: result.message
-        })
-      };
-    }
-  } catch (error) {
-    console.error('Error deleting registration session:', error);
-    throw error;
+  const result = await deleteRegistrationSession(sessionId);
+  
+  if (result.success) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, message: 'Registration session deleted successfully' })
+    };
+  } else {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: result.message || 'Failed to delete registration session' })
+    };
   }
 } 

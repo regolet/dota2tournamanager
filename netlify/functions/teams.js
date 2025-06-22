@@ -56,6 +56,7 @@ export async function handler(event, context) {
 
     const adminUserId = sessionValidation.userId;
     const adminUsername = sessionValidation.username || 'Unknown';
+    const adminRole = sessionValidation.role || 'admin';
     
     if (!adminUserId) {
       console.error('No admin user ID in session:', sessionValidation);
@@ -78,7 +79,7 @@ export async function handler(event, context) {
         return await handlePut(event, headers);
       
       case 'DELETE':
-        return await handleDelete(event, headers);
+        return await handleDelete(event, adminRole, headers);
       
       default:
         return {
@@ -241,7 +242,16 @@ async function handlePut(event, headers) {
   }
 }
 
-async function handleDelete(event, headers) {
+async function handleDelete(event, adminRole, headers) {
+  // Superadmin check
+  if (adminRole !== 'superadmin') {
+    return {
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ error: 'Forbidden: You do not have permission to delete this resource.' })
+    };
+  }
+
   const { teamSetId } = event.queryStringParameters || {};
   
   if (!teamSetId) {

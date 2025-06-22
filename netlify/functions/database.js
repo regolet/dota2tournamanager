@@ -955,10 +955,9 @@ export async function deleteRegistrationSession(sessionId) {
   try {
     await initializeDatabase();
     
-    // Soft delete - deactivate instead of deleting
+    // Hard delete for superadmin
     await sql`
-      UPDATE registration_sessions 
-      SET is_active = false, updated_at = NOW() 
+      DELETE FROM registration_sessions 
       WHERE session_id = ${sessionId}
     `;
     
@@ -1611,10 +1610,9 @@ export async function deleteTeamConfiguration(teamSetId) {
   try {
     await initializeDatabase();
     
-    // Soft delete - deactivate instead of deleting
+    // Hard delete for superadmin
     await sql`
-      UPDATE teams 
-      SET is_active = false, updated_at = NOW() 
+      DELETE FROM teams 
       WHERE team_set_id = ${teamSetId}
     `;
     
@@ -1647,6 +1645,20 @@ export async function saveTournament(tournamentData) {
   } catch (error) {
     console.error('[DB] Error saving tournament:', error);
     return { success: false, message: 'Error saving tournament' };
+  }
+}
+
+export async function deleteTournament(tournamentId) {
+  try {
+    await initializeDatabase();
+    await sql`
+      DELETE FROM tournaments 
+      WHERE id = ${tournamentId}
+    `;
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting tournament:', error);
+    return { success: false, message: 'Error deleting tournament' };
   }
 }
 
@@ -1704,4 +1716,4 @@ export async function getTournaments() {
     console.error('Error getting tournaments list:', error);
     return [];
   }
-} 
+}

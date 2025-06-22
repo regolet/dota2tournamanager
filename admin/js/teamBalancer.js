@@ -216,12 +216,22 @@ function updateSessionSelector() {
     const selector = document.getElementById('team-balancer-session-selector');
     if (!selector) return;
 
+    // Preserve the currently selected value if it exists
+    const previouslySelected = selector.value;
+
     selector.innerHTML = '<option value="">Choose a tournament...</option>';
+
+    // Check user role
+    const userRole = window.sessionManager?.getRole();
 
     // Sort sessions by creation date (newest first)
     const sortedSessions = [...state.registrationSessions].sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
     });
+
+    // Create a container for the session list with delete buttons
+    const listContainer = document.createElement('div');
+    listContainer.id = 'session-list-container';
 
     sortedSessions.forEach(session => {
         const option = document.createElement('option');
@@ -231,18 +241,39 @@ function updateSessionSelector() {
             option.textContent += ' [Inactive]';
         }
         selector.appendChild(option);
+
+        if (userRole === 'superadmin') {
+            const sessionItem = document.createElement('div');
+            sessionItem.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
+            sessionItem.innerHTML = `
+                <span>${escapeHtml(session.title)}</span>
+                <button class="btn btn-sm btn-outline-danger" onclick="window.teamBalancerModule.deleteTournamentSession('${session.sessionId}', this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            listContainer.appendChild(sessionItem);
+        }
     });
 
-    // Auto-select the latest (most recent) tournament if available
-    if (sortedSessions.length > 0) {
+    // Replace or add the list container in the DOM
+    const existingListContainer = document.getElementById('session-list-container');
+    if (existingListContainer) {
+        existingListContainer.replaceWith(listContainer);
+    } else if (userRole === 'superadmin') {
+        selector.closest('.card-body').appendChild(listContainer);
+    }
+
+
+    // Auto-select the latest (most recent) or previously selected tournament
+    if (previouslySelected && sortedSessions.some(s => s.sessionId === previouslySelected)) {
+        selector.value = previouslySelected;
+        state.currentSessionId = previouslySelected;
+    } else if (sortedSessions.length > 0) {
         const latestSession = sortedSessions[0];
         selector.value = latestSession.sessionId;
         state.currentSessionId = latestSession.sessionId;
-        
-        // Load players for the selected session
         loadPlayersForBalancer();
     } else {
-        // No sessions available, still enable the tab
         if (typeof window.enableOnlyNavigationTab === 'function') {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
         }
@@ -468,6 +499,9 @@ async function showLoadTeamsModal() {
             return;
         }
 
+        // Check user role for showing delete buttons
+        const userRole = window.sessionManager?.getRole();
+
         // Create Modal HTML
         let modal = document.getElementById('loadTeamsModal');
         if (modal) {
@@ -482,9 +516,16 @@ async function showLoadTeamsModal() {
                         Saved on: ${new Date(teamSet.createdAt).toLocaleString()} | ${teamSet.totalTeams} teams, ${teamSet.totalPlayers} players
                     </small>
                 </div>
-                <button class="btn btn-sm btn-primary" onclick="window.teamBalancerModule.loadSelectedTeams('${teamSet.teamSetId}')">
-                    <i class="bi bi-download me-1"></i> Load
-                </button>
+                <div>
+                    <button class="btn btn-sm btn-primary" onclick="window.teamBalancerModule.loadSelectedTeams('${teamSet.teamSetId}')">
+                        <i class="bi bi-download me-1"></i> Load
+                    </button>
+                    ${userRole === 'superadmin' ? `
+                    <button class="btn btn-sm btn-danger ms-1" onclick="window.teamBalancerModule.deleteSavedTeams('${teamSet.teamSetId}', this)">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </button>
+                    ` : ''}
+                </div>
             </li>
         `).join('');
 
@@ -517,6 +558,42 @@ async function showLoadTeamsModal() {
     } catch (error) {
         console.error('Error loading saved teams:', error);
         showNotification('Error fetching saved teams.', 'error');
+    }
+}
+
+/**
+ * Delete a saved team set.
+ * @param {string} teamSetId The ID of the team set to delete.
+ * @param {HTMLElement} buttonElement The button that was clicked.
+ */
+async function deleteSavedTeams(teamSetId, buttonElement) {
+    if (!confirm('Are you sure you want to permanently delete this team set? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        buttonElement.disabled = true;
+        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const response = await fetchWithAuth(`/.netlify/functions/teams?teamSetId=${teamSetId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showNotification('Team set deleted successfully.', 'success');
+            // Remove the item from the list
+            buttonElement.closest('li').remove();
+        } else {
+            throw new Error(result.error || 'Failed to delete team set.');
+        }
+
+    } catch (error) {
+        console.error('Error deleting team set:', error);
+        showNotification(error.message, 'error');
+        buttonElement.disabled = false;
+        buttonElement.innerHTML = '<i class="bi bi-trash me-1"></i> Delete';
     }
 }
 
@@ -1544,6 +1621,8 @@ window.teamBalancerModule = {
     exportTeams,
     saveTeams,
     loadSelectedTeams,
+    deleteSavedTeams,
+    deleteTournamentSession,
     loadPlayersFromTeams
 };
 
@@ -1597,6 +1676,42 @@ function loadPlayersFromTeams() {
     displayBalancedTeams();
     
     showNotification(`Loaded ${addedCount} players from teams back to available list`, 'success');
+}
+
+/**
+ * Deletes a registration session (tournament).
+ * @param {string} sessionId The ID of the session to delete.
+ * @param {HTMLElement} buttonElement The clicked button.
+ */
+async function deleteTournamentSession(sessionId, buttonElement) {
+    if (!confirm('Are you sure you want to permanently delete this tournament? This will also delete all associated players and cannot be undone.')) {
+        return;
+    }
+
+    try {
+        buttonElement.disabled = true;
+        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        const response = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showNotification('Tournament deleted successfully.', 'success');
+            // Reload sessions to update the UI
+            loadRegistrationSessions();
+        } else {
+            throw new Error(result.error || 'Failed to delete tournament.');
+        }
+
+    } catch (error) {
+        console.error('Error deleting tournament session:', error);
+        showNotification(error.message, 'error');
+        buttonElement.disabled = false;
+        buttonElement.innerHTML = '<i class="bi bi-trash"></i>';
+    }
 }
 
 })();
