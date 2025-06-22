@@ -779,19 +779,11 @@ function autoBalance() {
         
         if (!state.currentSessionId) {
             showNotification('Please select a tournament first', 'warning');
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
-            }
             return;
         }
 
         if (!state.availablePlayers || state.availablePlayers.length === 0) {
             showNotification('No players available for balancing', 'warning');
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
-            }
             return;
         }
 
@@ -802,69 +794,36 @@ function autoBalance() {
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
 
-        // High Ranked Balance, Perfect MMR Balance, and High/Low Shuffle calculate teams based on ALL available players
-        // Other methods exclude already reserved players
+        // Create a clean copy of available players for this execution
+        const allPlayers = [...state.availablePlayers];
+        const reservedPlayers = [...(state.reservedPlayers || [])];
+        
+        // For methods that handle their own reserve logic, combine all players
         let playersForTeams, numTeams;
         
-        // For methods that handle their own reserve logic, restore all reserved players first
-        // This ensures fresh randomization every time
         if (balanceMethod === 'highRanked' || balanceMethod === 'perfectMmr' || balanceMethod === 'highLowShuffle') {
-            // Restore all reserved players back to available players for fresh randomization
-            if (state.reservedPlayers && state.reservedPlayers.length > 0) {
-                state.availablePlayers.push(...state.reservedPlayers);
-                state.reservedPlayers = []; // Clear reserved list
-                
-                // Update displays immediately to show all players available
-                displayPlayersForBalancer(state.availablePlayers);
-                displayReservedPlayers();
-            }
-        }
-        
-        if (balanceMethod === 'highRanked') {
-            // High Ranked Balance handles its own reserve logic
-            playersForTeams = [...state.availablePlayers]; // Use ALL available players (now restored)
-            numTeams = Math.floor(state.availablePlayers.length / teamSize);
-
-        } else if (balanceMethod === 'perfectMmr') {
-            // Perfect MMR Balance handles its own reserve logic
-            playersForTeams = [...state.availablePlayers]; // Use ALL available players (now restored)
-            numTeams = Math.floor(state.availablePlayers.length / teamSize);
-
-        } else if (balanceMethod === 'highLowShuffle') {
-            // High/Low Shuffle handles its own reserve logic
-            playersForTeams = [...state.availablePlayers]; // Use ALL available players (now restored)
-            numTeams = Math.floor(state.availablePlayers.length / teamSize);
-
+            // Combine all players for fresh randomization
+            playersForTeams = [...allPlayers, ...reservedPlayers];
+            numTeams = Math.floor(playersForTeams.length / teamSize);
         } else {
             // Other methods exclude already reserved players
-            const reservedPlayerIds = state.reservedPlayers ? state.reservedPlayers.map(p => p.id) : [];
-            playersForTeams = state.availablePlayers.filter(p => !reservedPlayerIds.includes(p.id));
+            playersForTeams = [...allPlayers];
             numTeams = Math.floor(playersForTeams.length / teamSize);
-
         }
         
         if (playersForTeams.length === 0) {
-            showNotification('No players available for team generation. All players are reserved.', 'warning');
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
-            }
+            showNotification('No players available for team generation.', 'warning');
             return;
         }
         
         if (numTeams < 2) {
-            showNotification(`Not enough non-reserved players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players. (${playersForTeams.length} available, ${reservedPlayerIds.length} reserved)`, 'warning');
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
-            }
+            showNotification(`Not enough players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players.`, 'warning');
             return;
         }
 
         // Clear existing teams completely
         state.balancedTeams = [];
-
-    
+        
         // Initialize teams
         for (let i = 0; i < numTeams; i++) {
             state.balancedTeams.push({
@@ -873,49 +832,37 @@ function autoBalance() {
             });
         }
 
-
         // Distribute players based on selected balance method
         distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
         
-        // For methods that don't handle their own reserves, handle leftover players
-        if (balanceMethod !== 'highRanked' && balanceMethod !== 'perfectMmr' && balanceMethod !== 'highLowShuffle') {
+        // Handle reserve logic based on method
+        if (balanceMethod === 'highRanked' || balanceMethod === 'perfectMmr' || balanceMethod === 'highLowShuffle') {
+            // These methods handle their own reserve logic
+            // Update state based on what the distribution function did
+            const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
+            const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
+            
+            // Update available and reserved players
+            state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
+            state.reservedPlayers = allPlayers.filter(p => !playerIdsInTeams.has(p.id));
+        } else {
+            // Other methods - handle leftover players
             const playersUsedInTeams = state.balancedTeams.reduce((total, team) => total + team.players.length, 0);
             const leftoverPlayers = playersForTeams.slice(playersUsedInTeams);
             
             if (leftoverPlayers.length > 0) {
-
-                
-                // Initialize reserved players if needed
-                if (!state.reservedPlayers) {
-                    state.reservedPlayers = [];
-                }
-                
                 // Move leftover players to reserved list
-                leftoverPlayers.forEach(player => {
-                    // Remove from available players
-                    const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
-                    if (playerIndex > -1) {
-                        state.availablePlayers.splice(playerIndex, 1);
-                    }
-                    
-                    // Add to reserved players if not already there
-                    const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
-                    if (!alreadyReserved) {
-                        state.reservedPlayers.push(player);
-                    }
-                });
-                
-                // Update displays
-                displayPlayersForBalancer(state.availablePlayers);
-                displayReservedPlayers();
+                const leftoverPlayerIds = new Set(leftoverPlayers.map(p => p.id));
+                state.availablePlayers = allPlayers.filter(p => !leftoverPlayerIds.has(p.id));
+                state.reservedPlayers = [...(state.reservedPlayers || []), ...leftoverPlayers];
                 
                 showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
             }
         }
-        // Note: highRanked, perfectMmr, and highLowShuffle methods handle their own reserve logic within their distribution functions
 
-        // Display balanced teams with new layout
-
+        // Update all displays at once (much more efficient)
+        displayPlayersForBalancer(state.availablePlayers);
+        displayReservedPlayers();
         displayBalancedTeams();
 
         const methodNames = {
@@ -939,23 +886,10 @@ function autoBalance() {
                 `;
             }
         }
-        
-        // Re-enable the generate button
-        if (generateBtn) {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
-        }
 
     } catch (error) {
         console.error('Error in auto balance:', error);
         showNotification('Error creating balanced teams', 'error');
-        
-        // Re-enable the generate button on error
-        const generateBtn = document.getElementById('generate-teams');
-        if (generateBtn) {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = '<i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)';
-        }
     } finally {
         // Reset execution guard and ensure button is re-enabled
         state.isAutoBalancing = false;
@@ -1002,28 +936,6 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
     
-    if (playersForReserves.length > 0) {
-        // Move lowest MMR players to reserves
-        playersForReserves.forEach(player => {
-            const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
-            if (playerIndex > -1) {
-                state.availablePlayers.splice(playerIndex, 1);
-            }
-            
-            if (!state.reservedPlayers) {
-                state.reservedPlayers = [];
-            }
-            const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
-            if (!alreadyReserved) {
-                state.reservedPlayers.push(player);
-            }
-        });
-        
-        // Update displays immediately
-        displayPlayersForBalancer(state.availablePlayers);
-        displayReservedPlayers();
-    }
-    
     // Step 2: Single shuffle for randomness (much faster than tier-based shuffling)
     const shuffledPlayersForTeams = [...playersForTeams].sort(() => Math.random() - 0.5);
     
@@ -1064,28 +976,6 @@ function distributePerfectMmrBalance(players, numTeams, teamSize) {
     // Step 1: Separate players for teams vs reserves
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
-    
-    if (playersForReserves.length > 0) {
-        // Move lowest MMR players to reserves
-        playersForReserves.forEach(player => {
-            const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
-            if (playerIndex > -1) {
-                state.availablePlayers.splice(playerIndex, 1);
-            }
-            
-            if (!state.reservedPlayers) {
-                state.reservedPlayers = [];
-            }
-            const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
-            if (!alreadyReserved) {
-                state.reservedPlayers.push(player);
-            }
-        });
-        
-        // Update displays immediately
-        displayPlayersForBalancer(state.availablePlayers);
-        displayReservedPlayers();
-    }
     
     // Step 2: Distribute players for optimal MMR balance (optimized)
     // Create a simple array to track team MMR totals for faster lookups
@@ -1149,28 +1039,6 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
         ...guaranteedBottomPlayers
     ];
     
-    if (playersForReserves.length > 0) {
-        // Move players to reserves
-        playersForReserves.forEach(player => {
-            const playerIndex = state.availablePlayers.findIndex(p => p.id === player.id);
-            if (playerIndex > -1) {
-                state.availablePlayers.splice(playerIndex, 1);
-            }
-            
-            if (!state.reservedPlayers) {
-                state.reservedPlayers = [];
-            }
-            const alreadyReserved = state.reservedPlayers.find(p => p.id === player.id);
-            if (!alreadyReserved) {
-                state.reservedPlayers.push(player);
-            }
-        });
-        
-        // Update displays immediately
-        displayPlayersForBalancer(state.availablePlayers);
-        displayReservedPlayers();
-    }
-    
     // Step 2: Create tiers from selected team players
     const teamPlayersResorted = playersForTeams.sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
     
@@ -1203,6 +1071,17 @@ function distributeHighLowShuffle(players, numTeams, teamSize) {
             const lowPlayer = shuffledLowTier.shift();
             team.players.push(lowPlayer);
             team.totalMmr += lowPlayer.peakmmr || 0;
+        }
+    }
+    
+    // Step 5: Fill remaining slots efficiently
+    let midTierIndex = 0;
+    for (let teamIndex = 0; teamIndex < numTeams && midTierIndex < shuffledMidTier.length; teamIndex++) {
+        const team = state.balancedTeams[teamIndex];
+        while (team.players.length < teamSize && midTierIndex < shuffledMidTier.length) {
+            const midPlayer = shuffledMidTier[midTierIndex++];
+            team.players.push(midPlayer);
+            team.totalMmr += midPlayer.peakmmr || 0;
         }
     }
 }
