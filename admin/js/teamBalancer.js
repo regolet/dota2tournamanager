@@ -288,8 +288,26 @@ function setupTeamBalancerEventListeners() {
         });
     }
 
-    // Setup existing team balancer buttons with session validation
-    setupBalancerButtons();
+    // Event delegation for team management buttons (Load, Save, Export, Clear)
+    const teamsDisplayContainer = document.getElementById('teams-display') || 
+                                 document.querySelector('.teams-container');
+    if (teamsDisplayContainer) {
+        teamsDisplayContainer.addEventListener('click', (e) => {
+            if (e.target.closest('#load-teams-btn')) {
+                showLoadTeamsModal();
+            } else if (e.target.closest('#load-players-from-teams-btn')) {
+                loadPlayersFromTeams();
+            } else if (e.target.closest('#save-teams-btn')) {
+                saveTeams();
+            } else if (e.target.closest('#export-teams-btn')) {
+                exportTeams();
+            } else if (e.target.closest('#clear-teams-btn')) {
+                clearTeams();
+            }
+        });
+    }
+
+    // Note: setupBalancerButtons() is called once in initTeamBalancer() - no need to call it here
 }
 
 /**
@@ -1256,16 +1274,10 @@ function displayBalancedTeams() {
         </div>
     `;
 
-    // Clear container first to avoid caching issues
-    teamsContainer.innerHTML = '';
+    // Update DOM immediately without delay
+    teamsContainer.innerHTML = teamsHtml;
     
-    // Force a brief delay to ensure DOM update
-    setTimeout(() => {
-        teamsContainer.innerHTML = teamsHtml;
-        
-        // Re-attach event listeners to the new buttons
-        setupBalancerButtons();
-    }, 10);
+    // Note: Event listeners are handled by event delegation in setupTeamBalancerEventListeners
 }
 
 /**
