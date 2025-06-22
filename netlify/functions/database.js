@@ -884,7 +884,7 @@ export async function getRegistrationSessionBySessionId(sessionId) {
         WHERE registration_session_id = ${sessionId}
         GROUP BY registration_session_id
       ) player_counts ON rs.session_id = player_counts.registration_session_id
-      WHERE rs.session_id = ${sessionId} AND rs.is_active = true
+      WHERE rs.session_id = ${sessionId}
     `;
     
     if (sessions.length === 0) {

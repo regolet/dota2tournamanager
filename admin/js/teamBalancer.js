@@ -189,21 +189,15 @@ async function loadRegistrationSessions() {
             return;
         }
 
-        const response = await fetch('/.netlify/functions/registration-sessions', {
-            headers: {
-                'x-session-id': sessionId
-            }
-        });
-
-        const data = await response.json();
+        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
 
         if (data.success && data.sessions) {
             state.registrationSessions = data.sessions;
             updateSessionSelector();
         } else {
             showNotification(data.message || 'Failed to load registration sessions', 'error');
-                    }
-                } catch (error) {
+        }
+    } catch (error) {
         console.error('Error loading registration sessions:', error);
         showNotification('Error loading registration sessions', 'error');
     }

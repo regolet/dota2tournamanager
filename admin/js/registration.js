@@ -186,6 +186,10 @@ async function initRegistration() {
         
         tableBody.innerHTML = '';
         
+        // Get current user info for permission checks
+        const currentUser = window.sessionManager?.getUser();
+        const isSuperAdmin = currentUser?.role === 'superadmin';
+        
         state.registrationSessions.forEach(session => {
             const row = document.createElement('tr');
             
@@ -210,10 +214,16 @@ async function initRegistration() {
             // Progress calculation
             const progress = Math.min((session.playerCount / session.maxPlayers) * 100, 100);
             
+            // Permission checks
+            const canModify = isSuperAdmin || session.adminUserId === currentUser?.id;
+            const canDelete = isSuperAdmin; // Only superadmins can delete
+            
             row.innerHTML = `
                 <td>
                     <div class="fw-bold">${escapeHtml(session.title)}</div>
                     <small class="text-muted">ID: ${session.sessionId}</small>
+                    ${!isSuperAdmin && session.adminUsername !== currentUser?.username ? 
+                        `<br><small class="text-info">Created by: ${escapeHtml(session.adminUsername)}</small>` : ''}
                 </td>
                 <td>
                     <div class="text-truncate" style="max-width: 200px;" title="${escapeHtml(session.description || '')}">
@@ -246,20 +256,24 @@ async function initRegistration() {
                         <button class="btn btn-outline-secondary open-session-link" data-session-id="${session.sessionId}" title="Open Link">
                             <i class="bi bi-box-arrow-up-right"></i>
                         </button>
-                        <button class="btn btn-outline-info edit-session" data-session-id="${session.sessionId}" title="Edit">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        ${session.isActive ? 
-                            `<button class="btn btn-outline-warning close-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Close Registration">
-                                <i class="bi bi-stop-circle"></i>
-                            </button>` : 
-                            `<button class="btn btn-outline-success reopen-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Reopen Registration">
-                                <i class="bi bi-play-circle"></i>
-                            </button>`
-                        }
-                        <button class="btn btn-outline-danger delete-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Delete">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        ${canModify ? `
+                            <button class="btn btn-outline-info edit-session" data-session-id="${session.sessionId}" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            ${session.isActive ? 
+                                `<button class="btn btn-outline-warning close-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Close Registration">
+                                    <i class="bi bi-stop-circle"></i>
+                                </button>` : 
+                                `<button class="btn btn-outline-success reopen-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Reopen Registration">
+                                    <i class="bi bi-play-circle"></i>
+                                </button>`
+                            }
+                        ` : ''}
+                        ${canDelete ? `
+                            <button class="btn btn-outline-danger delete-session" data-session-id="${session.sessionId}" data-session-title="${escapeHtml(session.title)}" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
             `;
@@ -360,6 +374,15 @@ async function initRegistration() {
             if (data.success && data.session) {
                 const session = data.session;
                 
+                // Check if current user can modify this session
+                const currentUser = window.sessionManager?.getUser();
+                const canModify = currentUser?.role === 'superadmin' || session.adminUserId === currentUser?.id;
+                
+                if (!canModify) {
+                    showAlert('You do not have permission to edit this registration session. You can only edit your own sessions.', 'warning');
+                    return;
+                }
+                
                 // Fill form
                 document.getElementById('edit-session-id').value = session.sessionId;
                 document.getElementById('session-title').value = session.title;
@@ -386,8 +409,12 @@ async function initRegistration() {
                 showAlert(data.message || 'Failed to load registration session', 'danger');
             }
         } catch (error) {
-            console.error('Error loading registration session:', error);
-            showAlert('Error loading registration session', 'danger');
+            if (error.message.includes('Forbidden') || error.message.includes('403')) {
+                showAlert('You do not have permission to edit this registration session. You can only edit your own sessions.', 'warning');
+            } else {
+                console.error('Error loading registration session:', error);
+                showAlert('Error loading registration session', 'danger');
+            }
         }
     }
     
@@ -443,7 +470,11 @@ async function initRegistration() {
                 throw new Error(result.error || 'Failed to close registration');
             }
         } catch (error) {
-            showAlert(`Error: ${error.message}`, 'danger');
+            if (error.message.includes('Forbidden') || error.message.includes('403')) {
+                showAlert('You do not have permission to modify this registration session. You can only modify your own sessions.', 'warning');
+            } else {
+                showAlert(`Error: ${error.message}`, 'danger');
+            }
         }
     }
 
@@ -470,7 +501,11 @@ async function initRegistration() {
                 throw new Error(result.error || 'Failed to reopen registration');
             }
         } catch (error) {
-            showAlert(`Error: ${error.message}`, 'danger');
+            if (error.message.includes('Forbidden') || error.message.includes('403')) {
+                showAlert('You do not have permission to modify this registration session. You can only modify your own sessions.', 'warning');
+            } else {
+                showAlert(`Error: ${error.message}`, 'danger');
+            }
         }
     }
 
