@@ -222,7 +222,8 @@ function updateSessionSelector() {
     selector.innerHTML = '<option value="">Choose a tournament...</option>';
 
     // Check user role
-    const userRole = window.sessionManager?.getRole();
+    const user = window.sessionManager?.getUser();
+    const userRole = user ? user.role : 'admin';
 
     // Sort sessions by creation date (newest first)
     const sortedSessions = [...state.registrationSessions].sort((a, b) => {
@@ -500,7 +501,8 @@ async function showLoadTeamsModal() {
         }
 
         // Check user role for showing delete buttons
-        const userRole = window.sessionManager?.getRole();
+        const user = window.sessionManager?.getUser();
+        const userRole = user ? user.role : 'admin';
 
         // Create Modal HTML
         let modal = document.getElementById('loadTeamsModal');
