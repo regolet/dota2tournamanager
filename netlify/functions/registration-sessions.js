@@ -32,6 +32,13 @@ export async function handler(event, context) {
     };
   }
 
+  // Special handling for public GET requests (viewing tournaments)
+  if (event.httpMethod === 'GET' && !event.headers['x-session-id']) {
+    console.log('📡 Registration-sessions: Public GET request - allowing access to view tournaments');
+    return await handlePublicGet(event, headers);
+  }
+
+  // For all other requests, require authentication
   try {
     console.log('🔐 Registration-sessions: Validating session...');
     const sessionValidation = await validateSession(event.headers['x-session-id']);
@@ -60,7 +67,7 @@ export async function handler(event, context) {
 
     switch (event.httpMethod) {
       case 'GET':
-        console.log('📡 Registration-sessions: Handling GET request');
+        console.log('📡 Registration-sessions: Handling authenticated GET request');
         return await handleGet(event, adminRole, adminUserId, headers);
       case 'POST':
         console.log('📡 Registration-sessions: Handling POST request');
@@ -81,6 +88,36 @@ export async function handler(event, context) {
     }
   } catch (error) {
     console.error('❌ Registration-sessions: Error in handler:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Internal Server Error', details: error.message })
+    };
+  }
+}
+
+async function handlePublicGet(event, headers) {
+  console.log('📡 Registration-sessions: Handling public GET request for active tournaments');
+  
+  try {
+    // Get all registration sessions (public view)
+    const allSessions = await getRegistrationSessions(null); // null means get all sessions
+    
+    // Filter to only show active sessions for public viewing
+    const activeSessions = allSessions.filter(session => session.isActive);
+    
+    console.log('📡 Registration-sessions: Public sessions result:', {
+      totalCount: allSessions.length,
+      activeCount: activeSessions.length
+    });
+    
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, sessions: activeSessions })
+    };
+  } catch (error) {
+    console.error('❌ Registration-sessions: Error in public GET:', error);
     return {
       statusCode: 500,
       headers,
