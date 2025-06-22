@@ -897,6 +897,7 @@ function autoBalance() {
         // Initialize teams
         for (let i = 0; i < numTeams; i++) {
             state.balancedTeams.push({
+                name: `Team ${i + 1}`,
                 players: [],
                 totalMmr: 0
             });
@@ -1253,7 +1254,7 @@ function displayBalancedTeams() {
                             <div class="card-header bg-primary text-white py-2">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
-                                        <h6 class="mb-0 fw-bold">Team ${teamIndex + 1}</h6>
+                                        <h6 class="mb-0 fw-bold">${escapeHtml(team.name)}</h6>
                                     </div>
                                     <div class="col text-end">
                                         <span class="badge bg-light text-dark me-1">
@@ -1455,7 +1456,8 @@ async function saveTeams() {
         return;
     }
 
-    const sessionTitle = document.getElementById('team-balancer-session-selector').selectedOptions[0]?.textContent.split(' (')[0] || 'Balanced Teams';
+    const currentSession = state.registrationSessions.find(s => s.sessionId === state.currentSessionId);
+    const sessionTitle = currentSession ? currentSession.title : 'Balanced Teams';
     const teamSetTitle = `${sessionTitle} - ${new Date().toLocaleString()}`;
 
 
