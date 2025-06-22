@@ -450,15 +450,6 @@ function setupBalancerButtons() {
         exportTeamsBtn.addEventListener('click', exportTeams);
     }
 
-    // Save Teams button
-    const saveTeamsBtn = document.getElementById('save-teams') || 
-                        document.getElementById('save-teams-btn') || 
-                        document.querySelector('[onclick="saveTeams()"]');
-    if (saveTeamsBtn) {
-        saveTeamsBtn.removeAttribute('onclick');
-        saveTeamsBtn.addEventListener('click', saveTeams);
-    }
-
     // Load Teams button
     const loadTeamsBtn = document.getElementById('load-teams-btn');
     if (loadTeamsBtn) {
