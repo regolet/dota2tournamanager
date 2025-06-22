@@ -157,7 +157,7 @@ function fetchWithAuth(url, options = {}) {
     const sessionId = localStorage.getItem('adminSessionId');
     if (sessionId) {
         if (!options.headers) options.headers = {};
-        options.headers['X-Session-Id'] = sessionId;
+        options.headers['x-session-id'] = sessionId;
     }
     return fetch(url, options);
 }

@@ -1105,7 +1105,7 @@ async function handlePasswordChange(e) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Session-Id': sessionId
+                'x-session-id': sessionId
             },
             body: JSON.stringify({
                 oldPassword: currentPassword,

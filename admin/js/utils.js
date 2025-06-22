@@ -8,6 +8,9 @@ async function fetchWithAuth(endpoint, options = {}) {
     // The endpoint should be a full path from the root, e.g., '/.netlify/functions/...'
     const url = endpoint;
     
+    // Get session ID from session manager or localStorage
+    const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+    
     // Making request
     
     try {
@@ -15,6 +18,7 @@ async function fetchWithAuth(endpoint, options = {}) {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                'x-session-id': sessionId, // Add session ID for authentication
                 ...options.headers,
             },
             credentials: 'include'

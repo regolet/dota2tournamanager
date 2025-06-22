@@ -306,21 +306,14 @@ async function initRegistration() {
             saveButton.disabled = true;
             saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
             
-            const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            
             const url = '/.netlify/functions/registration-sessions';
             const method = isEdit ? 'PUT' : 'POST';
             
-            const response = await fetch(url, {
+            const data = await fetchWithAuth(url, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-session-id': adminSessionId
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sessionData)
             });
-            
-            const data = await response.json();
             
             if (data.success) {
                 showSessionAlert(`Registration link ${isEdit ? 'updated' : 'created'} successfully`, 'success');
@@ -362,15 +355,7 @@ async function initRegistration() {
     
     async function editSession(sessionId) {
         try {
-            const adminSessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            
-            const response = await fetch(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
-                headers: {
-                    'x-session-id': adminSessionId
-                }
-            });
-            
-            const data = await response.json();
+            const data = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`);
             
             if (data.success && data.session) {
                 const session = data.session;
@@ -399,8 +384,8 @@ async function initRegistration() {
                 modal.show();
             } else {
                 showAlert(data.message || 'Failed to load registration session', 'danger');
-        }
-    } catch (error) {
+            }
+        } catch (error) {
             console.error('Error loading registration session:', error);
             showAlert('Error loading registration session', 'danger');
         }
@@ -419,16 +404,9 @@ async function initRegistration() {
         }
 
         try {
-            const response = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
+            const result = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
                 method: 'DELETE'
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP ${response.status}`);
-            }
-
-            const result = await response.json();
 
             if (result.success) {
                 showAlert(`Registration "${title}" has been deleted.`, 'success');
@@ -451,15 +429,13 @@ async function initRegistration() {
         }
 
         try {
-            const response = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
+            const result = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ isActive: false })
             });
 
-            const result = await response.json();
-
-            if (response.ok && result.success) {
+            if (result.success) {
                 showAlert(`Registration for "${title}" has been closed.`, 'success');
                 loadRegistrationSessions();
                 notifyPlayerListsToRefresh('closed');
@@ -480,15 +456,13 @@ async function initRegistration() {
         }
 
         try {
-            const response = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
+            const result = await fetchWithAuth(`/.netlify/functions/registration-sessions?sessionId=${sessionId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ isActive: true })
             });
 
-            const result = await response.json();
-
-            if (response.ok && result.success) {
+            if (result.success) {
                 showAlert(`Registration for "${title}" has been reopened.`, 'success');
                 loadRegistrationSessions();
                 notifyPlayerListsToRefresh('reopened');

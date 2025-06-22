@@ -85,7 +85,7 @@ async function loadMasterlistData() {
         
         const response = await fetch('/api/masterlist', {
             headers: {
-                'X-Session-Id': localStorage.getItem('adminSessionId')
+                'x-session-id': localStorage.getItem('adminSessionId')
             }
         });
         
@@ -386,7 +386,7 @@ async function handlePlayerFormSubmit(event) {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Session-Id': localStorage.getItem('adminSessionId')
+                    'x-session-id': localStorage.getItem('adminSessionId')
                 },
                 body: JSON.stringify(formData)
             });
@@ -396,7 +396,7 @@ async function handlePlayerFormSubmit(event) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Session-Id': localStorage.getItem('adminSessionId')
+                    'x-session-id': localStorage.getItem('adminSessionId')
                 },
                 body: JSON.stringify(formData)
             });
@@ -445,7 +445,7 @@ async function handleConfirmDelete() {
         const response = await fetch(`/api/masterlist/${playerId}`, {
             method: 'DELETE',
             headers: {
-                'X-Session-Id': localStorage.getItem('adminSessionId')
+                'x-session-id': localStorage.getItem('adminSessionId')
             }
         });
         
