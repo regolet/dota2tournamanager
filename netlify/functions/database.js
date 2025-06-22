@@ -1627,6 +1627,8 @@ export async function deleteTeamConfiguration(teamSetId) {
 // Tournament Bracket operations
 export async function saveTournament(tournamentData) {
   try {
+    await initializeDatabase();
+    
     const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
 
     // Validate input
@@ -1667,6 +1669,8 @@ export async function deleteTournament(tournamentId) {
 
 export async function getTournament(tournamentId) {
   try {
+    await initializeDatabase();
+    
     const result = await sql`
       SELECT 
         t.id, 
@@ -1689,6 +1693,8 @@ export async function getTournament(tournamentId) {
 
 export async function getTournaments(adminUserId = null) {
   try {
+    await initializeDatabase();
+    
     let query;
     if (adminUserId) {
       query = sql`
