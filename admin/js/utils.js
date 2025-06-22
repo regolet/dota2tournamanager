@@ -5,16 +5,10 @@
 const API_BASE_URL = '/api';
 
 async function fetchWithAuth(endpoint, options = {}) {
-    // Remove leading slash from endpoint if present and handle API base URL
-    let normalizedEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    // The endpoint should be a full path from the root, e.g., '/.netlify/functions/...'
+    const url = endpoint;
     
-    // If endpoint already starts with api/, remove it to prevent duplication
-    if (normalizedEndpoint.startsWith('api/')) {
-        normalizedEndpoint = normalizedEndpoint.replace('api/', '');
-    }
-    
-    const url = `${API_BASE_URL}/${normalizedEndpoint}`;
-            // Making request
+    // Making request
     
     try {
         const response = await fetch(url, {
