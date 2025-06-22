@@ -12,7 +12,16 @@ import { getSecurityHeaders } from './security-utils.js';
 export async function handler(event, context) {
   const headers = getSecurityHeaders(event);
 
+  console.log('📡 Registration-sessions API called:', {
+    method: event.httpMethod,
+    path: event.path,
+    queryParams: event.queryStringParameters,
+    hasSessionHeader: !!event.headers['x-session-id'],
+    sessionId: event.headers['x-session-id'] ? `${event.headers['x-session-id'].substring(0, 10)}...` : 'null'
+  });
+
   if (event.httpMethod === 'OPTIONS') {
+    console.log('📡 Registration-sessions: Handling OPTIONS request');
     return {
       statusCode: 204,
       headers: {
@@ -24,8 +33,17 @@ export async function handler(event, context) {
   }
 
   try {
+    console.log('🔐 Registration-sessions: Validating session...');
     const sessionValidation = await validateSession(event.headers['x-session-id']);
+    console.log('🔐 Registration-sessions: Session validation result:', {
+      valid: sessionValidation.valid,
+      reason: sessionValidation.reason,
+      role: sessionValidation.role,
+      userId: sessionValidation.userId ? `${sessionValidation.userId.substring(0, 10)}...` : 'null'
+    });
+    
     if (!sessionValidation.valid) {
+      console.error('❌ Registration-sessions: Invalid session:', sessionValidation);
       return {
         statusCode: 401,
         headers,
@@ -34,17 +52,27 @@ export async function handler(event, context) {
     }
 
     const { role: adminRole, userId: adminUserId, username: adminUsername } = sessionValidation;
+    console.log('✅ Registration-sessions: Session validated, proceeding with request:', {
+      role: adminRole,
+      userId: adminUserId ? `${adminUserId.substring(0, 10)}...` : 'null',
+      username: adminUsername
+    });
 
     switch (event.httpMethod) {
       case 'GET':
+        console.log('📡 Registration-sessions: Handling GET request');
         return await handleGet(event, adminRole, adminUserId, headers);
       case 'POST':
+        console.log('📡 Registration-sessions: Handling POST request');
         return await handlePost(event, adminUserId, adminUsername, headers);
       case 'PUT':
+        console.log('📡 Registration-sessions: Handling PUT request');
         return await handlePut(event, adminRole, adminUserId, headers);
       case 'DELETE':
+        console.log('📡 Registration-sessions: Handling DELETE request');
         return await handleDelete(event, adminRole, headers);
       default:
+        console.error('❌ Registration-sessions: Method not allowed:', event.httpMethod);
         return {
           statusCode: 405,
           headers,
@@ -52,7 +80,7 @@ export async function handler(event, context) {
         };
     }
   } catch (error) {
-    console.error('Error in registration-sessions handler:', error);
+    console.error('❌ Registration-sessions: Error in handler:', error);
     return {
       statusCode: 500,
       headers,
@@ -64,15 +92,32 @@ export async function handler(event, context) {
 async function handleGet(event, adminRole, adminUserId, headers) {
   const { sessionId } = event.queryStringParameters || {};
   
+  console.log('📡 Registration-sessions handleGet:', {
+    hasSessionId: !!sessionId,
+    sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'null',
+    adminRole: adminRole,
+    adminUserId: adminUserId ? `${adminUserId.substring(0, 10)}...` : 'null'
+  });
+  
   if (sessionId) {
+    console.log('📡 Registration-sessions: Getting specific session by ID');
     const session = await getRegistrationSessionBySessionId(sessionId);
+    console.log('📡 Registration-sessions: Specific session result:', {
+      found: !!session,
+      sessionId: sessionId
+    });
     return {
       statusCode: session ? 200 : 404,
       headers,
       body: JSON.stringify(session || { error: 'Session not found' })
     };
   } else {
+    console.log('📡 Registration-sessions: Getting all sessions for admin');
     const sessions = await getRegistrationSessions(adminUserId);
+    console.log('📡 Registration-sessions: All sessions result:', {
+      count: sessions.length,
+      adminUserId: adminUserId ? `${adminUserId.substring(0, 10)}...` : 'null'
+    });
     return {
       statusCode: 200,
       headers,

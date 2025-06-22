@@ -5,10 +5,13 @@
     // Simple session validation
     async function validateCurrentSession() {
         try {
+            console.log('🔐 SessionManager: Starting validateCurrentSession...');
+            
             // Check if we're coming from a login redirect
             const urlParams = new URLSearchParams(window.location.search);
             const fromLogin = urlParams.get('from') === 'login';
             if (fromLogin) {
+                console.log('🔐 SessionManager: Coming from login redirect, waiting 1 second...');
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
             
@@ -17,15 +20,22 @@
             for (let i = 0; i < 3; i++) {
                 try {
                     sessionId = localStorage.getItem("adminSessionId");
+                    console.log(`🔐 SessionManager: Attempt ${i + 1} to get session ID:`, {
+                        attempt: i + 1,
+                        sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'null'
+                    });
                     if (sessionId) break;
                     await new Promise(resolve => setTimeout(resolve, 100));
                 } catch (e) {
+                    console.error(`🔐 SessionManager: Error on attempt ${i + 1}:`, e);
                     // Silent retry
                 }
             }
             
             if (!sessionId) {
+                console.error('❌ SessionManager: No session ID found after all attempts');
                 if (!fromLogin) {
+                    console.log('🔐 SessionManager: Redirecting to login...');
                     redirectToLogin();
                 }
                 return false;
@@ -37,48 +47,70 @@
             const isRecentLogin = loginTimestamp && (now - parseInt(loginTimestamp)) < 10000; // 10 second grace period
             
             if (isRecentLogin) {
+                console.log('🔐 SessionManager: Recent login detected, waiting 800ms...');
                 await new Promise(resolve => setTimeout(resolve, 800));
             }
 
             // Add a small delay to ensure session is established server-side
+            console.log('🔐 SessionManager: Waiting 300ms for session establishment...');
             await new Promise(resolve => setTimeout(resolve, 300));
 
             // Try validation with retries for race conditions
             let lastError = null;
             for (let attempt = 1; attempt <= 5; attempt++) {
                 try {
+                    console.log(`🔐 SessionManager: Validation attempt ${attempt}/5...`);
                     const response = await fetch("/.netlify/functions/check-session", {
                         headers: {
                             "x-session-id": sessionId
                         }
                     });
 
+                    console.log(`🔐 SessionManager: Check session response:`, {
+                        attempt: attempt,
+                        status: response.status,
+                        ok: response.ok
+                    });
+
                     if (response.ok) {
                         const data = await response.json();
+                        console.log(`🔐 SessionManager: Check session data:`, {
+                            attempt: attempt,
+                            success: data.success,
+                            hasUser: !!data.user,
+                            userRole: data.user?.role
+                        });
                         
                         if (data.success) {
                             // Store/update user info
                             try {
                                 localStorage.setItem("adminUser", JSON.stringify(data.user));
                                 localStorage.removeItem("adminLoginTimestamp");
+                                console.log('✅ SessionManager: Session validated successfully');
                             } catch (e) {
+                                console.error('❌ SessionManager: Error storing user info:', e);
                                 // Silent fail
                             }
                             return true;
                         } else {
+                            console.warn(`⚠️ SessionManager: Session validation failed on attempt ${attempt}:`, data);
                             if (attempt === 5) {
+                                console.error('❌ SessionManager: All validation attempts failed, redirecting to login');
                                 redirectToLogin();
                                 return false;
                             }
                         }
                     } else {
+                        console.warn(`⚠️ SessionManager: HTTP error on attempt ${attempt}:`, response.status, response.statusText);
                         if (attempt === 5) {
+                            console.error('❌ SessionManager: All HTTP attempts failed, redirecting to login');
                             redirectToLogin();
                             return false;
                         }
                     }
                 } catch (fetchError) {
                     lastError = fetchError;
+                    console.error(`❌ SessionManager: Fetch error on attempt ${attempt}:`, fetchError);
                     if (attempt === 5) {
                         throw fetchError;
                     }
@@ -86,15 +118,19 @@
                 
                 // Wait before retry (increasing delay)
                 if (attempt < 5) {
-                    await new Promise(resolve => setTimeout(resolve, attempt * 400));
+                    const delay = attempt * 400;
+                    console.log(`🔐 SessionManager: Waiting ${delay}ms before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
             
             // If we get here, all attempts failed
+            console.error('❌ SessionManager: All validation attempts failed, redirecting to login');
             redirectToLogin();
             return false;
             
         } catch (error) {
+            console.error('❌ SessionManager: Critical error in validateCurrentSession:', error);
             redirectToLogin();
             return false;
         }
@@ -137,8 +173,14 @@
         validateCurrentSession,
         getSessionId: () => {
             try {
-                return localStorage.getItem("adminSessionId");
+                const sessionId = localStorage.getItem("adminSessionId");
+                console.log('🔐 SessionManager: getSessionId called:', {
+                    sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'null',
+                    hasSessionId: !!sessionId
+                });
+                return sessionId;
             } catch (e) {
+                console.error('❌ SessionManager: Error in getSessionId:', e);
                 return null;
             }
         },
