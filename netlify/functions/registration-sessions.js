@@ -41,7 +41,7 @@ export async function handler(event, context) {
       case 'POST':
         return await handlePost(event, adminUserId, adminUsername, headers);
       case 'PUT':
-        return await handlePut(event, adminRole, headers);
+        return await handlePut(event, adminRole, adminUserId, headers);
       case 'DELETE':
         return await handleDelete(event, adminRole, headers);
       default:
@@ -100,15 +100,25 @@ async function handlePost(event, adminUserId, adminUsername, headers) {
     }
 }
 
-async function handlePut(event, adminRole, headers) {
+async function handlePut(event, adminRole, adminUserId, headers) {
     const { sessionId } = event.queryStringParameters || {};
     const updates = JSON.parse(event.body);
 
     if (!sessionId) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Session ID is required' }) };
     }
-    
-    // In a real scenario, you might add an ownership check here for non-superadmins
+
+    // Ownership check for non-superadmins
+    if (adminRole !== 'superadmin') {
+        const sessionToUpdate = await getRegistrationSessionBySessionId(sessionId);
+        if (!sessionToUpdate || sessionToUpdate.adminUserId !== adminUserId) {
+            return {
+                statusCode: 403,
+                headers,
+                body: JSON.stringify({ error: 'Forbidden: You can only modify your own registration sessions.' })
+            };
+        }
+    }
 
     const result = await updateRegistrationSession(sessionId, updates);
     if (result.success) {
