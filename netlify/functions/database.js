@@ -1480,7 +1480,7 @@ export async function getTeamConfigurations(adminUserId = null) {
     
     console.log(`[DB] Found ${teams.length} unique team configurations matching query.`);
     
-    return teams.map(team => {
+    const mappedTeams = teams.map(team => {
       let parsedTeams = [];
       if (team.teams_data) {
         if (typeof team.teams_data === 'string') {
@@ -1511,6 +1511,11 @@ export async function getTeamConfigurations(adminUserId = null) {
         updatedAt: team.updated_at
       };
     });
+
+    // Sort by creation date, newest first
+    mappedTeams.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return mappedTeams;
   } catch (error) {
     console.error('[DB] CRITICAL: Error getting team configurations:', error);
     return []; // Return empty on error to prevent frontend crash
