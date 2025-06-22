@@ -70,7 +70,7 @@ export async function handler(event, context) {
     // Handle different HTTP methods
     switch (event.httpMethod) {
       case 'GET':
-        return await handleGet(event, adminUserId, headers);
+        return await handleGet(event, adminUserId, adminRole, headers);
       
       case 'POST':
         return await handlePost(event, adminUserId, adminUsername, headers);
@@ -79,7 +79,7 @@ export async function handler(event, context) {
         return await handlePut(event, headers);
       
       case 'DELETE':
-        return await handleDelete(event, adminRole, headers);
+        return await handleDelete(event, adminRole, adminUserId, headers);
       
       default:
         return {
@@ -104,7 +104,7 @@ export async function handler(event, context) {
   }
 }
 
-async function handleGet(event, adminUserId, headers) {
+async function handleGet(event, adminUserId, adminRole, headers) {
   try {
     const { teamSetId } = event.queryStringParameters || {};
     
@@ -125,8 +125,9 @@ async function handleGet(event, adminUserId, headers) {
         body: JSON.stringify(teamConfig)
       };
     } else {
-      // Get all team configurations for this admin
-      const teamConfigs = await getTeamConfigurations(adminUserId);
+      // Superadmin gets all, regular admins get only their own
+      const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
+      const teamConfigs = await getTeamConfigurations(targetUserId);
       return {
         statusCode: 200,
         headers,
@@ -242,42 +243,52 @@ async function handlePut(event, headers) {
   }
 }
 
-async function handleDelete(event, adminRole, headers) {
-  // Superadmin check
-  if (adminRole !== 'superadmin') {
-    return {
-      statusCode: 403,
-      headers,
-      body: JSON.stringify({ error: 'Forbidden: You do not have permission to delete this resource.' })
-    };
-  }
+async function handleDelete(event, adminRole, adminUserId, headers) {
+  try {
+    const { teamSetId } = event.queryStringParameters || {};
+    
+    if (!teamSetId) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Missing teamSetId parameter' })
+      };
+    }
 
-  const { teamSetId } = event.queryStringParameters || {};
-  
-  if (!teamSetId) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Team set ID is required' })
-    };
-  }
+    // Superadmins can delete any team set.
+    // Regular admins can only delete their own.
+    if (adminRole !== 'superadmin') {
+      const teamConfig = await getTeamConfigurationById(teamSetId);
+      if (!teamConfig || teamConfig.adminUserId !== adminUserId) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: 'Forbidden: You do not have permission to delete this team configuration.' })
+        };
+      }
+    }
 
-  const result = await deleteTeamConfiguration(teamSetId);
-  
-  if (result.success) {
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ 
-        success: true,
-        message: 'Team configuration deleted successfully' 
-      })
-    };
-  } else {
+    const result = await deleteTeamConfiguration(teamSetId);
+
+    if (result.success) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, message: 'Team configuration deleted successfully' })
+      };
+    } else {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: result.message || 'Failed to delete team configuration' })
+      };
+    }
+  } catch (error) {
+    console.error('Error in handleDelete for teams:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: result.message })
+      body: JSON.stringify({ error: 'Internal server error while deleting team configuration.' })
     };
   }
 } 

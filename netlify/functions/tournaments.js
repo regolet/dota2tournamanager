@@ -38,8 +38,11 @@ export async function handler(event, context) {
             };
         }
 
+        const { userId: adminUserId, role: adminRole } = session;
+
         if (event.httpMethod === 'POST') {
             const data = JSON.parse(event.body);
+            data.admin_user_id = adminUserId;
             const result = await saveTournament(data);
             if (result.success) {
                 return {
@@ -76,8 +79,9 @@ export async function handler(event, context) {
                     };
                 }
             } else {
-                // If no ID, get the list of all tournaments
-                const tournaments = await getTournaments();
+                // If no ID, get the list of tournaments based on user role
+                const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
+                const tournaments = await getTournaments(targetUserId);
                 return {
                     statusCode: 200,
                     body: JSON.stringify(tournaments),
@@ -87,14 +91,6 @@ export async function handler(event, context) {
         }
 
         if (event.httpMethod === 'DELETE') {
-            if (session.role !== 'superadmin') {
-                return {
-                    statusCode: 403,
-                    body: JSON.stringify({ message: 'Forbidden: You do not have permission to delete this resource.' }),
-                    headers
-                };
-            }
-
             const tournamentId = event.queryStringParameters?.id;
             if (!tournamentId) {
                 return {
@@ -102,6 +98,18 @@ export async function handler(event, context) {
                     body: JSON.stringify({ message: 'Tournament ID is required' }),
                     headers
                 };
+            }
+
+            // Superadmin can delete any tournament. Regular admins can only delete their own.
+            if (adminRole !== 'superadmin') {
+                const tournament = await getTournament(tournamentId);
+                if (!tournament || tournament.admin_user_id !== adminUserId) {
+                    return {
+                        statusCode: 403,
+                        body: JSON.stringify({ message: 'Forbidden: You do not have permission to delete this tournament.' }),
+                        headers
+                    };
+                }
             }
 
             const result = await deleteTournament(tournamentId);

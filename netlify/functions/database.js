@@ -152,6 +152,7 @@ async function initializeDatabase() {
     await sql`
       CREATE TABLE IF NOT EXISTS tournaments (
         id VARCHAR(255) PRIMARY KEY,
+        admin_user_id VARCHAR(255),
         team_set_id VARCHAR(255),
         tournament_data JSONB NOT NULL,
         is_active BOOLEAN DEFAULT true,
@@ -1626,22 +1627,24 @@ export async function deleteTeamConfiguration(teamSetId) {
 // Tournament Bracket operations
 export async function saveTournament(tournamentData) {
   try {
-    await initializeDatabase();
-    
-    await sql`
-      INSERT INTO tournaments (id, team_set_id, tournament_data, is_active)
-      VALUES (
-        ${tournamentData.id},
-        ${tournamentData.teamSetId || null},
-        ${JSON.stringify(tournamentData)},
-        true
-      )
-      ON CONFLICT (id) DO UPDATE SET
-        tournament_data = ${JSON.stringify(tournamentData)},
+    const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
+
+    // Validate input
+    if (!id || !tournament_data) {
+      return { success: false, message: 'Tournament ID and data are required.' };
+    }
+
+    const result = await sql`
+      INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
+      VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournament_data}, NOW(), NOW())
+      ON CONFLICT (id) 
+      DO UPDATE SET
+        tournament_data = EXCLUDED.tournament_data,
+        team_set_id = EXCLUDED.team_set_id,
         updated_at = NOW()
     `;
-    
-    return { success: true, tournamentId: tournamentData.id };
+
+    return { success: true, id };
   } catch (error) {
     console.error('[DB] Error saving tournament:', error);
     return { success: false, message: 'Error saving tournament' };
@@ -1664,56 +1667,58 @@ export async function deleteTournament(tournamentId) {
 
 export async function getTournament(tournamentId) {
   try {
-    await initializeDatabase();
-    
-    const tournaments = await sql`
-      SELECT tournament_data FROM tournaments
-      WHERE id = ${tournamentId} AND is_active = true
+    const result = await sql`
+      SELECT 
+        t.id, 
+        t.team_set_id, 
+        t.tournament_data, 
+        t.is_active, 
+        t.created_at, 
+        t.updated_at,
+        ts.title AS team_set_title
+      FROM tournaments t
+      LEFT JOIN teams ts ON t.team_set_id = ts.team_set_id
+      WHERE t.id = ${tournamentId}
     `;
-    
-    if (tournaments.length === 0) {
-      return null;
-    }
-    
-    const tournament = tournaments[0];
-    
-    let parsedData = null;
-    if (tournament.tournament_data) {
-      if (typeof tournament.tournament_data === 'string') {
-        try {
-          parsedData = JSON.parse(tournament.tournament_data);
-        } catch (e) {
-          console.error(`[DB] Failed to parse tournament_data string for tournamentId ${tournamentId}:`, e);
-        }
-      } else if (typeof tournament.tournament_data === 'object') {
-        parsedData = tournament.tournament_data;
-      }
-    }
-    
-    return parsedData;
+    return result.length > 0 ? result[0] : null;
   } catch (error) {
-    console.error('Error getting tournament:', error);
-    return null;
+    console.error(`Error fetching tournament ${tournamentId}:`, error);
+    throw error;
   }
 }
 
-export async function getTournaments() {
+export async function getTournaments(adminUserId = null) {
   try {
-    await initializeDatabase();
-    
-    const tournaments = await sql`
-      SELECT 
-        id, 
-        tournament_data->>'name' as name,
-        created_at
-      FROM tournaments
-      WHERE is_active = true
-      ORDER BY created_at DESC
-    `;
-    
-    return tournaments;
+    let query;
+    if (adminUserId) {
+      query = sql`
+        SELECT 
+          t.id,
+          t.tournament_data->>'name' as name,
+          t.created_at
+        FROM tournaments t
+        WHERE t.admin_user_id = ${adminUserId}
+        ORDER BY t.created_at DESC
+      `;
+    } else {
+      query = sql`
+        SELECT 
+          t.id,
+          t.tournament_data->>'name' as name,
+          t.created_at
+        FROM tournaments t
+        ORDER BY t.created_at DESC
+      `;
+    }
+    const result = await sql`${query}`;
+    return result;
   } catch (error) {
-    console.error('Error getting tournaments list:', error);
-    return [];
+    // If table doesn't exist, return empty array gracefully
+    if (error.message && (error.message.includes('relation "tournaments" does not exist'))) {
+      console.warn('Tournaments table does not exist, returning empty array.');
+      return [];
+    }
+    console.error('Error fetching tournaments:', error);
+    throw error;
   }
 }
