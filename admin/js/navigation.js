@@ -523,30 +523,44 @@ async function loadPlayerList() {
 }
 
 /**
- * Loads and displays the registration manager section
+ * Loads and displays the registration section
  */
 async function loadRegistration() {
     try {
+        console.log('🚀 Navigation: Starting loadRegistration...');
+        
         // Update active tab immediately
         updateActiveTab('registration-manager');
-
-        // Check if registration content is already loaded
-        const mainContent = document.getElementById('main-content');
-        const existingContent = mainContent?.querySelector('#registration-manager, .registration-content');
         
-        if (existingContent && window.registrationModuleLoaded) {
-            // Just reinitialize if already loaded
-            if (typeof window.initRegistration === 'function') {
-                await window.initRegistration();
-            }
-            return true;
-        }
-
+        console.log('🚀 Navigation: Loading registration tab content...');
+        
         // Load registration template and JavaScript
         const result = await loadTabContent('./registration.html', 'main-content', '/admin/js/registration.js');
         
+        console.log('🚀 Navigation: Registration tab content loaded:', {
+            success: result,
+            hasInitRegistration: typeof window.initRegistration === 'function'
+        });
+        
+        // After Registration is loaded, initialize the registration system
+        if (result) {
+            console.log('🚀 Navigation: Initializing registration module...');
+            // Wait a moment for DOM to be fully ready
+            setTimeout(async () => {
+                if (typeof window.initRegistration === 'function') {
+                    console.log('🚀 Navigation: Calling window.initRegistration()...');
+                    await window.initRegistration();
+                } else {
+                    console.error('❌ Navigation: window.initRegistration function not found');
+                }
+            }, 100);
+        } else {
+            console.error('❌ Navigation: Failed to load registration tab content');
+        }
+        
         return result;
     } catch (error) {
+        console.error('❌ Navigation: Error in loadRegistration:', error);
         return false;
     }
 }
@@ -890,9 +904,12 @@ async function loadTabContent(templatePath, containerId, jsModulePath = null) {
  */
 async function loadJavaScriptModule(jsPath) {
     try {
+        console.log('📦 Navigation: Loading JavaScript module:', jsPath);
+        
         // Remove any existing script tags for this module (force reload)
         const existingScripts = document.querySelectorAll(`script[src*="${jsPath.split('/').pop()}"]`);
         existingScripts.forEach(script => {
+            console.log('📦 Navigation: Removing existing script:', script.src);
             script.remove();
         });
         
@@ -902,12 +919,16 @@ async function loadJavaScriptModule(jsPath) {
         script.type = 'text/javascript';
         script.setAttribute('data-module', jsPath);
         
+        console.log('📦 Navigation: Created script element:', script.src);
+        
         // Wait for script to load
         await new Promise((resolve, reject) => {
             script.onload = () => {
+                console.log('✅ Navigation: Script loaded successfully:', jsPath);
                 resolve();
             };
             script.onerror = (error) => {
+                console.error('❌ Navigation: Script load error:', jsPath, error);
                 reject(new Error(`Failed to load ${jsPath}`));
             };
             
@@ -915,13 +936,16 @@ async function loadJavaScriptModule(jsPath) {
         });
         
         // Give a moment for the script to initialize
+        console.log('📦 Navigation: Waiting for script initialization...');
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Call the appropriate initialization function based on the module
         const moduleFileName = jsPath.split('/').pop().replace('.js', '');
+        console.log('📦 Navigation: Initializing module:', moduleFileName);
         await initializeModule(moduleFileName);
         
     } catch (error) {
+        console.error('❌ Navigation: Error loading JavaScript module:', jsPath, error);
         throw error;
     }
 }
@@ -931,64 +955,68 @@ async function loadJavaScriptModule(jsPath) {
  */
 async function initializeModule(moduleFileName) {
     try {
-        // Initializing module
+        console.log('🚀 Navigation: Starting module initialization for:', moduleFileName);
         
         switch (moduleFileName) {
             case 'teamBalancer':
                 if (typeof window.initTeamBalancer === 'function') {
+                    console.log('🚀 Navigation: Calling initTeamBalancer...');
                     await window.initTeamBalancer();
-                    // Team Balancer initialized (tab will be enabled by loadTeamBalancer)
+                    console.log('✅ Navigation: Team Balancer initialized');
                 } else {
-                    // initTeamBalancer function not found
+                    console.error('❌ Navigation: initTeamBalancer function not found');
                 }
                 break;
                 
             case 'randompicker':
                 if (typeof window.initRandomPicker === 'function') {
+                    console.log('🚀 Navigation: Calling initRandomPicker...');
                     await window.initRandomPicker();
-                    // Random Picker initialized (tab will be enabled by loadRandomPicker)
+                    console.log('✅ Navigation: Random Picker initialized');
                 } else {
-                    // initRandomPicker function not found
+                    console.error('❌ Navigation: initRandomPicker function not found');
                 }
                 break;
                 
             case 'playerList':
                 if (typeof window.initPlayerList === 'function') {
+                    console.log('🚀 Navigation: Calling initPlayerList...');
                     await window.initPlayerList();
-                    // Player List initialized (tab will be enabled by loadPlayerList)
+                    console.log('✅ Navigation: Player List initialized');
                 } else {
-                    // initPlayerList function not found
+                    console.error('❌ Navigation: initPlayerList function not found');
                 }
                 break;
                 
             case 'registration':
                 if (typeof window.initRegistration === 'function') {
+                    console.log('🚀 Navigation: Calling initRegistration...');
                     await window.initRegistration();
-                    // Registration initialized (tab will be enabled by loadRegistration)
+                    console.log('✅ Navigation: Registration initialized');
                 } else {
-                    // initRegistration function not found
+                    console.error('❌ Navigation: initRegistration function not found');
                 }
                 break;
                 
             case 'masterlist':
                 if (typeof window.initMasterlist === 'function') {
+                    console.log('🚀 Navigation: Calling initMasterlist...');
                     await window.initMasterlist();
-                    // Masterlist initialized (tab will be enabled by loadMasterlist)
+                    console.log('✅ Navigation: Masterlist initialized');
                 } else {
-                    // initMasterlist function not found
+                    console.error('❌ Navigation: initMasterlist function not found');
                 }
                 break;
                 
             case 'tournamentBrackets':
-                // Tournament bracket is handled separately in loadTournamentBracket
-                // Tab will be enabled by loadTournamentBracket function
+                console.log('🚀 Navigation: Tournament bracket handled separately');
                 break;
                 
             default:
-                // No specific initialization for module
+                console.warn('⚠️ Navigation: No specific initialization for module:', moduleFileName);
         }
     } catch (error) {
-        // Error initializing module
+        console.error('❌ Navigation: Error initializing module:', moduleFileName, error);
     }
 }
 

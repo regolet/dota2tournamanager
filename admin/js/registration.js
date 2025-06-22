@@ -18,37 +18,27 @@
 // Initialize registration module
 async function initRegistration() {
     try {
-            console.log('Registration module initialization starting...');
-            
-            // If already initialized, just refresh data
-            if (state.initialized) {
-                console.log('Registration module already initialized, refreshing data...');
-                await loadRegistrationSessions();
-                return;
-            }
-            
-            // Get current user info from session manager
-            state.currentUser = window.sessionManager?.getUserInfo();
-            
-            // Setup event listeners
-            setupEventListeners();
-            
-            // Load registration sessions
-            await loadRegistrationSessions();
-            
-            // Mark as initialized
-            state.initialized = true;
-            
-            console.log('Registration module initialized successfully');
-            
-            // Registration is loaded - tab will be enabled when clicked
-        } catch (error) {
-            console.error('Error initializing registration module:', error);
-            showAlert('Failed to initialize registration module', 'danger');
-            // Reset state on error
-            state.initialized = false;
+        console.log('🚀 Registration: Starting initRegistration...');
+        
+        if (state.initialized) {
+            console.log('🚀 Registration: Already initialized, skipping...');
+            return;
         }
+
+        console.log('🚀 Registration: Setting up event listeners...');
+        setupEventListeners();
+        
+        console.log('🚀 Registration: Loading registration sessions...');
+        await loadRegistrationSessions();
+        
+        state.initialized = true;
+        window.registrationModuleLoaded = true;
+        
+        console.log('✅ Registration: Initialization complete');
+    } catch (error) {
+        console.error('❌ Registration: Error in initRegistration:', error);
     }
+}
     
     function setupEventListeners() {
         // Create new registration link button
