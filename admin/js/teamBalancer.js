@@ -12,6 +12,8 @@
         isSaving: false // Add saving guard
     };
 
+    let isTeamBalancerInitialized = false;
+
 // Helper functions for MMR calculations
 function ensureNumericMmr(mmr) {
     const numericMmr = parseInt(mmr);
@@ -90,6 +92,11 @@ function showNotification(message, type = 'info') {
  * Initialize the team balancer
  */
 async function initTeamBalancer() {
+    if (isTeamBalancerInitialized) {
+        return;
+    }
+    isTeamBalancerInitialized = true;
+    
     try {
         // Create session selector for team balancer
         await createTeamBalancerSessionSelector();
