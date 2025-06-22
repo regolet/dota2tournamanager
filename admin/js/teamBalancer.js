@@ -1485,12 +1485,18 @@ async function saveTeams() {
             body: JSON.stringify(teamData)
         });
 
-        const result = await response.json();
+        const data = await response.json();
 
-        if (result.success) {
-            showNotification(`Teams saved successfully as "${title}"`, 'success');
+        if (data.success) {
+            showNotification(data.message || 'Teams saved successfully!', 'success');
+            
+            // Redirect to tournament bracket tab
+            if (window.showTab) {
+                window.showTab('tournament-bracket');
+            }
+            
         } else {
-            showNotification(result.error || 'Failed to save teams', 'error');
+            showNotification(data.message || 'Failed to save teams.', 'error');
         }
 
     } catch (error) {
