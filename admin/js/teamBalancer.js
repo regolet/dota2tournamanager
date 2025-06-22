@@ -391,6 +391,12 @@ function setupBalancerButtons() {
     if (loadTeamsBtn) {
         loadTeamsBtn.addEventListener('click', showLoadTeamsModal);
     }
+
+    // Load Players from Teams button
+    const loadPlayersFromTeamsBtn = document.getElementById('load-players-from-teams-btn');
+    if (loadPlayersFromTeamsBtn) {
+        loadPlayersFromTeamsBtn.addEventListener('click', loadPlayersFromTeams);
+    }
 }
 
 /**
@@ -1285,6 +1291,9 @@ function displayBalancedTeams() {
                     <button id="load-teams-btn" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-folder2-open me-1"></i>Load
                     </button>
+                    <button id="load-players-from-teams-btn" class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-arrow-left-circle me-1"></i>Load Players
+                    </button>
                     <button id="save-teams-btn" class="btn btn-sm btn-outline-success">
                         <i class="bi bi-floppy me-1"></i>Save
                     </button>
@@ -1658,7 +1667,8 @@ window.teamBalancerModule = {
     clearTeams,
     exportTeams,
     saveTeams,
-    loadSelectedTeams
+    loadSelectedTeams,
+    loadPlayersFromTeams
 };
 
     // Expose init function globally for navigation system
@@ -1670,5 +1680,47 @@ window.initTeamBalancer = initTeamBalancer;
     window.clearTeams = clearTeams;
     window.exportTeams = exportTeams;
     window.saveTeams = saveTeams;
+    window.loadPlayersFromTeams = loadPlayersFromTeams;
+
+/**
+ * Load players from teams back into available players list
+ */
+function loadPlayersFromTeams() {
+    if (!state.balancedTeams || state.balancedTeams.length === 0) {
+        showNotification('No teams to load players from', 'warning');
+        return;
+    }
+
+    // Extract all players from teams
+    const playersFromTeams = state.balancedTeams.flatMap(team => team.players);
+    
+    if (playersFromTeams.length === 0) {
+        showNotification('No players found in teams', 'warning');
+        return;
+    }
+
+    // Add players to available players list (avoid duplicates)
+    let addedCount = 0;
+    playersFromTeams.forEach(player => {
+        const existingPlayer = state.availablePlayers.find(p => p.id === player.id);
+        if (!existingPlayer) {
+            state.availablePlayers.push(player);
+            addedCount++;
+        }
+    });
+
+    // Clear teams since we're moving players back to available list
+    state.balancedTeams = [];
+    
+    // Clear reserved players (they're now back in available)
+    state.reservedPlayers = [];
+    
+    // Update all displays
+    displayPlayersForBalancer(state.availablePlayers);
+    displayReservedPlayers();
+    displayBalancedTeams();
+    
+    showNotification(`Loaded ${addedCount} players from teams back to available list`, 'success');
+}
 
 })();
