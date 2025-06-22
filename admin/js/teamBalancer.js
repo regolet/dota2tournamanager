@@ -191,15 +191,19 @@ async function loadRegistrationSessions() {
 
         const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
 
-        if (data.success && data.sessions) {
+        // Add detailed logging to inspect the API response
+        console.log('Team Balancer: Fetched registration sessions data:', data);
+
+        if (data && data.success && Array.isArray(data.sessions)) {
             state.registrationSessions = data.sessions;
             updateSessionSelector();
         } else {
+            console.error('Team Balancer: Failed to process sessions. Data received:', data);
             showNotification(data.message || 'Failed to load registration sessions', 'error');
         }
     } catch (error) {
-        console.error('Error loading registration sessions:', error);
-        showNotification('Error loading registration sessions', 'error');
+        console.error('Error loading registration sessions in Team Balancer:', error);
+        showNotification('An error occurred while loading tournaments.', 'error');
     }
 }
 
