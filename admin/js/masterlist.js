@@ -1,15 +1,12 @@
+(function() {
 // masterlist.js - Manages the verified player masterlist
 
 // Global state for masterlist (safe for reloading)
 window.masterlistPlayers = window.masterlistPlayers || [];
 window.currentEditingPlayer = window.currentEditingPlayer || null;
 window.masterlistStats = window.masterlistStats || {};
-
-// Prevent redeclaration on repeated script loads
 window.isMasterlistLoading = window.isMasterlistLoading || false;
-let isMasterlistLoading = window.isMasterlistLoading;
 window.lastLoadedPlayerCount = window.lastLoadedPlayerCount || null;
-let lastLoadedPlayerCount = window.lastLoadedPlayerCount;
 
 // Initialize masterlist module
 async function initMasterlist() {
@@ -95,9 +92,8 @@ function setupMasterlistEventListeners() {
 
 // Load masterlist data from API
 async function loadMasterlistData() {
-    if (isMasterlistLoading) return;
-    isMasterlistLoading = true;
-    window.isMasterlistLoading = isMasterlistLoading;
+    if (window.isMasterlistLoading) return;
+    window.isMasterlistLoading = true;
     try {
         window.showNotification('Loading masterlist...', 'info');
         
@@ -126,9 +122,9 @@ async function loadMasterlistData() {
             updateMasterlistStats();
             renderMasterlistTable(window.masterlistPlayers);
             
-            if (window.masterlistPlayers.length !== lastLoadedPlayerCount) {
+            if (window.masterlistPlayers.length !== window.lastLoadedPlayerCount) {
                 window.showNotification(`Loaded ${window.masterlistPlayers.length} players from masterlist`, 'success');
-                lastLoadedPlayerCount = window.masterlistPlayers.length;
+                window.lastLoadedPlayerCount = window.masterlistPlayers.length;
             }
             
             // Masterlist is loaded - tab will be enabled when clicked
@@ -142,8 +138,7 @@ async function loadMasterlistData() {
         // Show empty state
         renderMasterlistTable([]);
     } finally {
-        isMasterlistLoading = false;
-        window.isMasterlistLoading = isMasterlistLoading;
+        window.isMasterlistLoading = false;
     }
 }
 
@@ -631,4 +626,5 @@ function escapeHtml(text) {
 // Make functions globally available
 window.initMasterlist = initMasterlist;
 window.editMasterlistPlayer = editMasterlistPlayer;
-window.deleteMasterlistPlayer = deleteMasterlistPlayer; 
+window.deleteMasterlistPlayer = deleteMasterlistPlayer;
+})(); 
