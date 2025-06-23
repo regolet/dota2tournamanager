@@ -843,6 +843,9 @@ async function handleBulkImportSubmit(event) {
     executeBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Importing...';
     
     try {
+        // Debug: Log the payload being sent to the server
+        console.log('Payload sent to server:', playersToImport);
+        
         const response = await fetch('/api/masterlist/bulk-import', {
             method: 'POST',
             headers: {
