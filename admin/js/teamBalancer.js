@@ -92,10 +92,11 @@ function showNotification(message, type = 'info') {
  * Initialize the team balancer
  */
 async function initTeamBalancer() {
-    if (isTeamBalancerInitialized) {
-        return;
-    }
-    isTeamBalancerInitialized = true;
+    // Remove the initialization guard to allow re-initialization
+    // if (isTeamBalancerInitialized) {
+    //     return;
+    // }
+    // isTeamBalancerInitialized = true;
     
     try {
         // Create session selector for team balancer
@@ -129,6 +130,49 @@ async function initTeamBalancer() {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
         }
     }
+}
+
+/**
+ * Cleanup function for team balancer when switching tabs
+ */
+function cleanupTeamBalancer() {
+    // Reset the initialization flag to allow re-initialization
+    isTeamBalancerInitialized = false;
+    
+    // Clear any ongoing operations
+    state.isAutoBalancing = false;
+    state.isSaving = false;
+    
+    // Clear state data
+    state.currentSessionId = null;
+    state.availablePlayers = [];
+    state.balancedTeams = [];
+    state.reservedPlayers = [];
+    
+    // Remove event listeners by cloning elements (this removes all attached listeners)
+    const elementsToClean = [
+        'add-player',
+        'clear-players', 
+        'generate-teams',
+        'refresh-balancer-sessions',
+        'team-balancer-session-selector',
+        'player-name',
+        'player-mmr',
+        'load-players-btn'
+    ];
+    
+    elementsToClean.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            const newElement = element.cloneNode(true);
+            element.parentNode.replaceChild(newElement, element);
+        }
+    });
+    
+    // Clear any custom event listeners
+    window.removeEventListener('registrationUpdated', window.teamBalancerRegistrationListener);
+    
+    console.log('Team balancer cleanup completed');
 }
 
 /**
@@ -1602,8 +1646,8 @@ async function saveTeams() {
  * This allows the team balancer to refresh when registration settings change
  */
 function setupTeamBalancerRegistrationListener() {
-    // Listen for custom registration update events
-    window.addEventListener('registrationUpdated', function(event) {
+    // Create the listener function and store it globally for cleanup
+    window.teamBalancerRegistrationListener = function(event) {
         // Reload registration sessions to get updated limits and status
         loadRegistrationSessions().then(() => {
             // Reload players to reflect any new availability
@@ -1612,7 +1656,10 @@ function setupTeamBalancerRegistrationListener() {
                 showNotification('Team balancer refreshed due to registration changes', 'info');
             }
         });
-    });
+    };
+    
+    // Listen for custom registration update events
+    window.addEventListener('registrationUpdated', window.teamBalancerRegistrationListener);
     
     // Also expose refresh function globally for direct calls
     window.refreshTeamBalancerData = function() {
@@ -1639,15 +1686,10 @@ function loadPlayers() {
     return loadPlayersForBalancer();
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Wait a bit for full page rendering before initializing
-    setTimeout(initTeamBalancer, 100);
-});
-
 // Expose functions globally for compatibility
 window.teamBalancerModule = {
     initTeamBalancer,
+    cleanupTeamBalancer,
     loadPlayersForBalancer,
     autoBalance,
     clearTeams,
@@ -1661,6 +1703,9 @@ window.teamBalancerModule = {
 
     // Expose init function globally for navigation system
 window.initTeamBalancer = initTeamBalancer;
+
+    // Expose cleanup function globally for navigation system
+window.cleanupTeamBalancer = cleanupTeamBalancer;
 
     // Legacy global functions for existing onclick handlers
     window.loadPlayers = loadPlayersForBalancer;
