@@ -4,6 +4,9 @@ import { getMasterlist, addMasterlistPlayer, updateMasterlistPlayer } from './da
 export const handler = async (event, context) => {
   try {
     console.log('Enhanced bulk import started');
+    console.log('Event method:', event.httpMethod);
+    console.log('Event headers:', event.headers);
+    console.log('Event body length:', event.body ? event.body.length : 'null');
     
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -36,7 +39,9 @@ export const handler = async (event, context) => {
     const sessionId = event.headers['x-session-id'] || 
                      event.queryStringParameters?.sessionId;
     
+    console.log('Session ID:', sessionId);
     const isAuthenticated = sessionId && sessionId.length >= 10;
+    console.log('Is authenticated:', isAuthenticated);
     
     // Require authentication
     if (!isAuthenticated) {
@@ -53,8 +58,27 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Parse request body
-    const requestBody = JSON.parse(event.body || '{}');
+    // Parse request body with error handling
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+      console.log('JSON parsing successful');
+    } catch (parseError) {
+      console.error('JSON parsing failed:', parseError);
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Invalid JSON in request body: ' + parseError.message,
+          timestamp: new Date().toISOString()
+        })
+      };
+    }
+    
     const { players, skipDuplicates = true, updateExisting = false } = requestBody;
     
     console.log('=== SERVER RECEIVED DATA DEBUG ===');
@@ -86,6 +110,7 @@ export const handler = async (event, context) => {
     }
     
     // Enhanced validation with detailed error reporting
+    console.log('Starting validation...');
     const validationResults = validatePlayers(players);
     const { validPlayers, validationErrors } = validationResults;
     
@@ -93,6 +118,7 @@ export const handler = async (event, context) => {
     
     // If there are validation errors, return them immediately
     if (validationErrors.length > 0) {
+      console.log('Returning validation errors:', validationErrors);
       return {
         statusCode: 400,
         headers: {
@@ -111,10 +137,12 @@ export const handler = async (event, context) => {
     }
     
     // Get existing players for duplicate checking
+    console.log('Getting existing players...');
     const existingPlayers = await getMasterlist();
     const existingDota2Ids = new Set(existingPlayers.map(p => p.dota2id));
     
     // Process players with enhanced error handling
+    console.log('Processing players...');
     const processResults = await processPlayers(validPlayers, existingPlayers, existingDota2Ids, skipDuplicates, updateExisting);
     
     const { added, updated, skipped, processingErrors } = processResults;
@@ -143,6 +171,7 @@ export const handler = async (event, context) => {
     
   } catch (error) {
     console.error('Enhanced bulk import API error:', error);
+    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers: {
@@ -153,6 +182,7 @@ export const handler = async (event, context) => {
         success: false,
         message: 'Internal server error: ' + error.message,
         error: error.toString(),
+        stack: error.stack,
         timestamp: new Date().toISOString()
       })
     };
