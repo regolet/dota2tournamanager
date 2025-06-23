@@ -445,14 +445,16 @@ function setupBalancerButtons() {
     const autoBalanceBtn = document.getElementById('generate-teams') || 
                           document.getElementById('auto-balance-btn') || 
                           document.querySelector('[onclick="autoBalance()"]');
-    if (autoBalanceBtn) {
-
+    if (autoBalanceBtn && !autoBalanceBtn.dataset.bound) {
         autoBalanceBtn.removeAttribute('onclick');
         autoBalanceBtn.addEventListener('click', function(e) {
-
+            if (autoBalanceBtn.disabled) return; // Prevent double click
+            autoBalanceBtn.disabled = true;
+            setTimeout(() => { autoBalanceBtn.disabled = false; }, 2000); // Debounce for 2 seconds
             autoBalance();
         });
-    } else {
+        autoBalanceBtn.dataset.bound = 'true';
+    } else if (!autoBalanceBtn) {
         console.warn('Team balancer: Generate teams button not found');
     }
 
