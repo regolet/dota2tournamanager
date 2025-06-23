@@ -249,16 +249,18 @@ function updateSessionSelector() {
         addDeleteButtonToBalancerSelector();
     }
 
-
     // Auto-select the latest (most recent) or previously selected tournament
     if (previouslySelected && sortedSessions.some(s => s.sessionId === previouslySelected)) {
         selector.value = previouslySelected;
         state.currentSessionId = previouslySelected;
+        // Trigger change event so handler runs
+        selector.dispatchEvent(new Event('change', { bubbles: true }));
     } else if (sortedSessions.length > 0) {
         const latestSession = sortedSessions[0];
         selector.value = latestSession.sessionId;
         state.currentSessionId = latestSession.sessionId;
-        loadPlayersForBalancer();
+        // Trigger change event so handler runs
+        selector.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
         if (typeof window.enableOnlyNavigationTab === 'function') {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
