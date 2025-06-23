@@ -43,40 +43,18 @@ function fetchWithAuth(url, options = {}) {
  * Initialize the team balancer
  */
 async function initTeamBalancer() {
-    // Remove the initialization guard to allow re-initialization
-    // if (isTeamBalancerInitialized) {
-    //     return;
-    // }
-    // isTeamBalancerInitialized = true;
-    
     try {
-        // Create session selector for team balancer
         await createTeamBalancerSessionSelector();
-        
-        // Load registration sessions
         await loadRegistrationSessions();
-        
-        // Setup event listeners for static elements
         setupTeamBalancerEventListeners();
-        
-        // Setup initial state for dynamic buttons (will be re-run)
         setupBalancerButtons();
-        
-        // Reserved players will be initialized when needed during team generation
-        
-        // Listen for registration updates to refresh player data
         setupTeamBalancerRegistrationListener();
-        
-        // Enable the tab after all initialization is complete
         if (typeof window.enableOnlyNavigationTab === 'function') {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
         }
-
     } catch (error) {
         console.error('Error initializing team balancer:', error);
         window.showNotification('Failed to initialize team balancer', 'error');
-        
-        // Still enable the tab even if there was an error
         if (typeof window.enableOnlyNavigationTab === 'function') {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
         }
@@ -359,8 +337,6 @@ function setupTeamBalancerEventListeners() {
             restorePlayerFromReserved(playerIndex);
         }
     });
-
-    // Note: setupBalancerButtons() is called once in initTeamBalancer() - no need to call it here
 }
 
 /**
@@ -1600,22 +1576,14 @@ async function saveTeams() {
  * This allows the team balancer to refresh when registration settings change
  */
 function setupTeamBalancerRegistrationListener() {
-    // Create the listener function and store it globally for cleanup
     window.teamBalancerRegistrationListener = function(event) {
-        // Reload registration sessions to get updated limits and status
         loadRegistrationSessions().then(() => {
-            // Reload players to reflect any new availability
-            if (state.currentSessionId) {
-                loadPlayersForBalancer();
-                window.showNotification('Team balancer refreshed due to registration changes', 'info');
-            }
+            // Only reload players if the dropdown triggers it
+            // No direct call to loadPlayersForBalancer here
+            window.showNotification('Team balancer refreshed due to registration changes', 'info');
         });
     };
-    
-    // Listen for custom registration update events
     window.addEventListener('registrationUpdated', window.teamBalancerRegistrationListener);
-    
-    // Also expose refresh function globally for direct calls
     window.refreshTeamBalancerData = function() {
         // Only trigger the session selector change event if a session is selected
         const selector = document.getElementById('team-balancer-session-selector');

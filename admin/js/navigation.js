@@ -370,9 +370,6 @@ async function loadMasterlist() {
         initFunction: 'initMasterlist',
         cleanupFunction: 'cleanupMasterlist'
     });
-    if (typeof window.refreshMasterlistData === 'function') {
-        window.refreshMasterlistData();
-    }
     return result;
 }
 
@@ -406,9 +403,6 @@ async function loadRegistration() {
         initFunction: 'initRegistration',
         cleanupFunction: 'cleanupRegistration'
     });
-    if (typeof window.refreshRegistrationData === 'function') {
-        window.refreshRegistrationData();
-    }
     return result;
 }
 

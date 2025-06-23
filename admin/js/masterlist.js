@@ -622,7 +622,4 @@ function escapeHtml(text) {
 // Make functions globally available
 window.initMasterlist = initMasterlist;
 window.editMasterlistPlayer = editMasterlistPlayer;
-window.deleteMasterlistPlayer = deleteMasterlistPlayer;
-window.refreshMasterlistData = function() {
-    loadMasterlistData();
-}; 
+window.deleteMasterlistPlayer = deleteMasterlistPlayer; 

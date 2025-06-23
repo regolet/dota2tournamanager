@@ -176,29 +176,19 @@ let pickerHistory = [];
  */
 async function initRandomPicker() {
     try {
-        console.log('Starting Random Picker initialization...');
-        
-        // Create session selector for random picker
         await createRandomPickerSessionSelector();
-        console.log('Session selector created');
-        
-        // Load registration sessions
         await loadRegistrationSessions();
-        console.log('Registration sessions loaded');
-        
-        // Setup event listeners
         setupRandomPickerEventListeners();
-        console.log('Event listeners setup complete');
-        
-        // Listen for registration updates to refresh player data
         setupRandomPickerRegistrationListener();
-        
-        console.log('Random picker initialized successfully');
-        
-        // Random picker is loaded - tab will be enabled when clicked
+        if (typeof window.enableOnlyNavigationTab === 'function') {
+            window.enableOnlyNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
+        }
     } catch (error) {
         console.error('Error initializing random picker:', error);
         window.showNotification('Failed to initialize random picker', 'error');
+        if (typeof window.enableOnlyNavigationTab === 'function') {
+            window.enableOnlyNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
+        }
     }
 }
 
@@ -287,8 +277,8 @@ function updateSessionSelector() {
         selector.value = latestSession.sessionId;
         currentSessionId = latestSession.sessionId;
         console.log('Auto-selected tournament for Random Picker:', latestSession.title, 'ID:', latestSession.sessionId);
-        // Load players for the selected session
-        loadPlayersForPicker();
+        // Trigger change event so handler runs
+        selector.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
         console.log('No tournaments available for Random Picker');
     }
@@ -1157,31 +1147,20 @@ function exportPickerHistory() {
  * This allows the random picker to refresh when registration settings change
  */
 function setupRandomPickerRegistrationListener() {
-    // Create the listener function and store it globally for cleanup
     window.randomPickerRegistrationListener = function(event) {
-        console.log('🎲 Random Picker received registration update event:', event.detail);
-        
-        // Reload registration sessions to get updated limits and status
         loadRegistrationSessions().then(() => {
-            // Reload players to reflect any new availability
-            if (currentSessionId) {
-                loadPlayersForPicker();
-                window.showNotification('Random picker refreshed due to registration changes', 'info');
-            }
+            // Only reload players if the dropdown triggers it
+            // No direct call to loadPlayersForPicker here
+            window.showNotification('Random picker refreshed due to registration changes', 'info');
         });
     };
-    
-    // Listen for custom registration update events
     window.addEventListener('registrationUpdated', window.randomPickerRegistrationListener);
-    
-    // Also expose refresh function globally for direct calls
     window.refreshRandomPickerData = function() {
-        console.log('🎲 Direct refresh requested for Random Picker');
-        loadRegistrationSessions().then(() => {
-            if (currentSessionId) {
-                loadPlayersForPicker();
-            }
-        });
+        // Only trigger the session selector change event if a session is selected
+        const selector = document.getElementById('picker-session-selector');
+        if (selector && selector.value) {
+            selector.dispatchEvent(new Event('change', { bubbles: true }));
+        }
     };
 }
 
@@ -1196,32 +1175,8 @@ function escapeHtml(text) {
 }
 
 /**
- * Show notification
+ * Show notification - using global notification system
  */
-function showNotification(message, type = 'info') {
-    // Create a simple notification
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`;
-    notification.style.zIndex = '9999';
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close ms-2" aria-label="Close"></button>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
-    
-    // Allow manual close
-    notification.querySelector('.btn-close').addEventListener('click', () => {
-        notification.remove();
-    });
-}
 
 /**
  * Show excluded players modal

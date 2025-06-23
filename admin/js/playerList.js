@@ -303,9 +303,8 @@ function updateSessionSelector() {
         const latestSession = sortedSessions[0];
         selector.value = latestSession.sessionId;
         currentSessionId = latestSession.sessionId;
-        
-        // Load players for the selected session
-        loadPlayers();
+        // Trigger change event so handler runs
+        selector.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
 
@@ -1005,46 +1004,33 @@ function addRefreshAnimationCSS() {
  * This allows the player list to refresh when registration settings change
  */
 function setupRegistrationUpdateListener() {
-    // Add CSS for animations
     addRefreshAnimationCSS();
-    // Listen for custom registration update events
     window.addEventListener('registrationUpdated', function(event) {
-        console.log('📋 Player List received registration update event:', event.detail);
-        
-        // Show visual indicator that refresh is happening
         const refreshBtn = document.getElementById('refresh-player-list');
         if (refreshBtn) {
             const originalText = refreshBtn.innerHTML;
             const originalClasses = refreshBtn.className;
-            
             refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i> Syncing...';
             refreshBtn.disabled = true;
             refreshBtn.className = refreshBtn.className.replace('btn-outline-primary', 'btn-outline-success sync-indicator');
-            
-            // Restore button after refresh
             setTimeout(() => {
                 refreshBtn.innerHTML = originalText;
                 refreshBtn.disabled = false;
                 refreshBtn.className = originalClasses;
             }, 2000);
         }
-        
-        // Reload registration sessions to get updated limits and status
         loadRegistrationSessions().then(() => {
-            // Reload players to reflect any new availability
-            if (currentSessionId) {
-                loadPlayers(true);
-                window.showNotification(`Player list updated - registration ${event.detail.action}`, 'success');
-            }
+            // Only reload players if the dropdown triggers it
+            // No direct call to loadPlayers here
+            window.showNotification(`Player list updated - registration ${event.detail.action}`, 'success');
         });
     });
-    
-    // Also expose refresh function globally for direct calls
     window.refreshPlayerListData = function() {
-        console.log('📋 Direct refresh requested for Player List');
         loadRegistrationSessions().then(() => {
-            if (currentSessionId) {
-                loadPlayers(true);
+            // Only trigger the session selector change event if a session is selected
+            const selector = document.getElementById('session-selector');
+            if (selector && selector.value) {
+                selector.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
     };
