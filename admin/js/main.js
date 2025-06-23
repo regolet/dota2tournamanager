@@ -1,52 +1,24 @@
 // Main Admin Panel Script - Simplified version
 
-// DOM Ready
-document.addEventListener('DOMContentLoaded', () => {
-    // Show admin content immediately
-    const adminContent = document.getElementById('main-content');
-    if (adminContent) {
-        // Main content container found
-    } else {
-        console.error('Main content container not found');
-    }
-    
-    // Initialize navigation
-    setTimeout(() => {
-        if (typeof initNavigation === 'function') {
-            initNavigation();
-            // Navigation initialized
-        } else {
-            console.error('Navigation function not found');
-            
-            // Try to load navigation.js manually
-            const script = document.createElement('script');
-            script.src = './js/navigation.js';
-            script.onload = () => {
-                // Navigation script loaded manually
-                if (typeof initNavigation === 'function') {
-                    initNavigation();
-                }
-            };
-            document.head.appendChild(script);
+// Helper to ensure script is loaded only once
+const loadedScripts = new Set();
+function loadJavaScriptModule(src) {
+    return new Promise((resolve, reject) => {
+        if (loadedScripts.has(src)) {
+            return resolve();
         }
-    }, 500);
-});
-
-// Global state for module APIs
-let teamBalancerAPI, randomPickerAPI, registrationAPI;
-
-// Set up API references when modules are initialized
-window.setTeamBalancerAPI = (api) => {
-    teamBalancerAPI = api;
-};
-
-window.setRandomPickerAPI = (api) => {
-    randomPickerAPI = api;
-};
-
-window.setRegistrationAPI = (api) => {
-    registrationAPI = api;
-};
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => {
+            loadedScripts.add(src);
+            resolve();
+        };
+        script.onerror = () => {
+            reject(new Error(`Failed to load script: ${src}`));
+        };
+        document.body.appendChild(script);
+    });
+}
 
 // Centralized module loader
 async function loadAndInitModule({ htmlFile, jsFile, contentContainer, initFunction, cleanupFunction }) {
@@ -107,27 +79,61 @@ async function loadAndInitModule({ htmlFile, jsFile, contentContainer, initFunct
     }
 }
 
-// Helper to ensure script is loaded only once
-const loadedScripts = new Set();
-function loadJavaScriptModule(src) {
-    return new Promise((resolve, reject) => {
-        if (loadedScripts.has(src)) {
-            return resolve();
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => {
-            loadedScripts.add(src);
-            resolve();
-        };
-        script.onerror = () => {
-            reject(new Error(`Failed to load script: ${src}`));
-        };
-        document.body.appendChild(script);
-    });
-}
+// Define the application namespace and module loader immediately
+window.adminApp = {
+    loadAndInitModule
+};
 
-// Export for debugging and for use in navigation.js
+// DOM Ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Show admin content immediately
+    const adminContent = document.getElementById('main-content');
+    if (adminContent) {
+        // Main content container found
+    } else {
+        console.error('Main content container not found');
+    }
+    
+    // Initialize navigation
+    setTimeout(() => {
+        if (typeof initNavigation === 'function') {
+            initNavigation();
+            // Navigation initialized
+        } else {
+            console.error('Navigation function not found');
+            
+            // Try to load navigation.js manually
+            const script = document.createElement('script');
+            script.src = './js/navigation.js';
+            script.onload = () => {
+                // Navigation script loaded manually
+                if (typeof initNavigation === 'function') {
+                    initNavigation();
+                }
+            };
+            document.head.appendChild(script);
+        }
+    }, 500);
+});
+
+// Global state for module APIs
+let teamBalancerAPI, randomPickerAPI, registrationAPI;
+
+// Set up API references when modules are initialized
+window.setTeamBalancerAPI = (api) => {
+    teamBalancerAPI = api;
+};
+
+window.setRandomPickerAPI = (api) => {
+    randomPickerAPI = api;
+};
+
+window.setRegistrationAPI = (api) => {
+    registrationAPI = api;
+};
+
+/*
+DEPRECATED: adminApp is now defined at the top of the file.
 window.adminApp = {
     loadAndInitModule,
     loadTeamBalancer,
@@ -135,3 +141,4 @@ window.adminApp = {
     loadPlayerList,
     loadRegistration
 };
+*/
