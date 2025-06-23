@@ -334,7 +334,6 @@ async function loadTeamBalancer() {
         initFunction: 'initTeamBalancer',
         cleanupFunction: 'cleanupTeamBalancer'
     });
-    // Soft refresh: reload data if function exists
     if (typeof window.refreshTeamBalancerData === 'function') {
         window.refreshTeamBalancerData();
     }
@@ -346,13 +345,17 @@ async function loadTeamBalancer() {
  */
 async function loadRandomPicker() {
     updateActiveTab('random-picker-tab');
-     return await window.adminApp.loadAndInitModule({
+    const result = await window.adminApp.loadAndInitModule({
         htmlFile: 'random-picker.html',
         jsFile: 'js/randomPicker.js',
         contentContainer: 'main-content',
         initFunction: 'initRandomPicker',
         cleanupFunction: 'cleanupRandomPicker'
     });
+    if (typeof window.refreshRandomPickerData === 'function') {
+        window.refreshRandomPickerData();
+    }
+    return result;
 }
 
 /**
@@ -360,13 +363,17 @@ async function loadRandomPicker() {
  */
 async function loadMasterlist() {
     updateActiveTab('masterlist-tab');
-    return await window.adminApp.loadAndInitModule({
+    const result = await window.adminApp.loadAndInitModule({
         htmlFile: 'masterlist.html',
         jsFile: 'js/masterlist.js',
         contentContainer: 'main-content',
         initFunction: 'initMasterlist',
         cleanupFunction: 'cleanupMasterlist'
     });
+    if (typeof window.refreshMasterlistData === 'function') {
+        window.refreshMasterlistData();
+    }
+    return result;
 }
 
 /**
@@ -374,13 +381,17 @@ async function loadMasterlist() {
  */
 async function loadPlayerList() {
     updateActiveTab('player-list-tab');
-    return await window.adminApp.loadAndInitModule({
+    const result = await window.adminApp.loadAndInitModule({
         htmlFile: 'player-list.html',
         jsFile: 'js/playerList.js',
         contentContainer: 'main-content',
         initFunction: 'initPlayerList',
         cleanupFunction: 'cleanupPlayerList'
     });
+    if (typeof window.refreshPlayerListData === 'function') {
+        window.refreshPlayerListData();
+    }
+    return result;
 }
 
 /**
@@ -388,13 +399,17 @@ async function loadPlayerList() {
  */
 async function loadRegistration() {
     updateActiveTab('registration-tab');
-    return await window.adminApp.loadAndInitModule({
+    const result = await window.adminApp.loadAndInitModule({
         htmlFile: 'registration.html',
         jsFile: 'js/registration.js',
         contentContainer: 'main-content',
         initFunction: 'initRegistration',
         cleanupFunction: 'cleanupRegistration'
     });
+    if (typeof window.refreshRegistrationData === 'function') {
+        window.refreshRegistrationData();
+    }
+    return result;
 }
 
 /**
@@ -402,13 +417,17 @@ async function loadRegistration() {
  */
 async function loadTournamentBracket() {
     updateActiveTab('tournament-bracket-tab');
-    return await window.adminApp.loadAndInitModule({
+    const result = await window.adminApp.loadAndInitModule({
         htmlFile: 'tournament-bracket.html',
         jsFile: 'js/tournamentBrackets.js',
         contentContainer: 'main-content',
         initFunction: 'initTournamentBrackets',
         cleanupFunction: 'cleanupTournamentBrackets'
     });
+    if (typeof window.refreshTournamentBracketData === 'function') {
+        window.refreshTournamentBracketData();
+    }
+    return result;
 }
 
 /**
