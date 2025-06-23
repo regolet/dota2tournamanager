@@ -293,7 +293,6 @@ function setupTeamBalancerEventListeners() {
         sessionSelector.addEventListener('change', async (e) => {
             state.currentSessionId = e.target.value || null;
             await loadPlayersForBalancer();
-            clearTeams(); // Clear existing teams when session changes
         });
     }
 
