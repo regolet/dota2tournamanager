@@ -199,20 +199,4 @@
             </div>
         </div>
     </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize masterlist when this content is loaded
-    if (typeof initMasterlist === 'function') {
-        initMasterlist();
-    } else {
-        // Wait for script to load
-        setTimeout(() => {
-            if (typeof initMasterlist === 'function') {
-                initMasterlist();
-            }
-        }, 100);
-    }
-});
-</script> 
+</div> 
