@@ -1617,11 +1617,11 @@ function setupTeamBalancerRegistrationListener() {
     
     // Also expose refresh function globally for direct calls
     window.refreshTeamBalancerData = function() {
-        loadRegistrationSessions().then(() => {
-            if (state.currentSessionId) {
-                loadPlayersForBalancer();
-            }
-        });
+        // Only trigger the session selector change event if a session is selected
+        const selector = document.getElementById('team-balancer-session-selector');
+        if (selector && selector.value) {
+            selector.dispatchEvent(new Event('change', { bubbles: true }));
+        }
     };
 }
 
