@@ -57,6 +57,17 @@ export const handler = async (event, context) => {
     const requestBody = JSON.parse(event.body || '{}');
     const { players, skipDuplicates = true, updateExisting = false } = requestBody;
     
+    console.log('=== SERVER RECEIVED DATA DEBUG ===');
+    console.log('Raw event body:', event.body);
+    console.log('Parsed request body:', requestBody);
+    console.log('Extracted players:', players);
+    console.log('Players type:', typeof players);
+    console.log('Players is array:', Array.isArray(players));
+    console.log('Players length:', players ? players.length : 'null');
+    console.log('Skip duplicates:', skipDuplicates);
+    console.log('Update existing:', updateExisting);
+    console.log('=== END SERVER RECEIVED DATA DEBUG ===');
+    
     console.log(`Processing ${players?.length || 0} players for bulk import`);
     
     // Validate input

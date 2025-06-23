@@ -1407,11 +1407,15 @@ async function handleBulkImportSubmit(event) {
         console.log('Players to import:', playersToImport);
         console.log('Skip duplicates:', skipDuplicates);
         console.log('Update existing:', updateExisting);
-        console.log('Payload being sent:', {
+        
+        const payload = {
             players: playersToImport,
             skipDuplicates: skipDuplicates,
             updateExisting: updateExisting
-        });
+        };
+        
+        console.log('Payload being sent:', payload);
+        console.log('Payload JSON string:', JSON.stringify(payload, null, 2));
         console.log('=== END DEBUG ===');
         
         const response = await fetch('/api/masterlist/bulk-import', {
@@ -1420,11 +1424,7 @@ async function handleBulkImportSubmit(event) {
                 'Content-Type': 'application/json',
                 'x-session-id': localStorage.getItem('adminSessionId')
             },
-            body: JSON.stringify({
-                players: playersToImport,
-                skipDuplicates: skipDuplicates,
-                updateExisting: updateExisting
-            })
+            body: JSON.stringify(payload)
         });
         
         updateImportProgress(75, 'Processing import...');
@@ -1440,6 +1440,13 @@ async function handleBulkImportSubmit(event) {
                 statusText: response.statusText,
                 result: result
             });
+            
+            // Log the full server response for debugging
+            console.log('=== SERVER RESPONSE DEBUG ===');
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log('Response body:', result);
+            console.log('=== END SERVER RESPONSE DEBUG ===');
             
             if (response.status === 400) {
                 // Bad request - validation errors
