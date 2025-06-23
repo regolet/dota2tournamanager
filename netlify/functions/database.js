@@ -161,6 +161,13 @@ async function initializeDatabase() {
       )
     `;
 
+    // Add admin_user_id column to tournaments table if it doesn't exist (for backward compatibility)
+    try {
+      await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS admin_user_id VARCHAR(255)`;
+    } catch (error) {
+      console.warn('Could not add admin_user_id column to tournaments table:', error.message);
+    }
+
     // Insert default registration settings if table is empty
     const settingsCount = await sql`SELECT COUNT(*) as count FROM registration_settings`;
     if (settingsCount[0].count == 0) {
