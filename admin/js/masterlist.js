@@ -5,8 +5,11 @@ window.masterlistPlayers = window.masterlistPlayers || [];
 window.currentEditingPlayer = window.currentEditingPlayer || null;
 window.masterlistStats = window.masterlistStats || {};
 
-let isMasterlistLoading = false;
-let lastLoadedPlayerCount = null;
+// Prevent redeclaration on repeated script loads
+window.isMasterlistLoading = window.isMasterlistLoading || false;
+let isMasterlistLoading = window.isMasterlistLoading;
+window.lastLoadedPlayerCount = window.lastLoadedPlayerCount || null;
+let lastLoadedPlayerCount = window.lastLoadedPlayerCount;
 
 // Initialize masterlist module
 async function initMasterlist() {
@@ -94,6 +97,7 @@ function setupMasterlistEventListeners() {
 async function loadMasterlistData() {
     if (isMasterlistLoading) return;
     isMasterlistLoading = true;
+    window.isMasterlistLoading = isMasterlistLoading;
     try {
         window.showNotification('Loading masterlist...', 'info');
         
@@ -139,6 +143,7 @@ async function loadMasterlistData() {
         renderMasterlistTable([]);
     } finally {
         isMasterlistLoading = false;
+        window.isMasterlistLoading = isMasterlistLoading;
     }
 }
 
