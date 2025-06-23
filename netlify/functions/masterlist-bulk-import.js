@@ -80,6 +80,25 @@ export const handler = async (event, context) => {
     
     console.log(`Validation complete: ${validPlayers.length} valid, ${validationErrors.length} errors`);
     
+    // If there are validation errors, return them immediately
+    if (validationErrors.length > 0) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Validation errors occurred',
+          validationErrors: validationErrors,
+          total: players.length,
+          valid: validPlayers.length,
+          timestamp: new Date().toISOString()
+        })
+      };
+    }
+    
     // Get existing players for duplicate checking
     const existingPlayers = await getMasterlist();
     const existingDota2Ids = new Set(existingPlayers.map(p => p.dota2id));
@@ -134,6 +153,8 @@ function validatePlayers(players) {
   const validPlayers = [];
   const validationErrors = [];
   
+  console.log(`Starting validation of ${players.length} players`);
+  
   players.forEach((player, index) => {
     const playerIndex = index + 1;
     
@@ -143,37 +164,51 @@ function validatePlayers(players) {
       nameType: typeof player.name,
       nameLength: player.name ? player.name.length : 'null',
       nameTrimmed: player.name ? player.name.trim() : 'null',
-      nameTrimmedLength: player.name ? player.name.trim().length : 'null'
+      nameTrimmedLength: player.name ? player.name.trim().length : 'null',
+      dota2id: player.dota2id,
+      mmr: player.mmr,
+      mmrType: typeof player.mmr,
+      notes: player.notes
     });
     
     // Enhanced name validation
     const trimmedName = player.name ? player.name.trim() : '';
     if (!trimmedName || trimmedName.length < 2) {
-      validationErrors.push(`Player ${playerIndex}: Invalid name (must be at least 2 characters) - got: "${player.name}"`);
+      const errorMsg = `Player ${playerIndex}: Invalid name (must be at least 2 characters) - got: "${player.name}"`;
+      console.error(`Validation error: ${errorMsg}`);
+      validationErrors.push(errorMsg);
       return;
     }
     
     if (trimmedName.length > 50) {
-      validationErrors.push(`Player ${playerIndex}: Name too long (max 50 characters) - got: "${player.name}"`);
+      const errorMsg = `Player ${playerIndex}: Name too long (max 50 characters) - got: "${player.name}"`;
+      console.error(`Validation error: ${errorMsg}`);
+      validationErrors.push(errorMsg);
       return;
     }
     
     // Enhanced Dota2 ID validation
     const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
     if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
-      validationErrors.push(`Player ${playerIndex}: Invalid Dota2 ID (must be 6-20 digits) - got: "${player.dota2id}"`);
+      const errorMsg = `Player ${playerIndex}: Invalid Dota2 ID (must be 6-20 digits) - got: "${player.dota2id}"`;
+      console.error(`Validation error: ${errorMsg}`);
+      validationErrors.push(errorMsg);
       return;
     }
     
     // Enhanced MMR validation
     if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
-      validationErrors.push(`Player ${playerIndex}: Invalid MMR (must be 0-20000) - got: ${player.mmr}`);
+      const errorMsg = `Player ${playerIndex}: Invalid MMR (must be 0-20000) - got: ${player.mmr}`;
+      console.error(`Validation error: ${errorMsg}`);
+      validationErrors.push(errorMsg);
       return;
     }
     
     // Enhanced notes validation
     if (player.notes && player.notes.length > 500) {
-      validationErrors.push(`Player ${playerIndex}: Notes too long (max 500 characters)`);
+      const errorMsg = `Player ${playerIndex}: Notes too long (max 500 characters)`;
+      console.error(`Validation error: ${errorMsg}`);
+      validationErrors.push(errorMsg);
       return;
     }
     
@@ -185,7 +220,15 @@ function validatePlayers(players) {
       notes: player.notes ? player.notes.trim() : '',
       originalIndex: playerIndex
     });
+    
+    console.log(`Player ${playerIndex} validation passed:`, {
+      name: trimmedName,
+      dota2id: trimmedDota2Id,
+      mmr: parseInt(player.mmr)
+    });
   });
+  
+  console.log(`Validation complete: ${validPlayers.length} valid, ${validationErrors.length} errors`);
   
   return { validPlayers, validationErrors };
 }

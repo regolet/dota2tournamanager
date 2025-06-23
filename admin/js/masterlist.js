@@ -842,13 +842,29 @@ function parseTabSeparatedData(data) {
     const errors = [];
     const lines = data.trim().split('\n');
     
+    console.log('=== TAB SEPARATED PARSING DEBUG ===');
+    console.log('Raw data:', data);
+    console.log('Number of lines:', lines.length);
+    
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         const trimmedLine = line.trim();
         
+        console.log(`Line ${lineNumber}:`, {
+            original: line,
+            trimmed: trimmedLine,
+            isEmpty: !trimmedLine
+        });
+        
         if (!trimmedLine) return; // Skip empty lines
         
         const parts = trimmedLine.split('\t');
+        
+        console.log(`Line ${lineNumber} parts:`, {
+            parts: parts,
+            partCount: parts.length,
+            partsAfterTrim: parts.map(part => part.trim())
+        });
         
         if (parts.length < 3) {
             errors.push(`Line ${lineNumber}: Invalid format. Expected at least 3 fields (PlayerName, Dota2ID, MMR).`);
@@ -857,14 +873,28 @@ function parseTabSeparatedData(data) {
         
         const [name, dota2id, mmr, notes] = parts.map(part => part.trim());
         
+        console.log(`Line ${lineNumber} extracted:`, {
+            name: name,
+            nameLength: name ? name.length : 0,
+            dota2id: dota2id,
+            mmr: mmr,
+            notes: notes
+        });
+        
         // Validate and add player
         const validationResult = validatePlayerData(name, dota2id, mmr, notes, lineNumber);
         if (validationResult.isValid) {
             players.push(validationResult.player);
+            console.log(`Line ${lineNumber} validation passed`);
         } else {
             errors.push(validationResult.error);
+            console.log(`Line ${lineNumber} validation failed:`, validationResult.error);
         }
     });
+    
+    console.log('=== PARSING COMPLETE ===');
+    console.log('Valid players:', players.length);
+    console.log('Errors:', errors.length);
     
     return { players, errors };
 }
@@ -875,14 +905,30 @@ function parseCSVData(data) {
     const errors = [];
     const lines = data.trim().split('\n');
     
+    console.log('=== CSV PARSING DEBUG ===');
+    console.log('Raw data:', data);
+    console.log('Number of lines:', lines.length);
+    
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         const trimmedLine = line.trim();
+        
+        console.log(`Line ${lineNumber}:`, {
+            original: line,
+            trimmed: trimmedLine,
+            isEmpty: !trimmedLine
+        });
         
         if (!trimmedLine) return; // Skip empty lines
         
         // Simple CSV parsing (handles quoted fields)
         const parts = parseCSVLine(trimmedLine);
+        
+        console.log(`Line ${lineNumber} parts:`, {
+            parts: parts,
+            partCount: parts.length,
+            partsAfterTrim: parts.map(part => part.trim())
+        });
         
         if (parts.length < 3) {
             errors.push(`Line ${lineNumber}: Invalid format. Expected at least 3 fields (PlayerName, Dota2ID, MMR).`);
@@ -891,14 +937,28 @@ function parseCSVData(data) {
         
         const [name, dota2id, mmr, notes] = parts.map(part => part.trim());
         
+        console.log(`Line ${lineNumber} extracted:`, {
+            name: name,
+            nameLength: name ? name.length : 0,
+            dota2id: dota2id,
+            mmr: mmr,
+            notes: notes
+        });
+        
         // Validate and add player
         const validationResult = validatePlayerData(name, dota2id, mmr, notes, lineNumber);
         if (validationResult.isValid) {
             players.push(validationResult.player);
+            console.log(`Line ${lineNumber} validation passed`);
         } else {
             errors.push(validationResult.error);
+            console.log(`Line ${lineNumber} validation failed:`, validationResult.error);
         }
     });
+    
+    console.log('=== CSV PARSING COMPLETE ===');
+    console.log('Valid players:', players.length);
+    console.log('Errors:', errors.length);
     
     return { players, errors };
 }
@@ -931,8 +991,15 @@ function parseJSONData(data) {
     const players = [];
     const errors = [];
     
+    console.log('=== JSON PARSING DEBUG ===');
+    console.log('Raw data:', data);
+    
     try {
         const jsonData = JSON.parse(data);
+        
+        console.log('Parsed JSON:', jsonData);
+        console.log('Is array:', Array.isArray(jsonData));
+        console.log('Length:', jsonData ? jsonData.length : 'null');
         
         if (!Array.isArray(jsonData)) {
             errors.push('JSON data must be an array of player objects.');
@@ -942,6 +1009,8 @@ function parseJSONData(data) {
         jsonData.forEach((player, index) => {
             const lineNumber = index + 1;
             
+            console.log(`JSON player ${lineNumber}:`, player);
+            
             if (!player || typeof player !== 'object') {
                 errors.push(`Line ${lineNumber}: Invalid player object.`);
                 return;
@@ -949,18 +1018,35 @@ function parseJSONData(data) {
             
             const { name, dota2id, mmr, notes } = player;
             
+            console.log(`JSON player ${lineNumber} extracted:`, {
+                name: name,
+                nameType: typeof name,
+                nameLength: name ? name.length : 0,
+                dota2id: dota2id,
+                mmr: mmr,
+                mmrType: typeof mmr,
+                notes: notes
+            });
+            
             // Validate and add player
             const validationResult = validatePlayerData(name, dota2id, mmr, notes, lineNumber);
             if (validationResult.isValid) {
                 players.push(validationResult.player);
+                console.log(`JSON player ${lineNumber} validation passed`);
             } else {
                 errors.push(validationResult.error);
+                console.log(`JSON player ${lineNumber} validation failed:`, validationResult.error);
             }
         });
         
     } catch (error) {
+        console.error('JSON parsing error:', error);
         errors.push(`JSON parsing error: ${error.message}`);
     }
+    
+    console.log('=== JSON PARSING COMPLETE ===');
+    console.log('Valid players:', players.length);
+    console.log('Errors:', errors.length);
     
     return { players, errors };
 }
@@ -1266,13 +1352,42 @@ async function handleBulkImportSubmit(event) {
     const skipDuplicates = document.getElementById('bulk-import-skip-duplicates').checked;
     const updateExisting = document.getElementById('bulk-import-update-existing').checked;
     
-    // Prepare players for import
-    const playersToImport = players.map(player => ({
-        name: player.name,
-        dota2id: player.dota2id,
-        mmr: player.mmr,
-        notes: player.notes || ""
-    }));
+    // Prepare players for import with enhanced validation
+    const playersToImport = players.map((player, index) => {
+        // Double-check validation before sending
+        const trimmedName = player.name ? player.name.trim() : '';
+        const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
+        
+        console.log(`Preparing player ${index + 1}:`, {
+            originalName: player.name,
+            trimmedName: trimmedName,
+            nameLength: trimmedName.length,
+            originalDota2Id: player.dota2id,
+            trimmedDota2Id: trimmedDota2Id,
+            mmr: player.mmr,
+            notes: player.notes
+        });
+        
+        // Additional client-side validation before sending
+        if (!trimmedName || trimmedName.length < 2) {
+            throw new Error(`Player ${index + 1}: Invalid name (must be at least 2 characters) - got: "${player.name}"`);
+        }
+        
+        if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
+            throw new Error(`Player ${index + 1}: Invalid Dota2 ID (must be 6-20 digits) - got: "${player.dota2id}"`);
+        }
+        
+        if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
+            throw new Error(`Player ${index + 1}: Invalid MMR (must be 0-20000) - got: ${player.mmr}`);
+        }
+        
+        return {
+            name: trimmedName,
+            dota2id: trimmedDota2Id,
+            mmr: player.mmr,
+            notes: player.notes || ""
+        };
+    });
     
     // Disable submit button and show loading
     const executeBtn = document.getElementById('execute-bulk-import-btn');
@@ -1317,6 +1432,36 @@ async function handleBulkImportSubmit(event) {
         const result = await response.json();
         
         updateImportProgress(100, 'Import completed!');
+        
+        if (!response.ok) {
+            // Handle HTTP error responses
+            console.error('Server error response:', {
+                status: response.status,
+                statusText: response.statusText,
+                result: result
+            });
+            
+            if (response.status === 400) {
+                // Bad request - validation errors
+                let errorMsg = 'Validation errors occurred:';
+                if (result.validationErrors && result.validationErrors.length > 0) {
+                    errorMsg += '<br><ul>';
+                    result.validationErrors.forEach(error => {
+                        errorMsg += `<li>${error}</li>`;
+                    });
+                    errorMsg += '</ul>';
+                } else if (result.message) {
+                    errorMsg = result.message;
+                }
+                throw new Error(errorMsg);
+            } else if (response.status === 401) {
+                throw new Error('Authentication required. Please log in again.');
+            } else if (response.status === 500) {
+                throw new Error('Server error: ' + (result.message || 'Unknown error'));
+            } else {
+                throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown error'}`);
+            }
+        }
         
         if (result.success) {
             // Show success message
