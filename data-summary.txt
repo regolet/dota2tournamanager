@@ -1,0 +1,20 @@
+Total players parsed: 249
+
+First 10 players:
+1. pepper (1093845076) - MMR: 12800
+2. Ricson (1835505661) - MMR: 12700
+3. paul (372399806) - MMR: 12000
+4. Paul (1016591093) - MMR: 12000
+5. scarletreign09 (494553157) - MMR: 11700
+6. nyaw (142075333) - MMR: 11500
+7. Spookky (192688867) - MMR: 11500
+8. bart (143683844) - MMR: 11000
+9. bart (309274165) - MMR: 11000
+10. Bimbo (135495981) - MMR: 11000
+
+Last 5 players:
+245. V (123394690) - MMR: 3000
+246. yohan (363108013) - MMR: 3000
+247. X.B (477349401) - MMR: 2800
+248. TheAsianCaster catguy231231 (443522039) - MMR: 2500
+249. bossregz (176166671) - MMR: 1500

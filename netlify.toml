@@ -47,6 +47,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/masterlist/bulk-import"
+  to = "/.netlify/functions/masterlist-bulk-import"
+  status = 200
+
+[[redirects]]
   from = "/admin/api/masterlist"
   to = "/.netlify/functions/masterlist"
   status = 200

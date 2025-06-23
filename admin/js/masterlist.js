@@ -30,6 +30,12 @@ function setupMasterlistEventListeners() {
         addPlayerBtn.addEventListener('click', () => showAddPlayerModal());
     }
     
+    // Bulk import button
+    const bulkImportBtn = document.getElementById('bulk-import-masterlist-btn');
+    if (bulkImportBtn) {
+        bulkImportBtn.addEventListener('click', () => showBulkImportModal());
+    }
+    
     // Refresh button
     const refreshBtn = document.getElementById('refresh-masterlist-btn');
     if (refreshBtn) {
@@ -55,6 +61,18 @@ function setupMasterlistEventListeners() {
     const playerForm = document.getElementById('masterlist-player-form');
     if (playerForm) {
         playerForm.addEventListener('submit', handlePlayerFormSubmit);
+    }
+    
+    // Bulk import form submission
+    const bulkImportForm = document.getElementById('bulk-import-form');
+    if (bulkImportForm) {
+        bulkImportForm.addEventListener('submit', handleBulkImportSubmit);
+    }
+    
+    // Bulk import preview button
+    const previewBtn = document.getElementById('preview-bulk-import-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', handleBulkImportPreview);
     }
     
     // Real-time validation for duplicate checking
@@ -618,17 +636,256 @@ function validateNameUnique() {
 
 // Utility function: escape HTML
 function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Make functions globally available
 window.initMasterlist = initMasterlist;
 window.editMasterlistPlayer = editMasterlistPlayer;
-window.deleteMasterlistPlayer = deleteMasterlistPlayer; 
+window.deleteMasterlistPlayer = deleteMasterlistPlayer;
+
+// Bulk Import Functions
+
+// Show bulk import modal
+function showBulkImportModal() {
+    const modal = new bootstrap.Modal(document.getElementById('bulk-import-masterlist-modal'));
+    modal.show();
+    
+    // Clear previous data
+    document.getElementById('bulk-import-data').value = '';
+    document.getElementById('bulk-import-preview').style.display = 'none';
+    document.getElementById('bulk-import-alert').style.display = 'none';
+    document.getElementById('execute-bulk-import-btn').disabled = true;
+}
+
+// Parse bulk import data
+function parseBulkImportData(data) {
+    const lines = data.trim().split('\n');
+    const players = [];
+    const errors = [];
+    
+    lines.forEach((line, index) => {
+        const lineNumber = index + 1;
+        const trimmedLine = line.trim();
+        
+        if (!trimmedLine) return; // Skip empty lines
+        
+        const parts = trimmedLine.split('\t');
+        
+        if (parts.length !== 3) {
+            errors.push(`Line ${lineNumber}: Invalid format. Expected 3 fields separated by tabs.`);
+            return;
+        }
+        
+        const [name, dota2id, mmr] = parts.map(part => part.trim());
+        
+        // Validate name
+        if (!name || name.length < 2) {
+            errors.push(`Line ${lineNumber}: Player name is too short or empty.`);
+            return;
+        }
+        
+        // Validate Dota2 ID
+        if (!dota2id || !/^\d+$/.test(dota2id)) {
+            errors.push(`Line ${lineNumber}: Invalid Dota2 ID. Must be numeric.`);
+            return;
+        }
+        
+        // Validate MMR
+        const mmrNum = parseInt(mmr);
+        if (isNaN(mmrNum) || mmrNum < 0 || mmrNum > 20000) {
+            errors.push(`Line ${lineNumber}: Invalid MMR. Must be between 0 and 20000.`);
+            return;
+        }
+        
+        players.push({
+            name: name,
+            dota2id: dota2id,
+            mmr: mmrNum,
+            lineNumber: lineNumber
+        });
+    });
+    
+    return { players, errors };
+}
+
+// Handle bulk import preview
+function handleBulkImportPreview() {
+    const data = document.getElementById('bulk-import-data').value;
+    const { players, errors } = parseBulkImportData(data);
+    
+    const alertElement = document.getElementById('bulk-import-alert');
+    const previewElement = document.getElementById('bulk-import-preview');
+    const executeBtn = document.getElementById('execute-bulk-import-btn');
+    
+    // Clear previous alerts
+    alertElement.style.display = 'none';
+    
+    if (errors.length > 0) {
+        alertElement.className = 'alert alert-danger';
+        alertElement.innerHTML = `
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Validation Errors:</strong>
+            <ul class="mb-0 mt-2">
+                ${errors.map(error => `<li>${error}</li>`).join('')}
+            </ul>
+        `;
+        alertElement.style.display = 'block';
+        previewElement.style.display = 'none';
+        executeBtn.disabled = true;
+        return;
+    }
+    
+    if (players.length === 0) {
+        alertElement.className = 'alert alert-warning';
+        alertElement.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>No valid players found in the data.';
+        alertElement.style.display = 'block';
+        previewElement.style.display = 'none';
+        executeBtn.disabled = true;
+        return;
+    }
+    
+    // Show preview
+    renderBulkImportPreview(players);
+    previewElement.style.display = 'block';
+    executeBtn.disabled = false;
+    
+    // Show success message
+    alertElement.className = 'alert alert-success';
+    alertElement.innerHTML = `
+        <i class="bi bi-check-circle me-2"></i>
+        <strong>Valid data found!</strong> ${players.length} players ready for import.
+    `;
+    alertElement.style.display = 'block';
+}
+
+// Render bulk import preview
+function renderBulkImportPreview(players) {
+    const previewBody = document.getElementById('bulk-import-preview-body');
+    const previewCount = document.getElementById('preview-count');
+    
+    previewCount.textContent = players.length;
+    
+    previewBody.innerHTML = players.map(player => {
+        const existingPlayer = window.masterlistPlayers.find(p => p.dota2id === player.dota2id);
+        let status = 'New';
+        let statusClass = 'success';
+        
+        if (existingPlayer) {
+            status = 'Update';
+            statusClass = 'warning';
+        }
+        
+        return `
+            <tr>
+                <td>${escapeHtml(player.name)}</td>
+                <td><code>${escapeHtml(player.dota2id)}</code></td>
+                <td>${player.mmr}</td>
+                <td><span class="badge bg-${statusClass}">${status}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Handle bulk import submission
+async function handleBulkImportSubmit(event) {
+    event.preventDefault();
+    
+    const data = document.getElementById('bulk-import-data').value;
+    const { players, errors } = parseBulkImportData(data);
+    
+    if (errors.length > 0 || players.length === 0) {
+        handleBulkImportPreview();
+        return;
+    }
+    
+    const skipDuplicates = document.getElementById('bulk-import-skip-duplicates').checked;
+    const updateExisting = document.getElementById('bulk-import-update-existing').checked;
+    
+    // Prepare players for import
+    const playersToImport = players.filter(player => {
+        const existingPlayer = window.masterlistPlayers.find(p => p.dota2id === player.dota2id);
+        
+        if (existingPlayer) {
+            return updateExisting; // Only include if update existing is checked
+        }
+        
+        return true; // Include new players
+    });
+    
+    if (playersToImport.length === 0) {
+        const alertElement = document.getElementById('bulk-import-alert');
+        alertElement.className = 'alert alert-warning';
+        alertElement.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>No players to import. All players already exist and update existing is disabled.';
+        alertElement.style.display = 'block';
+        return;
+    }
+    
+    // Disable submit button and show loading
+    const executeBtn = document.getElementById('execute-bulk-import-btn');
+    const originalText = executeBtn.innerHTML;
+    executeBtn.disabled = true;
+    executeBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Importing...';
+    
+    try {
+        const response = await fetch('/api/masterlist/bulk-import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-session-id': localStorage.getItem('adminSessionId')
+            },
+            body: JSON.stringify({
+                players: playersToImport,
+                skipDuplicates: skipDuplicates,
+                updateExisting: updateExisting
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Show success message
+            const alertElement = document.getElementById('bulk-import-alert');
+            alertElement.className = 'alert alert-success';
+            alertElement.innerHTML = `
+                <i class="bi bi-check-circle me-2"></i>
+                <strong>Import successful!</strong><br>
+                Added: ${result.added || 0} players<br>
+                Updated: ${result.updated || 0} players<br>
+                Skipped: ${result.skipped || 0} players
+            `;
+            alertElement.style.display = 'block';
+            
+            // Reload masterlist data
+            await loadMasterlistData();
+            
+            // Close modal after a delay
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('bulk-import-masterlist-modal'));
+                modal.hide();
+            }, 2000);
+            
+        } else {
+            throw new Error(result.message || 'Import failed');
+        }
+        
+    } catch (error) {
+        console.error('Bulk import error:', error);
+        
+        const alertElement = document.getElementById('bulk-import-alert');
+        alertElement.className = 'alert alert-danger';
+        alertElement.innerHTML = `
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Import failed:</strong> ${error.message}
+        `;
+        alertElement.style.display = 'block';
+        
+    } finally {
+        // Re-enable submit button
+        executeBtn.disabled = false;
+        executeBtn.innerHTML = originalText;
+    }
+} 

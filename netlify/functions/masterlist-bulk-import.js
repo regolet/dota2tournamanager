@@ -1,0 +1,188 @@
+// Masterlist bulk import function using Neon DB
+import { getMasterlist, addMasterlistPlayer, updateMasterlistPlayer } from './database.js';
+
+export const handler = async (event, context) => {
+  try {
+    // Handle CORS preflight
+    if (event.httpMethod === 'OPTIONS') {
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, x-session-id',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        }
+      };
+    }
+    
+    // Only allow POST method
+    if (event.httpMethod !== 'POST') {
+      return {
+        statusCode: 405,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Method not allowed. Only POST is supported.'
+        })
+      };
+    }
+    
+    // Get session ID for auth check
+    const sessionId = event.headers['x-session-id'] || 
+                     event.queryStringParameters?.sessionId;
+    
+    const isAuthenticated = sessionId && sessionId.length >= 10;
+    
+    // Require authentication
+    if (!isAuthenticated) {
+      return {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Authentication required for bulk import'
+        })
+      };
+    }
+    
+    // Parse request body
+    const requestBody = JSON.parse(event.body || '{}');
+    const { players, skipDuplicates = true, updateExisting = false } = requestBody;
+    
+    // Validate input
+    if (!players || !Array.isArray(players) || players.length === 0) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Players array is required and must not be empty'
+        })
+      };
+    }
+    
+    // Validate each player
+    const validationErrors = [];
+    players.forEach((player, index) => {
+      if (!player.name || typeof player.name !== 'string' || player.name.trim().length < 2) {
+        validationErrors.push(`Player ${index + 1}: Invalid name`);
+      }
+      if (!player.dota2id || typeof player.dota2id !== 'string' || !/^\d+$/.test(player.dota2id)) {
+        validationErrors.push(`Player ${index + 1}: Invalid Dota2 ID`);
+      }
+      if (!player.mmr || typeof player.mmr !== 'number' || player.mmr < 0 || player.mmr > 20000) {
+        validationErrors.push(`Player ${index + 1}: Invalid MMR (must be 0-20000)`);
+      }
+    });
+    
+    if (validationErrors.length > 0) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: 'Validation errors found',
+          errors: validationErrors
+        })
+      };
+    }
+    
+    // Get existing players for duplicate checking
+    const existingPlayers = await getMasterlist();
+    const existingDota2Ids = new Set(existingPlayers.map(p => p.dota2id));
+    
+    // Process players
+    let added = 0;
+    let updated = 0;
+    let skipped = 0;
+    const errors = [];
+    
+    for (const player of players) {
+      try {
+        const playerData = {
+          name: player.name.trim(),
+          dota2id: player.dota2id.trim(),
+          mmr: parseInt(player.mmr),
+          notes: player.notes || ''
+        };
+        
+        const exists = existingDota2Ids.has(playerData.dota2id);
+        
+        if (exists) {
+          if (skipDuplicates && !updateExisting) {
+            skipped++;
+            continue;
+          }
+          
+          if (updateExisting) {
+            // Find existing player and update
+            const existingPlayer = existingPlayers.find(p => p.dota2id === playerData.dota2id);
+            if (existingPlayer) {
+              await updateMasterlistPlayer(existingPlayer.id, playerData);
+              updated++;
+            } else {
+              skipped++;
+            }
+          }
+        } else {
+          // Add new player
+          await addMasterlistPlayer(playerData);
+          added++;
+          existingDota2Ids.add(playerData.dota2id); // Add to set to prevent duplicates in same batch
+        }
+        
+      } catch (error) {
+        console.error(`Error processing player ${player.name}:`, error);
+        errors.push(`Failed to process ${player.name}: ${error.message}`);
+      }
+    }
+    
+    console.log(`Bulk import completed: ${added} added, ${updated} updated, ${skipped} skipped`);
+    
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        success: true,
+        message: 'Bulk import completed successfully',
+        added: added,
+        updated: updated,
+        skipped: skipped,
+        errors: errors,
+        total: players.length,
+        timestamp: new Date().toISOString()
+      })
+    };
+    
+  } catch (error) {
+    console.error('Bulk import API error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        success: false,
+        message: 'Internal server error: ' + error.message,
+        error: error.toString(),
+        timestamp: new Date().toISOString()
+      })
+    };
+  }
+}; 
