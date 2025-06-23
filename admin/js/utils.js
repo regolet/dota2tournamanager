@@ -33,8 +33,6 @@ class NotificationSystem {
     }
 
     show(message, type = 'info', duration = 5000) {
-        // Always clear previous notifications before showing a new one
-        this.clear();
         const notification = document.createElement('div');
         notification.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
         notification.style.cssText = `
