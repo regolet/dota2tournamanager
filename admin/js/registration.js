@@ -320,7 +320,9 @@ async function initRegistration() {
             saveButton.disabled = true;
             saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
             
-            const url = '/.netlify/functions/registration-sessions';
+            const url = isEdit
+                ? `/.netlify/functions/registration-sessions?sessionId=${encodeURIComponent(sessionId)}`
+                : '/.netlify/functions/registration-sessions';
             const method = isEdit ? 'PUT' : 'POST';
             
             const data = await fetchWithAuth(url, {
