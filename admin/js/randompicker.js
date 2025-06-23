@@ -205,45 +205,14 @@ async function initRandomPicker() {
  * Create session selector for random picker
  */
 async function createRandomPickerSessionSelector() {
-    const sessionSelectorContainer = document.querySelector('.picker-session-selector-container');
-    
-    if (!sessionSelectorContainer) {
-        // Create session selector if it doesn't exist
-        const randomPickerContent = document.querySelector('#random-picker') || 
-                                    document.querySelector('.random-picker-section');
-        
-        if (randomPickerContent) {
-            const selectorHtml = `
-                <div class="picker-session-selector-container mb-4">
-                    <div class="card shadow-sm">
-                        <div class="card-body p-3">
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <div class="d-flex align-items-center">
-                                        <i class="bi bi-funnel me-2 text-primary"></i>
-                                        <label for="picker-session-selector" class="form-label mb-0 me-3">
-                                            Select Tournament:
-                                        </label>
-                                        <select id="picker-session-selector" class="form-select" style="max-width: 400px;">
-                                            <option value="">Choose a tournament...</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 text-end">
-                                    <button id="refresh-picker-sessions" class="btn btn-outline-primary btn-sm me-2">
-                                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-                                    </button>
-                                    <span id="picker-player-count" class="badge bg-secondary">0 players</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Insert at the beginning of the random picker content
-            randomPickerContent.insertAdjacentHTML('afterbegin', selectorHtml);
-        }
+    // The session selector already exists in the HTML, so we don't need to create it
+    // Just verify it exists and update the loading text
+    const sessionSelector = document.getElementById('picker-session-selector');
+    if (sessionSelector) {
+        sessionSelector.innerHTML = '<option value="">Choose a tournament...</option>';
+        console.log('Random Picker session selector found and ready');
+    } else {
+        console.error('Random Picker session selector not found in HTML');
     }
 }
 
@@ -259,17 +228,25 @@ async function loadRegistrationSessions() {
             return;
         }
 
-        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        const apiResponse = await fetchWithAuth('/.netlify/functions/registration-sessions');
+        
+        if (!apiResponse.ok) {
+            throw new Error(`HTTP error! status: ${apiResponse.status}`);
+        }
+        
+        const data = await apiResponse.json();
+        console.log('API data received in Random Picker:', data);
 
-        if (data.success && data.sessions) {
+        if (data && data.success && Array.isArray(data.sessions)) {
             registrationSessions = data.sessions;
             updateSessionSelector();
         } else {
+            console.error('Random Picker: Failed to process sessions. Data received:', data);
             showNotification(data.message || 'Failed to load registration sessions', 'error');
         }
     } catch (error) {
-        console.error('Error loading registration sessions:', error);
-        showNotification('Error loading registration sessions', 'error');
+        console.error('Error loading registration sessions in Random Picker:', error);
+        showNotification('An error occurred while loading tournaments.', 'error');
     }
 }
 
@@ -277,13 +254,12 @@ async function loadRegistrationSessions() {
  * Update the session selector dropdown
  */
 function updateSessionSelector() {
+    console.log('updateSessionSelector called. registrationSessions:', registrationSessions);
     const selector = document.getElementById('picker-session-selector');
     if (!selector) {
         console.error('Random Picker session selector not found');
         return;
     }
-
-    console.log('Updating Random Picker session selector with sessions:', registrationSessions);
 
     selector.innerHTML = '<option value="">Choose a tournament...</option>';
 
@@ -291,8 +267,6 @@ function updateSessionSelector() {
     const sortedSessions = [...registrationSessions].sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
     });
-
-    console.log('Sorted sessions for Random Picker:', sortedSessions);
 
     sortedSessions.forEach(session => {
         const option = document.createElement('option');
@@ -304,17 +278,17 @@ function updateSessionSelector() {
         selector.appendChild(option);
     });
 
+    console.log('updateSessionSelector finished. Selector options:', selector.innerHTML);
+
     // Auto-select the latest (most recent) tournament if available
     if (sortedSessions.length > 0) {
         const latestSession = sortedSessions[0];
         selector.value = latestSession.sessionId;
         currentSessionId = latestSession.sessionId;
-        
         console.log('Auto-selected tournament for Random Picker:', latestSession.title, 'ID:', latestSession.sessionId);
-        
         // Load players for the selected session
         loadPlayersForPicker();
-                        } else {
+    } else {
         console.log('No tournaments available for Random Picker');
     }
 }
@@ -525,11 +499,7 @@ async function loadPlayersForPicker() {
             apiUrl += `&sessionId=${currentSessionId}`;
         }
 
-        const response = await fetch(apiUrl, {
-            headers: {
-                'x-session-id': sessionId
-            }
-        });
+        const response = await fetchWithAuth(apiUrl);
 
         if (!response.ok) {
             throw new Error(`Failed to load players: ${response.status} ${response.statusText}`);
@@ -1186,8 +1156,8 @@ function exportPickerHistory() {
  * This allows the random picker to refresh when registration settings change
  */
 function setupRandomPickerRegistrationListener() {
-    // Listen for custom registration update events
-    window.addEventListener('registrationUpdated', function(event) {
+    // Create the listener function and store it globally for cleanup
+    window.randomPickerRegistrationListener = function(event) {
         console.log('🎲 Random Picker received registration update event:', event.detail);
         
         // Reload registration sessions to get updated limits and status
@@ -1198,7 +1168,10 @@ function setupRandomPickerRegistrationListener() {
                 showNotification('Random picker refreshed due to registration changes', 'info');
             }
         });
-    });
+    };
+    
+    // Listen for custom registration update events
+    window.addEventListener('registrationUpdated', window.randomPickerRegistrationListener);
     
     // Also expose refresh function globally for direct calls
     window.refreshRandomPickerData = function() {
@@ -1430,12 +1403,10 @@ function exportHistory() {
     return exportPickerHistory();
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initRandomPicker);
-
 // Expose functions globally for compatibility
 window.randomPickerModule = {
     initRandomPicker,
+    cleanupRandomPicker,
     loadPlayersForPicker,
     pickRandomPlayerInternal,
     pickMultiplePlayersInternal,
@@ -1446,6 +1417,9 @@ window.randomPickerModule = {
 // Expose init function globally for navigation system
 window.initRandomPicker = initRandomPicker;
 
+// Expose cleanup function globally for navigation system
+window.cleanupRandomPicker = cleanupRandomPicker;
+
 // Legacy global functions for existing onclick handlers
 window.loadPlayersList = loadPlayersForPicker;
 window.pickRandomPlayer = pickRandomPlayer;
@@ -1453,5 +1427,55 @@ window.pickMultiplePlayers = pickMultiplePlayers;
 window.clearHistory = clearPickerHistory;
 window.exportHistory = exportPickerHistory;
 window.showExcludedPlayersModal = showExcludedPlayersModal;
+
+/**
+ * Cleanup function for random picker when switching tabs
+ */
+function cleanupRandomPicker() {
+    // Clear any ongoing operations
+    if (state.pickerTimer) {
+        clearTimeout(state.pickerTimer);
+        state.pickerTimer = null;
+    }
+    state.isPicking = false;
+    
+    // Clear state data
+    state.currentSessionId = null;
+    state.availablePlayers = [];
+    state.pickerHistory = [];
+    
+    // Remove event listeners by cloning elements (this removes all attached listeners)
+    const elementsToClean = [
+        'random-picker-session-selector',
+        'refresh-picker-sessions',
+        'add-player-picker',
+        'clear-picker-results',
+        'pick-random-btn',
+        'pick-multiple-btn',
+        'clear-history-btn',
+        'export-history-btn',
+        'show-excluded-btn',
+        'player-name-picker'
+    ];
+    
+    elementsToClean.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            const newElement = element.cloneNode(true);
+            element.parentNode.replaceChild(newElement, element);
+        }
+    });
+    
+    // Clear any custom event listeners
+    window.removeEventListener('registrationUpdated', window.randomPickerRegistrationListener);
+    
+    // Remove any existing modals
+    const existingModal = document.getElementById('excludedPlayersModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    console.log('Random picker cleanup completed');
+}
 
 })(); // Close IIFE
