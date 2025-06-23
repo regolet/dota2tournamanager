@@ -75,19 +75,31 @@ export const handler = async (event, context) => {
     const validPlayers = [];
     const validationErrors = [];
     players.forEach((player, index) => {
+      // More robust name validation
       if (!player.name || typeof player.name !== 'string' || player.name.trim().length < 2) {
-        validationErrors.push(`Player ${index + 1}: Invalid name`);
+        validationErrors.push(`Player ${index + 1}: Invalid name (must be at least 2 characters)`);
         return;
       }
-      if (!player.dota2id || typeof player.dota2id !== 'string' || !/^\d+$/.test(player.dota2id)) {
-        validationErrors.push(`Player ${index + 1}: Invalid Dota2 ID`);
+      
+      // More robust Dota2 ID validation
+      if (!player.dota2id || typeof player.dota2id !== 'string' || !/^\d+$/.test(player.dota2id.trim())) {
+        validationErrors.push(`Player ${index + 1}: Invalid Dota2 ID (must be numeric)`);
         return;
       }
+      
+      // More robust MMR validation
       if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
         validationErrors.push(`Player ${index + 1}: Invalid MMR (must be 0-20000)`);
         return;
       }
-      validPlayers.push(player);
+      
+      // Add trimmed and validated player data
+      validPlayers.push({
+        name: player.name,
+        dota2id: player.dota2id,
+        mmr: parseInt(player.mmr),
+        notes: player.notes || ''
+      });
     });
     const skippedInvalid = players.length - validPlayers.length;
     

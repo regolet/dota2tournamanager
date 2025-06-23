@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Import Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        textarea { width: 100%; height: 100px; }
+        button { margin: 10px 5px; padding: 8px 16px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Bulk Import Test</h1>
+    
+    <div class="test-section">
+        <h3>Test Data</h3>
+        <textarea id="testData">HyO	182065786	7100
+Player2	123456789	6500
+TestPlayer	987654321	5000</textarea>
+        <br>
+        <button onclick="testParsing()">Test Parsing</button>
+        <button onclick="testValidation()">Test Validation</button>
+        <button onclick="testServerValidation()">Test Server Validation</button>
+    </div>
+    
+    <div class="test-section" id="results">
+        <h3>Results</h3>
+        <pre id="output">Click a test button to see results...</pre>
+    </div>
+
+    <script>
+        // Copy the parseBulkImportData function from masterlist.js
+        function parseBulkImportData(data) {
+            const lines = data.trim().split('\n');
+            const players = [];
+            const errors = [];
+            
+            lines.forEach((line, index) => {
+                const lineNumber = index + 1;
+                const trimmedLine = line.trim();
+                
+                if (!trimmedLine) return; // Skip empty lines
+                
+                const parts = trimmedLine.split('\t');
+                
+                if (parts.length !== 3) {
+                    errors.push(`Line ${lineNumber}: Invalid format. Expected 3 fields separated by tabs.`);
+                    return;
+                }
+                
+                const [name, dota2id, mmr] = parts.map(part => part.trim());
+                
+                // Validate name
+                if (!name || name.length < 2) {
+                    errors.push(`Line ${lineNumber}: Player name is too short or empty.`);
+                    return;
+                }
+                
+                // Validate Dota2 ID
+                if (!dota2id || !/^\d+$/.test(dota2id)) {
+                    errors.push(`Line ${lineNumber}: Invalid Dota2 ID. Must be numeric.`);
+                    return;
+                }
+                
+                // Validate MMR
+                const mmrNum = parseInt(mmr);
+                if (isNaN(mmrNum) || mmrNum < 0 || mmrNum > 20000) {
+                    errors.push(`Line ${lineNumber}: Invalid MMR. Must be between 0 and 20000.`);
+                    return;
+                }
+                
+                players.push({
+                    name: name,
+                    dota2id: dota2id,
+                    mmr: mmrNum,
+                    lineNumber: lineNumber
+                });
+            });
+            
+            return { players, errors };
+        }
+
+        function testParsing() {
+            const data = document.getElementById('testData').value;
+            const result = parseBulkImportData(data);
+            
+            document.getElementById('output').textContent = JSON.stringify(result, null, 2);
+            document.getElementById('results').className = 'test-section ' + (result.errors.length > 0 ? 'error' : 'success');
+        }
+
+        function testValidation() {
+            const data = document.getElementById('testData').value;
+            const { players, errors } = parseBulkImportData(data);
+            
+            // Test the same validation logic as in handleBulkImportSubmit
+            const validPlayers = players.filter(player => 
+                player.name && 
+                player.name.trim().length >= 2 && 
+                player.dota2id && 
+                player.dota2id.trim().length > 0 && 
+                !isNaN(player.mmr) && 
+                player.mmr >= 0 && 
+                player.mmr <= 20000
+            );
+            
+            const result = {
+                originalPlayers: players,
+                validPlayers: validPlayers,
+                filteredOut: players.length - validPlayers.length,
+                errors: errors
+            };
+            
+            document.getElementById('output').textContent = JSON.stringify(result, null, 2);
+            document.getElementById('results').className = 'test-section ' + (result.errors.length > 0 ? 'error' : 'success');
+        }
+
+        async function testServerValidation() {
+            const data = document.getElementById('testData').value;
+            const { players, errors } = parseBulkImportData(data);
+            
+            const validPlayers = players.filter(player => 
+                player.name && 
+                player.name.trim().length >= 2 && 
+                player.dota2id && 
+                player.dota2id.trim().length > 0 && 
+                !isNaN(player.mmr) && 
+                player.mmr >= 0 && 
+                player.mmr <= 20000
+            );
+            
+            try {
+                const response = await fetch('/api/masterlist/bulk-import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-session-id': 'test-session-id'
+                    },
+                    body: JSON.stringify({
+                        players: validPlayers,
+                        skipDuplicates: true,
+                        updateExisting: false
+                    })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('output').textContent = JSON.stringify({
+                    request: {
+                        playerCount: validPlayers.length,
+                        samplePlayer: validPlayers[0]
+                    },
+                    response: result
+                }, null, 2);
+                
+                document.getElementById('results').className = 'test-section ' + (result.success ? 'success' : 'error');
+                
+            } catch (error) {
+                document.getElementById('output').textContent = 'Error: ' + error.message;
+                document.getElementById('results').className = 'test-section error';
+            }
+        }
+    </script>
+</body>
+</html> 

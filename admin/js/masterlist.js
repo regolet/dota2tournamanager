@@ -797,8 +797,16 @@ async function handleBulkImportSubmit(event) {
     const data = document.getElementById('bulk-import-data').value;
     const { players, errors } = parseBulkImportData(data);
     
-    // Only send valid players (as shown in preview)
-    const validPlayers = players.filter(player => player.name && player.dota2id && !isNaN(player.mmr));
+    // Only send valid players (as shown in preview) - improved validation
+    const validPlayers = players.filter(player => 
+        player.name && 
+        player.name.trim().length >= 2 && 
+        player.dota2id && 
+        player.dota2id.trim().length > 0 && 
+        !isNaN(player.mmr) && 
+        player.mmr >= 0 && 
+        player.mmr <= 20000
+    );
     const skippedCount = players.length - validPlayers.length;
     
     if (errors.length > 0 || validPlayers.length === 0) {
@@ -853,12 +861,12 @@ async function handleBulkImportSubmit(event) {
         if (result.success) {
             // Show success message
             const alertElement = document.getElementById('bulk-import-alert');
-            let msg = `<i class=\"bi bi-check-circle me-2\"></i><strong>Import successful!</strong><br>Added: ${result.added || 0} players<br>Updated: ${result.updated || 0} players<br>Skipped: ${result.skipped || 0} players`;
+            let msg = `<i class="bi bi-check-circle me-2"></i><strong>Import successful!</strong><br>Added: ${result.added || 0} players<br>Updated: ${result.updated || 0} players<br>Skipped: ${result.skipped || 0} players`;
             if (skippedCount > 0) {
-                msg += `<br><span class=\"text-warning\">${skippedCount} player(s) were skipped due to missing/invalid data.</span>`;
+                msg += `<br><span class="text-warning">${skippedCount} player(s) were skipped due to missing/invalid data.</span>`;
             }
             if (result.errors && result.errors.length > 0) {
-                msg += `<br><span class=\"text-danger\">${result.errors.length} error(s) during import.</span>`;
+                msg += `<br><span class="text-danger">${result.errors.length} error(s) during import.</span>`;
             }
             alertElement.className = 'alert alert-success';
             alertElement.innerHTML = msg;
@@ -883,7 +891,7 @@ async function handleBulkImportSubmit(event) {
         const alertElement = document.getElementById('bulk-import-alert');
         alertElement.className = 'alert alert-danger';
         alertElement.innerHTML = `
-            <i class=\"bi bi-exclamation-triangle me-2\"></i>
+            <i class="bi bi-exclamation-triangle me-2"></i>
             <strong>Import failed:</strong> ${error.message}
         `;
         alertElement.style.display = 'block';

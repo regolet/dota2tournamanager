@@ -571,13 +571,12 @@ export async function addMasterlistPlayer(player) {
   try {
     await initializeDatabase();
 
-    
-    if (!player.name) {
-      throw new Error('Player must have a name');
+    if (!player.name || typeof player.name !== 'string' || player.name.trim().length < 2) {
+      throw new Error('Player must have a valid name (at least 2 characters)');
     }
     
-    if (!player.dota2id) {
-      throw new Error('Player must have a Dota 2 ID');
+    if (!player.dota2id || typeof player.dota2id !== 'string' || !/^\d+$/.test(player.dota2id.trim())) {
+      throw new Error('Player must have a valid Dota 2 ID (numeric only)');
     }
     
     // Check if player already exists
@@ -629,12 +628,12 @@ export async function updateMasterlistPlayer(playerId, updates) {
     // Get default values from current record if not provided
     const { name, dota2id, mmr, team, achievements, notes } = updates;
     
-    if (!name) {
-      throw new Error('Player must have a name');
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      throw new Error('Player must have a valid name (at least 2 characters)');
     }
     
-    if (!dota2id) {
-      throw new Error('Player must have a Dota 2 ID');
+    if (!dota2id || typeof dota2id !== 'string' || !/^\d+$/.test(dota2id.trim())) {
+      throw new Error('Player must have a valid Dota 2 ID (numeric only)');
     }
     
     // Check if another player already exists with same dota2id or name
