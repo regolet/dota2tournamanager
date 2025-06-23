@@ -12,6 +12,7 @@ let currentUser = null;
 let currentSessionId = null;
 let registrationSessions = [];
 let allPlayers = [];
+let lastLoadedPlayerCount = null;
 
 // Add fetchWithAuth function if not already available
 if (typeof fetchWithAuth === 'undefined') {
@@ -418,7 +419,10 @@ async function loadPlayers(forceRefresh = false) {
             if (sessionPlayerCount) {
                 sessionPlayerCount.textContent = `${allPlayers.length} players`;
             }
-            window.showNotification(`Loaded ${allPlayers.length} players`, 'success');
+            if (allPlayers.length !== lastLoadedPlayerCount) {
+                window.showNotification(`Loaded ${allPlayers.length} players`, 'success');
+                lastLoadedPlayerCount = allPlayers.length;
+            }
         } else {
             allPlayers = [];
             displayPlayers([]);

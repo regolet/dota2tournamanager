@@ -33,6 +33,9 @@ async function waitForElement(id, maxAttempts = 10, interval = 100) {
 let registrationInitAttempts = 0;
 const MAX_REGISTRATION_INIT_ATTEMPTS = 10;
 
+// Add a module-level variable to track the last loaded session count
+let lastLoadedSessionCount = null;
+
 // Initialize registration module
 async function initRegistration() {
     try {
@@ -137,7 +140,10 @@ async function initRegistration() {
             if (data.success && data.sessions) {
                 state.registrationSessions = data.sessions;
                 displayRegistrationSessions();
-                window.utils.showNotification(`Loaded ${data.sessions.length} registration sessions`, 'success', 2000);
+                if (state.registrationSessions.length !== lastLoadedSessionCount) {
+                    window.utils.showNotification(`Loaded ${state.registrationSessions.length} registration sessions`, 'success', 2000);
+                    lastLoadedSessionCount = state.registrationSessions.length;
+                }
             } else {
                 window.utils.showNotification(data.message || 'Failed to load registration sessions', 'error');
                 if (tableBody) {

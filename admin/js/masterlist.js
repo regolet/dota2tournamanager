@@ -6,6 +6,7 @@ window.currentEditingPlayer = window.currentEditingPlayer || null;
 window.masterlistStats = window.masterlistStats || {};
 
 let isMasterlistLoading = false;
+let lastLoadedPlayerCount = null;
 
 // Initialize masterlist module
 async function initMasterlist() {
@@ -121,7 +122,10 @@ async function loadMasterlistData() {
             updateMasterlistStats();
             renderMasterlistTable(window.masterlistPlayers);
             
-            window.showNotification(`Loaded ${window.masterlistPlayers.length} players from masterlist`, 'success');
+            if (window.masterlistPlayers.length !== lastLoadedPlayerCount) {
+                window.showNotification(`Loaded ${window.masterlistPlayers.length} players from masterlist`, 'success');
+                lastLoadedPlayerCount = window.masterlistPlayers.length;
+            }
             
             // Masterlist is loaded - tab will be enabled when clicked
         } else {
