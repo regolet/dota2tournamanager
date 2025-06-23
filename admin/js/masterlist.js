@@ -17,7 +17,7 @@ async function initMasterlist() {
         return true;
     } catch (error) {
         console.error('Error initializing masterlist:', error);
-        showMasterlistNotification('Error initializing masterlist', 'danger');
+        window.showNotification('Error initializing masterlist', 'danger');
         return false;
     }
 }
@@ -90,7 +90,7 @@ function setupMasterlistEventListeners() {
 // Load masterlist data from API
 async function loadMasterlistData() {
     try {
-        showMasterlistNotification('Loading masterlist...', 'info');
+        window.showNotification('Loading masterlist...', 'info');
         
         const response = await fetch('/api/masterlist', {
             headers: {
@@ -117,7 +117,7 @@ async function loadMasterlistData() {
             updateMasterlistStats();
             renderMasterlistTable(window.masterlistPlayers);
             
-            showMasterlistNotification(`Loaded ${window.masterlistPlayers.length} players from masterlist`, 'success');
+            window.showNotification(`Loaded ${window.masterlistPlayers.length} players from masterlist`, 'success');
             
             // Masterlist is loaded - tab will be enabled when clicked
         } else {
@@ -125,7 +125,7 @@ async function loadMasterlistData() {
         }
     } catch (error) {
         console.error('Error loading masterlist:', error);
-        showMasterlistNotification(`Error loading masterlist: ${error.message}`, 'danger');
+        window.showNotification(`Error loading masterlist: ${error.message}`, 'danger');
         
         // Show empty state
         renderMasterlistTable([]);
@@ -286,7 +286,7 @@ function showAddPlayerModal() {
 function editMasterlistPlayer(playerId) {
     const player = window.masterlistPlayers.find(p => p.id === playerId);
     if (!player) {
-        showMasterlistNotification('Player not found', 'danger');
+        window.showNotification('Player not found', 'danger');
         return;
     }
     
@@ -461,7 +461,7 @@ async function handleConfirmDelete() {
         const result = await response.json();
         
         if (result.success) {
-            showMasterlistNotification(result.message, 'success');
+            window.showNotification(result.message, 'success');
             
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('confirm-delete-masterlist-modal'));
@@ -470,11 +470,11 @@ async function handleConfirmDelete() {
             // Reload masterlist
             await loadMasterlistData();
         } else {
-            showMasterlistNotification(result.message, 'danger');
+            window.showNotification(result.message, 'danger');
         }
     } catch (error) {
         console.error('Error deleting player:', error);
-        showMasterlistNotification('Error deleting player: ' + error.message, 'danger');
+        window.showNotification('Error deleting player: ' + error.message, 'danger');
     } finally {
         // Reset button
         confirmBtn.disabled = false;
@@ -497,26 +497,6 @@ function showModalAlert(message, type) {
             }, 3000);
         }
     }
-}
-
-// Show notification
-function showMasterlistNotification(message, type = 'info') {
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
-    alert.style.zIndex = '1100';
-    alert.role = 'alert';
-    alert.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-
-    document.body.appendChild(alert);
-
-    // Auto-remove after 4 seconds
-    setTimeout(() => {
-        alert.classList.remove('show');
-        setTimeout(() => alert.remove(), 150);
-    }, 4000);
 }
 
 // Utility function: debounce

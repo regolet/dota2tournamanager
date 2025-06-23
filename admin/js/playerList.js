@@ -43,20 +43,20 @@ if (typeof fetchWithAuth === 'undefined') {
 
                 // Handle specific error cases
                 if (response.status === 401) {
-                    showNotification('Session expired. Please login again.', 'error');
+                    window.showNotification('Session expired. Please login again.', 'error');
                     // Redirect to login after a delay
                     setTimeout(() => {
                         window.location.href = '/admin/login.html';
                     }, 2000);
                     throw new Error('Session expired');
                 } else if (response.status === 403) {
-                    showNotification('Access denied. You do not have permission for this action.', 'warning');
+                    window.showNotification('Access denied. You do not have permission for this action.', 'warning');
                     throw new Error('Access denied');
                 } else if (response.status === 404) {
-                    showNotification('Resource not found. Please check the URL.', 'error');
+                    window.showNotification('Resource not found. Please check the URL.', 'error');
                     throw new Error('Resource not found');
                 } else if (response.status >= 500) {
-                    showNotification('Server error. Please try again later.', 'error');
+                    window.showNotification('Server error. Please try again later.', 'error');
                     throw new Error('Server error');
                 }
 
@@ -75,34 +75,14 @@ if (typeof fetchWithAuth === 'undefined') {
             
             // Show user-friendly error message
             if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                showNotification('Network error. Please check your connection.', 'error');
+                window.showNotification('Network error. Please check your connection.', 'error');
             } else if (!error.message.includes('Session expired') && !error.message.includes('Access denied')) {
-                showNotification(`Request failed: ${error.message}`, 'error');
+                window.showNotification(`Request failed: ${error.message}`, 'error');
             }
             
             throw error;
         }
     }
-}
-
-// Utility function: showNotification
-function showNotification(message, type = 'info') {
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
-    alert.style.zIndex = '1100';
-    alert.role = 'alert';
-    alert.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-
-    document.body.appendChild(alert);
-
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-        alert.classList.remove('show');
-        setTimeout(() => alert.remove(), 150);
-    }, 3000);
 }
 
 /**
@@ -130,7 +110,7 @@ async function initPlayerList() {
         // Player list is loaded - tab will be enabled when clicked
     } catch (error) {
         console.error('Error initializing player list:', error);
-        showNotification('Failed to initialize player list module', 'error');
+        window.showNotification('Failed to initialize player list module', 'error');
     }
 }
 
@@ -285,11 +265,11 @@ async function loadRegistrationSessions() {
             registrationSessions = data.sessions;
             updateSessionSelector();
         } else {
-            showNotification(data.message || 'Failed to load registration sessions', 'error');
+            window.showNotification(data.message || 'Failed to load registration sessions', 'error');
         }
     } catch (error) {
         console.error('Error loading registration sessions:', error);
-        showNotification('Error loading registration sessions', 'error');
+        window.showNotification('Error loading registration sessions', 'error');
     }
 }
 
@@ -462,7 +442,7 @@ async function loadPlayers(forceRefresh = false) {
                 </tr>
             `;
         }
-        showNotification('Failed to load players', 'error');
+        window.showNotification('Failed to load players', 'error');
     }
 }
 
@@ -609,7 +589,7 @@ function setupPlayerActionButtons() {
  */
 function showAddPlayerModal() {
     if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
+        window.showNotification('Please select a tournament first', 'warning');
             return;
         }
         
@@ -624,7 +604,7 @@ function showAddPlayerModal() {
         const modal = new bootstrap.Modal(addModal);
         modal.show();
     } else {
-        showNotification('Add player modal not found', 'error');
+        window.showNotification('Add player modal not found', 'error');
     }
 }
 
@@ -638,17 +618,17 @@ async function saveNewPlayer() {
 
     // Validate required fields
     if (!playerName) {
-        showNotification('Player name is required', 'warning');
+        window.showNotification('Player name is required', 'warning');
         return;
     }
 
     if (!playerDota2id) {
-        showNotification('Dota 2 ID is required', 'warning');
+        window.showNotification('Dota 2 ID is required', 'warning');
         return;
     }
 
     if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
+        window.showNotification('Please select a tournament first', 'warning');
         return;
     }
 
@@ -678,7 +658,7 @@ async function saveNewPlayer() {
         });
 
         if (data.success) {
-            showNotification('Player added successfully', 'success');
+            window.showNotification('Player added successfully', 'success');
             
             // Close the modal
             const addModal = document.getElementById('add-player-modal');
@@ -697,12 +677,12 @@ async function saveNewPlayer() {
             // Reload the player list
             await loadPlayers(true);
         } else {
-            showNotification(data.message || 'Failed to add player', 'error');
+            window.showNotification(data.message || 'Failed to add player', 'error');
         }
         
     } catch (error) {
         console.error('Error adding player:', error);
-        showNotification('Error adding player: ' + error.message, 'error');
+        window.showNotification('Error adding player: ' + error.message, 'error');
     } finally {
         // Restore button state
         if (saveButton) {
@@ -717,14 +697,14 @@ async function saveNewPlayer() {
  */
 function editPlayer(playerId, playerIndex) {
     if (!allPlayers || !Array.isArray(allPlayers)) {
-        showNotification('No player data available', 'error');
+        window.showNotification('No player data available', 'error');
         return;
     }
     
     // Find the player by ID
     const player = allPlayers.find(p => p.id === playerId);
     if (!player) {
-        showNotification('Player not found', 'error');
+        window.showNotification('Player not found', 'error');
             return;
         }
         
@@ -743,7 +723,7 @@ function editPlayer(playerId, playerIndex) {
         const modal = new bootstrap.Modal(editModal);
         modal.show();
     } else {
-        showNotification('Edit modal not found', 'error');
+        window.showNotification('Edit modal not found', 'error');
     }
 }
 
@@ -758,12 +738,12 @@ async function savePlayerChanges() {
 
     // Validate required fields
     if (!playerName) {
-        showNotification('Player name is required', 'warning');
+        window.showNotification('Player name is required', 'warning');
         return;
     }
 
     if (!playerDota2id) {
-        showNotification('Dota 2 ID is required', 'warning');
+        window.showNotification('Dota 2 ID is required', 'warning');
             return;
     }
 
@@ -793,7 +773,7 @@ async function savePlayerChanges() {
         });
 
         if (data.success) {
-            showNotification('Player updated successfully', 'success');
+            window.showNotification('Player updated successfully', 'success');
             
             // Close the modal
             const editModal = document.getElementById('edit-player-modal');
@@ -807,12 +787,12 @@ async function savePlayerChanges() {
             // Reload the player list
             await loadPlayers(true);
         } else {
-            showNotification(data.message || 'Failed to update player', 'error');
+            window.showNotification(data.message || 'Failed to update player', 'error');
         }
 
     } catch (error) {
         console.error('Error updating player:', error);
-        showNotification('Error updating player: ' + error.message, 'error');
+        window.showNotification('Error updating player: ' + error.message, 'error');
     } finally {
         // Restore button state
         if (saveButton) {
@@ -840,14 +820,14 @@ async function deletePlayer(playerId) {
         });
         
         if (data.success) {
-            showNotification('Player deleted successfully', 'success');
+            window.showNotification('Player deleted successfully', 'success');
             await loadPlayers();
         } else {
-            showNotification(data.message || 'Failed to delete player', 'error');
+            window.showNotification(data.message || 'Failed to delete player', 'error');
         }
     } catch (error) {
         console.error('Error deleting player:', error);
-        showNotification('Error deleting player', 'error');
+        window.showNotification('Error deleting player', 'error');
     }
 }
 
@@ -856,12 +836,12 @@ async function deletePlayer(playerId) {
  */
 async function confirmRemoveAllPlayers() {
     if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
+        window.showNotification('Please select a tournament first', 'warning');
         return;
     }
     
     if (!allPlayers || allPlayers.length === 0) {
-        showNotification('No players to remove in this tournament', 'info');
+        window.showNotification('No players to remove in this tournament', 'info');
         return;
     }
     
@@ -874,7 +854,7 @@ async function confirmRemoveAllPlayers() {
     
     try {
         // Show loading notification
-        showNotification('Removing all players...', 'info');
+        window.showNotification('Removing all players...', 'info');
 
         const data = await fetchWithAuth('/.netlify/functions/api-players', {
             method: 'DELETE',
@@ -888,15 +868,15 @@ async function confirmRemoveAllPlayers() {
         });
 
         if (data.success) {
-            showNotification(`Successfully removed ${playerCount} players`, 'success');
+            window.showNotification(`Successfully removed ${playerCount} players`, 'success');
             await loadPlayers(true);
         } else {
-            showNotification(data.message || 'Failed to remove players', 'error');
+            window.showNotification(data.message || 'Failed to remove players', 'error');
         }
 
     } catch (error) {
         console.error('Error removing all players:', error);
-        showNotification('Error removing players: ' + error.message, 'error');
+        window.showNotification('Error removing players: ' + error.message, 'error');
     }
 }
 
@@ -905,7 +885,7 @@ async function confirmRemoveAllPlayers() {
  */
 function exportPlayersCSV() {
     if (!allPlayers || allPlayers.length === 0) {
-        showNotification('No players to export', 'warning');
+        window.showNotification('No players to export', 'warning');
             return;
         }
         
@@ -944,7 +924,7 @@ function exportPlayersCSV() {
     link.click();
     document.body.removeChild(link);
     
-    showNotification('CSV export completed', 'success');
+    window.showNotification('CSV export completed', 'success');
 }
 
 /**
@@ -952,7 +932,7 @@ function exportPlayersCSV() {
  */
 function exportPlayersJSON() {
     if (!allPlayers || allPlayers.length === 0) {
-        showNotification('No players to export', 'warning');
+        window.showNotification('No players to export', 'warning');
         return;
     }
     
@@ -989,7 +969,7 @@ function exportPlayersJSON() {
     link.click();
     document.body.removeChild(link);
     
-    showNotification('JSON export completed', 'success');
+    window.showNotification('JSON export completed', 'success');
 }
 
 /**
@@ -1053,7 +1033,7 @@ function setupRegistrationUpdateListener() {
             // Reload players to reflect any new availability
             if (currentSessionId) {
                 loadPlayers(true);
-                showNotification(`Player list updated - registration ${event.detail.action}`, 'success');
+                window.showNotification(`Player list updated - registration ${event.detail.action}`, 'success');
             }
         });
     });

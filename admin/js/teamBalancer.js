@@ -39,55 +39,6 @@ function fetchWithAuth(url, options = {}) {
     return fetch(url, options);
 }
 
-function showNotification(message, type = 'info') {
-    // Create notification element if it doesn't exist
-    let notification = document.getElementById('notification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'notification';
-        notification.style.position = 'fixed';
-        notification.style.top = '20px';
-        notification.style.right = '20px';
-        notification.style.padding = '15px 20px';
-        notification.style.borderRadius = '4px';
-        notification.style.color = 'white';
-        notification.style.zIndex = '1050';
-        notification.style.maxWidth = '300px';
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateY(-20px)';
-        notification.style.transition = 'opacity 0.3s, transform 0.3s';
-        document.body.appendChild(notification);
-    }
-    
-    // Set notification type
-    notification.className = type;
-    switch (type) {
-        case 'success':
-            notification.style.backgroundColor = '#28a745';
-            break;
-        case 'error':
-            notification.style.backgroundColor = '#dc3545';
-            break;
-        case 'warning':
-            notification.style.backgroundColor = '#ffc107';
-            notification.style.color = '#212529';
-            break;
-        default:
-            notification.style.backgroundColor = '#17a2b8';
-    }
-    
-    // Set message and show
-    notification.textContent = message;
-    notification.style.opacity = '1';
-    notification.style.transform = 'translateY(0)';
-    
-    // Hide after 5 seconds
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateY(-20px)';
-    }, 5000);
-}
-
 /**
  * Initialize the team balancer
  */
@@ -123,7 +74,7 @@ async function initTeamBalancer() {
 
     } catch (error) {
         console.error('Error initializing team balancer:', error);
-        showNotification('Failed to initialize team balancer', 'error');
+        window.showNotification('Failed to initialize team balancer', 'error');
         
         // Still enable the tab even if there was an error
         if (typeof window.enableOnlyNavigationTab === 'function') {
@@ -229,7 +180,7 @@ async function loadRegistrationSessions() {
         const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
         
         if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
+            window.showNotification('Session expired. Please login again.', 'error');
             return;
         }
 
@@ -246,11 +197,11 @@ async function loadRegistrationSessions() {
             updateSessionSelector();
         } else {
             console.error('Team Balancer: Failed to process sessions. Data received:', data);
-            showNotification(data.message || 'Failed to load registration sessions', 'error');
+            window.showNotification(data.message || 'Failed to load registration sessions', 'error');
         }
     } catch (error) {
         console.error('Error loading registration sessions in Team Balancer:', error);
-        showNotification('An error occurred while loading tournaments.', 'error');
+        window.showNotification('An error occurred while loading tournaments.', 'error');
     }
 }
 
@@ -345,7 +296,7 @@ function addDeleteButtonToBalancerSelector() {
             const sessionId = selectedOption?.dataset.sessionId;
 
             if (!sessionId || selector.value === '') {
-                showNotification('Please select a tournament to delete.', 'warning');
+                window.showNotification('Please select a tournament to delete.', 'warning');
                 return;
             }
 
@@ -428,11 +379,11 @@ function removePlayerFromList(playerId, playerIndex) {
             // Refresh display
             displayPlayersForBalancer(state.availablePlayers);
             
-            showNotification(`${player.name} removed from team balancer`, 'info');
+            window.showNotification(`${player.name} removed from team balancer`, 'info');
         }
     } else {
         console.error(`Player not found with ID: ${playerId}. Available players: ${state.availablePlayers.length}`);
-        showNotification('Error: Player not found', 'error');
+        window.showNotification('Error: Player not found', 'error');
     }
 }
 
@@ -465,7 +416,7 @@ function setupBalancerButtons() {
                 playerMmrInput.value = '';
                 playerNameInput.focus();
             } else {
-                showNotification('Please enter a player name', 'warning');
+                window.showNotification('Please enter a player name', 'warning');
             }
         });
 
@@ -480,7 +431,7 @@ function setupBalancerButtons() {
                     playerMmrInput.value = '';
                     this.focus();
                 } else {
-                    showNotification('Please enter a player name', 'warning');
+                    window.showNotification('Please enter a player name', 'warning');
                 }
             }
         });
@@ -495,7 +446,7 @@ function setupBalancerButtons() {
                     this.value = '';
                     playerNameInput.focus();
                 } else {
-                    showNotification('Please enter a player name', 'warning');
+                    window.showNotification('Please enter a player name', 'warning');
                 }
             }
         });
@@ -511,7 +462,7 @@ function setupBalancerButtons() {
                 displayPlayersForBalancer([]);
                 displayReservedPlayers();
                 clearTeams();
-                showNotification('All players cleared', 'success');
+                window.showNotification('All players cleared', 'success');
             }
         });
     }
@@ -571,7 +522,7 @@ async function showLoadTeamsModal() {
         const savedTeams = await response.json();
 
         if (!Array.isArray(savedTeams) || savedTeams.length === 0) {
-            showNotification('No saved teams found.', 'info');
+            window.showNotification('No saved teams found.', 'info');
             return;
         }
 
@@ -634,7 +585,7 @@ async function showLoadTeamsModal() {
 
     } catch (error) {
         console.error('Error loading saved teams:', error);
-        showNotification('Error fetching saved teams.', 'error');
+        window.showNotification('Error fetching saved teams.', 'error');
     }
 }
 
@@ -659,7 +610,7 @@ async function deleteSavedTeams(teamSetId, buttonElement) {
         const result = await response.json();
 
         if (response.ok && result.success) {
-            showNotification('Team set deleted successfully.', 'success');
+            window.showNotification('Team set deleted successfully.', 'success');
             // Remove the item from the list
             buttonElement.closest('li').remove();
         } else {
@@ -668,7 +619,7 @@ async function deleteSavedTeams(teamSetId, buttonElement) {
 
     } catch (error) {
         console.error('Error deleting team set:', error);
-        showNotification(error.message, 'error');
+        window.showNotification(error.message, 'error');
         buttonElement.disabled = false;
         buttonElement.innerHTML = '<i class="bi bi-trash me-1"></i> Delete';
     }
@@ -688,7 +639,7 @@ async function loadSelectedTeams(teamSetId) {
                 modal.hide();
             }
         }
-        showNotification('Loading selected teams...', 'info');
+        window.showNotification('Loading selected teams...', 'info');
 
         const response = await fetchWithAuth(`/.netlify/functions/teams?teamSetId=${teamSetId}`);
         const teamSet = await response.json();
@@ -725,11 +676,11 @@ async function loadSelectedTeams(teamSetId) {
         displayReservedPlayers();
         displayBalancedTeams();
         
-        showNotification(`Successfully loaded "${teamSet.title}".`, 'success');
+        window.showNotification(`Successfully loaded "${teamSet.title}".`, 'success');
 
     } catch (error) {
         console.error('Error loading team set:', error);
-        showNotification(error.message || 'An error occurred while loading teams.', 'error');
+        window.showNotification(error.message || 'An error occurred while loading teams.', 'error');
     }
 }
 
@@ -738,7 +689,7 @@ async function loadSelectedTeams(teamSetId) {
  */
 function addPlayerManuallyToBalancer(playerName, playerMmr) {
     if (!playerName || !playerName.trim()) {
-        showNotification('Please enter a valid player name', 'warning');
+        window.showNotification('Please enter a valid player name', 'warning');
         return;
     }
 
@@ -748,7 +699,7 @@ function addPlayerManuallyToBalancer(playerName, playerMmr) {
     );
     
     if (existingPlayer) {
-        showNotification('Player already exists in the list', 'warning');
+        window.showNotification('Player already exists in the list', 'warning');
         return;
     }
 
@@ -773,7 +724,7 @@ function addPlayerManuallyToBalancer(playerName, playerMmr) {
         countBadge.textContent = `${state.availablePlayers.length} players`;
     }
     
-    showNotification(`Added "${playerName}" (${playerMmr} MMR) to team balancer`, 'success');
+    window.showNotification(`Added "${playerName}" (${playerMmr} MMR) to team balancer`, 'success');
 }
 
 /**
@@ -782,14 +733,14 @@ function addPlayerManuallyToBalancer(playerName, playerMmr) {
 async function loadPlayersForBalancer() {
     try {
         if (!state.currentSessionId) {
-            showNotification('Please select a tournament first', 'warning');
+            window.showNotification('Please select a tournament first', 'warning');
             return;
         }
 
         const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
         
         if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
+            window.showNotification('Session expired. Please login again.', 'error');
             return;
         }
 
@@ -837,9 +788,9 @@ async function loadPlayersForBalancer() {
                 }
                 
                 if (state.availablePlayers.length === 0) {
-                    showNotification('No players found in selected tournament', 'info');
+                    window.showNotification('No players found in selected tournament', 'info');
                 } else {
-                    showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
+                    window.showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
                 }
                 
                 // Enable the tab after data loading is complete
@@ -848,7 +799,7 @@ async function loadPlayersForBalancer() {
                 }
             } else {
                 console.error('Failed to load players:', data.message || 'Unknown error');
-                showNotification(data.message || 'Failed to load players', 'error');
+                window.showNotification(data.message || 'Failed to load players', 'error');
                 state.availablePlayers = [];
                 displayPlayersForBalancer([]);
                 
@@ -859,7 +810,7 @@ async function loadPlayersForBalancer() {
             }
         } catch (fetchError) {
             console.error('Network error loading players:', fetchError);
-            showNotification('Network error loading players', 'error');
+            window.showNotification('Network error loading players', 'error');
             
             // Enable the tab even if network error occurred
             if (typeof window.enableOnlyNavigationTab === 'function') {
@@ -873,7 +824,7 @@ async function loadPlayersForBalancer() {
 
     } catch (error) {
         console.error('Error in loadPlayersForBalancer:', error);
-        showNotification('Error loading players', 'error');
+        window.showNotification('Error loading players', 'error');
         
         // Enable the tab even if there was a general error
         if (typeof window.enableOnlyNavigationTab === 'function') {
@@ -960,7 +911,7 @@ function displayPlayersForBalancer(players) {
 function autoBalance() {
     // Prevent multiple simultaneous executions
     if (state.isAutoBalancing) {
-        showNotification('Team balancing already in progress. Please wait...', 'warning');
+        window.showNotification('Team balancing already in progress. Please wait...', 'warning');
         return;
     }
     
@@ -976,12 +927,12 @@ function autoBalance() {
         }
         
         if (!state.currentSessionId) {
-            showNotification('Please select a tournament first', 'warning');
+            window.showNotification('Please select a tournament first', 'warning');
             return;
         }
 
         if (!state.availablePlayers || state.availablePlayers.length === 0) {
-            showNotification('No players available for balancing', 'warning');
+            window.showNotification('No players available for balancing', 'warning');
             return;
         }
 
@@ -1010,12 +961,12 @@ function autoBalance() {
         }
         
         if (playersForTeams.length === 0) {
-            showNotification('No players available for team generation.', 'warning');
+            window.showNotification('No players available for team generation.', 'warning');
             return;
         }
         
         if (numTeams < 2) {
-            showNotification(`Not enough players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players.`, 'warning');
+            window.showNotification(`Not enough players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players.`, 'warning');
             return;
         }
 
@@ -1046,7 +997,7 @@ function autoBalance() {
                 state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
                 state.reservedPlayers = reservePlayers;
                 
-                showNotification(`${reservePlayers.length} low MMR player(s) moved to reserved list`, 'info');
+                window.showNotification(`${reservePlayers.length} low MMR player(s) moved to reserved list`, 'info');
             } else {
                 // No reserve players, all players are in teams
                 const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
@@ -1066,7 +1017,7 @@ function autoBalance() {
                 state.availablePlayers = allPlayers.filter(p => !leftoverPlayerIds.has(p.id));
                 state.reservedPlayers = [...(state.reservedPlayers || []), ...leftoverPlayers];
                 
-                showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
+                window.showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
             }
         }
 
@@ -1083,7 +1034,7 @@ function autoBalance() {
         };
 
         const methodName = methodNames[balanceMethod] || balanceMethod;
-        showNotification(`Created ${numTeams} balanced teams using ${methodName}!`, 'success');
+        window.showNotification(`Created ${numTeams} balanced teams using ${methodName}!`, 'success');
         
         // Update the teams display header to show the method used
         const teamsContainer = document.getElementById('teams-display');
@@ -1099,7 +1050,7 @@ function autoBalance() {
 
     } catch (error) {
         console.error('Error in auto balance:', error);
-        showNotification('Error creating balanced teams', 'error');
+        window.showNotification('Error creating balanced teams', 'error');
     } finally {
         // Reset execution guard and ensure button is re-enabled
         state.isAutoBalancing = false;
@@ -1505,7 +1456,7 @@ function restorePlayerFromReserved(playerIndex) {
         displayPlayersForBalancer(state.availablePlayers);
         displayReservedPlayers();
         
-        showNotification(`${player.name} restored to available players`, 'success');
+        window.showNotification(`${player.name} restored to available players`, 'success');
     }
 }
 
@@ -1528,7 +1479,7 @@ function clearTeams() {
         `;
     }
 
-    showNotification('Teams cleared', 'info');
+    window.showNotification('Teams cleared', 'info');
 }
 
 /**
@@ -1536,7 +1487,7 @@ function clearTeams() {
  */
 function exportTeams() {
     if (!state.balancedTeams || state.balancedTeams.length === 0) {
-        showNotification('No teams to export', 'warning');
+        window.showNotification('No teams to export', 'warning');
         return;
     }
     
@@ -1572,7 +1523,7 @@ function exportTeams() {
     
     URL.revokeObjectURL(url);
 
-    showNotification('Teams exported successfully', 'success');
+    window.showNotification('Teams exported successfully', 'success');
 }
 
 /**
@@ -1580,11 +1531,11 @@ function exportTeams() {
  */
 async function saveTeams() {
     if (state.isSaving) {
-        showNotification('Already saving teams...', 'warning');
+        window.showNotification('Already saving teams...', 'warning');
         return;
     }
     if (state.balancedTeams.length === 0) {
-        showNotification('No teams to save.', 'warning');
+        window.showNotification('No teams to save.', 'warning');
         return;
     }
 
@@ -1616,7 +1567,7 @@ async function saveTeams() {
         const result = await response.json();
 
         if (response.ok && result.success) {
-            showNotification('Teams saved successfully!', 'success');
+            window.showNotification('Teams saved successfully!', 'success');
             
             // Switch to the tournament bracket tab
             const tournamentTab = document.querySelector('a[href="#tournament-bracket"]');
@@ -1631,7 +1582,7 @@ async function saveTeams() {
         }
     } catch (error) {
         console.error('Error saving teams:', error);
-        showNotification(`Error: ${error.message}`, 'error');
+        window.showNotification(`Error: ${error.message}`, 'error');
     } finally {
         state.isSaving = false;
         if (saveButton) {
@@ -1653,7 +1604,7 @@ function setupTeamBalancerRegistrationListener() {
             // Reload players to reflect any new availability
             if (state.currentSessionId) {
                 loadPlayersForBalancer();
-                showNotification('Team balancer refreshed due to registration changes', 'info');
+                window.showNotification('Team balancer refreshed due to registration changes', 'info');
             }
         });
     };
@@ -1720,7 +1671,7 @@ window.cleanupTeamBalancer = cleanupTeamBalancer;
  */
 function loadPlayersFromTeams() {
     if (!state.balancedTeams || state.balancedTeams.length === 0) {
-        showNotification('No teams to load players from', 'warning');
+        window.showNotification('No teams to load players from', 'warning');
         return;
     }
 
@@ -1728,7 +1679,7 @@ function loadPlayersFromTeams() {
     const playersFromTeams = state.balancedTeams.flatMap(team => team.players);
     
     if (playersFromTeams.length === 0) {
-        showNotification('No players found in teams', 'warning');
+        window.showNotification('No players found in teams', 'warning');
         return;
     }
 
@@ -1753,7 +1704,7 @@ function loadPlayersFromTeams() {
     displayReservedPlayers();
     displayBalancedTeams();
     
-    showNotification(`Loaded ${addedCount} players from teams back to available list`, 'success');
+    window.showNotification(`Loaded ${addedCount} players from teams back to available list`, 'success');
 }
 
 /**
@@ -1777,7 +1728,7 @@ async function deleteTournamentSession(sessionId, buttonElement) {
         const result = await response.json();
 
         if (response.ok && result.success) {
-            showNotification('Tournament deleted successfully.', 'success');
+            window.showNotification('Tournament deleted successfully.', 'success');
             // Reload sessions to update the UI
             loadRegistrationSessions();
         } else {
@@ -1786,7 +1737,7 @@ async function deleteTournamentSession(sessionId, buttonElement) {
 
     } catch (error) {
         console.error('Error deleting tournament session:', error);
-        showNotification(error.message, 'error');
+        window.showNotification(error.message, 'error');
         buttonElement.disabled = false;
         buttonElement.innerHTML = '<i class="bi bi-trash"></i>';
     }
