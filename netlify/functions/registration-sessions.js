@@ -143,11 +143,19 @@ async function handleGet(event, adminRole, adminUserId, headers) {
       found: !!session,
       sessionId: sessionId
     });
-    return {
-      statusCode: session ? 200 : 404,
-      headers,
-      body: JSON.stringify(session || { error: 'Session not found' })
-    };
+    if (session) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, session })
+      };
+    } else {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ success: false, message: 'Session not found' })
+      };
+    }
   } else {
     // Superadmin gets all sessions, regular admins get only their own
     const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
