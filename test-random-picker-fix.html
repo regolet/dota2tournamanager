@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Picker Fix Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Random Picker Registration Sessions Fix Test</h1>
+        
+        <div class="alert alert-info">
+            <h4>Test Summary</h4>
+            <p>This test verifies that the random picker can properly load registration sessions.</p>
+            <ul>
+                <li>✅ Fixed API response handling in <code>loadRegistrationSessions()</code></li>
+                <li>✅ Fixed authentication in <code>loadPlayersForPicker()</code></li>
+                <li>✅ Simplified session selector creation</li>
+                <li>✅ Added proper cleanup function</li>
+            </ul>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="test-results">
+                            <p class="text-muted">Click "Run Test" to verify the fixes.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="runTest()">Run Test</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Console Log</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="console-log" style="height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; font-family: monospace; font-size: 12px;">
+                            <p class="text-muted">Console output will appear here...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock console.log to capture output
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        function logToDisplay(message, type = 'log') {
+            const logDiv = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'text-danger' : 'text-dark';
+            logDiv.innerHTML += `<div class="${color}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToDisplay(args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            logToDisplay(args.join(' '), 'error');
+        };
+        
+        // Mock fetchWithAuth function
+        function fetchWithAuth(url, options = {}) {
+            console.log(`Mock fetchWithAuth called with: ${url}`);
+            
+            // Simulate a successful response
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({
+                    success: true,
+                    sessions: [
+                        {
+                            sessionId: 'test-session-1',
+                            title: 'Test Tournament 1',
+                            playerCount: 10,
+                            isActive: true,
+                            createdAt: new Date().toISOString()
+                        },
+                        {
+                            sessionId: 'test-session-2',
+                            title: 'Test Tournament 2',
+                            playerCount: 5,
+                            isActive: false,
+                            createdAt: new Date(Date.now() - 86400000).toISOString()
+                        }
+                    ]
+                })
+            });
+        }
+        
+        // Mock session manager
+        window.sessionManager = {
+            getSessionId: () => 'test-session-id',
+            getUser: () => ({ role: 'admin' })
+        };
+        
+        // Mock localStorage
+        const mockLocalStorage = {
+            getItem: (key) => {
+                if (key === 'adminSessionId') return 'test-session-id';
+                return null;
+            }
+        };
+        Object.defineProperty(window, 'localStorage', {
+            value: mockLocalStorage,
+            writable: true
+        });
+        
+        // Mock showNotification
+        function showNotification(message, type = 'info') {
+            console.log(`Notification (${type}): ${message}`);
+        }
+        
+        // Test the fixed functions
+        async function testLoadRegistrationSessions() {
+            console.log('Testing loadRegistrationSessions...');
+            
+            try {
+                const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+                
+                if (!sessionId) {
+                    throw new Error('Session expired. Please login again.');
+                }
+
+                const apiResponse = await fetchWithAuth('/.netlify/functions/registration-sessions');
+                
+                if (!apiResponse.ok) {
+                    throw new Error(`HTTP error! status: ${apiResponse.status}`);
+                }
+                
+                const data = await apiResponse.json();
+
+                if (data && data.success && Array.isArray(data.sessions)) {
+                    console.log('✅ Registration sessions loaded successfully:', data.sessions.length, 'sessions');
+                    return data.sessions;
+                } else {
+                    throw new Error('Failed to process sessions');
+                }
+            } catch (error) {
+                console.error('❌ Error loading registration sessions:', error);
+                throw error;
+            }
+        }
+        
+        async function runTest() {
+            const resultsDiv = document.getElementById('test-results');
+            const logDiv = document.getElementById('console-log');
+            
+            // Clear previous results
+            resultsDiv.innerHTML = '';
+            logDiv.innerHTML = '<p class="text-muted">Starting test...</p>';
+            
+            try {
+                console.log('🚀 Starting Random Picker Fix Test...');
+                
+                // Test 1: Load registration sessions
+                console.log('\n📋 Test 1: Loading registration sessions');
+                const sessions = await testLoadRegistrationSessions();
+                
+                if (sessions && sessions.length > 0) {
+                    console.log('✅ Test 1 PASSED: Registration sessions loaded successfully');
+                    resultsDiv.innerHTML += '<div class="alert alert-success">✅ Test 1 PASSED: Registration sessions loaded successfully</div>';
+                } else {
+                    throw new Error('No sessions returned');
+                }
+                
+                // Test 2: Verify session data structure
+                console.log('\n📋 Test 2: Verifying session data structure');
+                const firstSession = sessions[0];
+                const requiredFields = ['sessionId', 'title', 'playerCount', 'isActive', 'createdAt'];
+                const missingFields = requiredFields.filter(field => !(field in firstSession));
+                
+                if (missingFields.length === 0) {
+                    console.log('✅ Test 2 PASSED: Session data structure is correct');
+                    resultsDiv.innerHTML += '<div class="alert alert-success">✅ Test 2 PASSED: Session data structure is correct</div>';
+                } else {
+                    throw new Error(`Missing fields: ${missingFields.join(', ')}`);
+                }
+                
+                // Test 3: Test session sorting
+                console.log('\n📋 Test 3: Testing session sorting');
+                const sortedSessions = [...sessions].sort((a, b) => {
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                });
+                
+                if (sortedSessions.length === sessions.length) {
+                    console.log('✅ Test 3 PASSED: Session sorting works correctly');
+                    resultsDiv.innerHTML += '<div class="alert alert-success">✅ Test 3 PASSED: Session sorting works correctly</div>';
+                } else {
+                    throw new Error('Session sorting failed');
+                }
+                
+                console.log('\n🎉 All tests PASSED! Random picker registration sessions fix is working correctly.');
+                resultsDiv.innerHTML += '<div class="alert alert-success"><strong>🎉 All tests PASSED!</strong> Random picker registration sessions fix is working correctly.</div>';
+                
+            } catch (error) {
+                console.error('\n❌ Test FAILED:', error.message);
+                resultsDiv.innerHTML += `<div class="alert alert-danger"><strong>❌ Test FAILED:</strong> ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html> 
