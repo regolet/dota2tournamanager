@@ -923,26 +923,18 @@ function autoBalance() {
 
         // Create a clean copy of available players for this execution
         const allPlayers = [...state.availablePlayers];
-        const reservedPlayers = [...(state.reservedPlayers || [])];
         
-        // For methods that handle their own reserve logic, combine all players
-        let playersForTeams, numTeams;
-        
-        if (balanceMethod === 'highRanked' || balanceMethod === 'perfectMmr' || balanceMethod === 'highLowShuffle') {
-            // Combine all players for fresh randomization
-            playersForTeams = [...allPlayers, ...reservedPlayers];
-            numTeams = Math.floor(playersForTeams.length / teamSize);
-        } else {
-            // Other methods exclude already reserved players
-            playersForTeams = [...allPlayers];
-            numTeams = Math.floor(playersForTeams.length / teamSize);
-        }
-        
+        // Always reset reservedPlayers before generating teams
+        state.reservedPlayers = [];
+
+        // For all methods, use only availablePlayers as the pool
+        let playersForTeams = [...allPlayers];
+        let numTeams = Math.floor(playersForTeams.length / teamSize);
+
         if (playersForTeams.length === 0) {
             window.showNotification('No players available for team generation.', 'warning');
             return;
         }
-        
         if (numTeams < 2) {
             window.showNotification(`Not enough players for ${teamSize}v${teamSize} teams. Need at least ${teamSize * 2} players.`, 'warning');
             return;
@@ -950,8 +942,6 @@ function autoBalance() {
 
         // Clear existing teams completely
         state.balancedTeams = [];
-        
-        // Initialize teams
         for (let i = 0; i < numTeams; i++) {
             state.balancedTeams.push({
                 name: `Team ${i + 1}`,
@@ -962,41 +952,21 @@ function autoBalance() {
 
         // Distribute players based on selected balance method
         const reservePlayers = distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
-        
-        // Handle reserve logic based on method
-        if (balanceMethod === 'highRanked' || balanceMethod === 'perfectMmr' || balanceMethod === 'highLowShuffle') {
-            // These methods handle their own reserve logic and return reserve players
-            if (reservePlayers && reservePlayers.length > 0) {
-                // Update available and reserved players based on what's in teams vs reserves
-                const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
-                const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
-                
-                // Update available and reserved players
-                state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
-                state.reservedPlayers = reservePlayers;
-                
-                window.showNotification(`${reservePlayers.length} low MMR player(s) moved to reserved list`, 'info');
-            } else {
-                // No reserve players, all players are in teams
-                const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
-                const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
-                
-                state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
-                state.reservedPlayers = [];
-            }
+
+        // Handle reserve logic for all methods
+        if (reservePlayers && reservePlayers.length > 0) {
+            // Update available and reserved players based on what's in teams vs reserves
+            const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
+            const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
+            state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
+            state.reservedPlayers = reservePlayers;
+            window.showNotification(`${reservePlayers.length} low MMR player(s) moved to reserved list`, 'info');
         } else {
-            // Other methods - handle leftover players
-            const playersUsedInTeams = state.balancedTeams.reduce((total, team) => total + team.players.length, 0);
-            const leftoverPlayers = playersForTeams.slice(playersUsedInTeams);
-            
-            if (leftoverPlayers.length > 0) {
-                // Move leftover players to reserved list
-                const leftoverPlayerIds = new Set(leftoverPlayers.map(p => p.id));
-                state.availablePlayers = allPlayers.filter(p => !leftoverPlayerIds.has(p.id));
-                state.reservedPlayers = [...(state.reservedPlayers || []), ...leftoverPlayers];
-                
-                window.showNotification(`${leftoverPlayers.length} leftover player(s) moved to reserved list`, 'info');
-            }
+            // No reserve players, all players are in teams
+            const playersUsedInTeams = state.balancedTeams.flatMap(team => team.players);
+            const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
+            state.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
+            state.reservedPlayers = [];
         }
 
         // Update all displays at once (much more efficient)
