@@ -30,6 +30,9 @@ async function waitForElement(id, maxAttempts = 10, interval = 100) {
     });
 }
 
+let registrationInitAttempts = 0;
+const MAX_REGISTRATION_INIT_ATTEMPTS = 10;
+
 // Initialize registration module
 async function initRegistration() {
     try {
@@ -40,8 +43,19 @@ async function initRegistration() {
         }
         console.log('🚀 Registration: Setting up event listeners...');
         setupEventListeners();
-        // Wait for the table body to exist before loading sessions
-        await waitForElement('registration-sessions-table-body', 20, 100);
+        try {
+            await waitForElement('registration-sessions-table-body', 20, 100);
+        } catch (e) {
+            registrationInitAttempts++;
+            if (registrationInitAttempts < MAX_REGISTRATION_INIT_ATTEMPTS) {
+                console.warn('Registration: Table body not found, retrying initRegistration...');
+                setTimeout(initRegistration, 200);
+                return;
+            } else {
+                console.error('Registration: Table body not found after multiple attempts. Giving up.');
+                return;
+            }
+        }
         console.log('🚀 Registration: Loading registration sessions...');
         await loadRegistrationSessions();
         state.initialized = true;
