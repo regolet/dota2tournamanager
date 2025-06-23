@@ -41,27 +41,40 @@ export async function handler(event, context) {
         const { userId: adminUserId, role: adminRole } = session;
 
         if (event.httpMethod === 'POST') {
-            const clientData = JSON.parse(event.body);
-            
-            const dbPayload = {
-                id: clientData.id,
-                admin_user_id: adminUserId,
-                team_set_id: clientData.team_set_id,
-                tournament_data: clientData // Pass the entire client object as the data
-            };
-
-            const result = await saveTournament(dbPayload);
-
-            if (result.success) {
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify(result),
-                    headers
+            try {
+                const clientData = JSON.parse(event.body);
+                console.log('Received tournament data:', JSON.stringify(clientData, null, 2));
+                
+                const dbPayload = {
+                    id: clientData.id,
+                    admin_user_id: adminUserId,
+                    team_set_id: clientData.team_set_id,
+                    tournament_data: clientData // Pass the entire client object as the data
                 };
-            } else {
+
+                console.log('Saving tournament with payload:', JSON.stringify(dbPayload, null, 2));
+                const result = await saveTournament(dbPayload);
+                console.log('Save tournament result:', result);
+
+                if (result.success) {
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify(result),
+                        headers
+                    };
+                } else {
+                    console.error('Tournament save failed:', result.message);
+                    return {
+                        statusCode: 500,
+                        body: JSON.stringify({ message: result.message }),
+                        headers
+                    };
+                }
+            } catch (error) {
+                console.error('Error in POST tournament:', error);
                 return {
                     statusCode: 500,
-                    body: JSON.stringify({ message: result.message }),
+                    body: JSON.stringify({ message: 'Error saving tournament', error: error.message }),
                     headers
                 };
             }

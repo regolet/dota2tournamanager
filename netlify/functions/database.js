@@ -1627,12 +1627,15 @@ export async function deleteTeamConfiguration(teamSetId) {
 // Tournament Bracket operations
 export async function saveTournament(tournamentData) {
   try {
+    console.log('[DB] Starting saveTournament with data:', JSON.stringify(tournamentData, null, 2));
+    
     await initializeDatabase();
     
     const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
 
     // Validate input
     if (!id || !tournament_data) {
+      console.error('[DB] Missing required fields:', { id, hasTournamentData: !!tournament_data });
       return { success: false, message: 'Tournament ID and data are required.' };
     }
 
@@ -1643,8 +1646,12 @@ export async function saveTournament(tournamentData) {
     } else if (typeof tournament_data === 'string') {
       tournamentDataString = tournament_data;
     } else {
+      console.error('[DB] Invalid tournament_data type:', typeof tournament_data);
       return { success: false, message: 'Tournament data must be an object or string.' };
     }
+
+    console.log('[DB] Attempting to insert tournament with ID:', id);
+    console.log('[DB] Tournament data string length:', tournamentDataString.length);
 
     const result = await sql`
       INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
@@ -1656,10 +1663,42 @@ export async function saveTournament(tournamentData) {
         updated_at = NOW()
     `;
 
+    console.log('[DB] Tournament saved successfully:', result);
     return { success: true, id };
   } catch (error) {
     console.error('[DB] Error saving tournament:', error);
-    return { success: false, message: 'Error saving tournament' };
+    
+    // Check if it's a table not found error
+    if (error.message && (error.message.includes('relation "tournaments" does not exist') || 
+                         error.message.includes('table') || 
+                         error.message.includes('does not exist'))) {
+      console.log('[DB] Tournaments table does not exist - reinitializing');
+      try {
+        await initializeDatabase();
+        console.log('[DB] Reinitialized - retrying save');
+        
+        const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
+        let tournamentDataString = typeof tournament_data === 'object' ? JSON.stringify(tournament_data) : tournament_data;
+        
+        const result = await sql`
+          INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
+          VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournamentDataString}, NOW(), NOW())
+          ON CONFLICT (id) 
+          DO UPDATE SET
+            tournament_data = EXCLUDED.tournament_data,
+            team_set_id = EXCLUDED.team_set_id,
+            updated_at = NOW()
+        `;
+        
+        console.log('[DB] Tournament saved successfully on retry:', result);
+        return { success: true, id };
+      } catch (retryError) {
+        console.error('[DB] Error on retry:', retryError);
+        return { success: false, message: 'Database initialization failed: ' + retryError.message };
+      }
+    }
+    
+    return { success: false, message: 'Error saving tournament: ' + error.message };
   }
 }
 
