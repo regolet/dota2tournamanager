@@ -63,7 +63,7 @@ function showWelcomeNotificationOnce() {
         navigationState.hasShownWelcomeNotification = true;
         // Add a delay to ensure content is loaded
         setTimeout(() => {
-            window.showNotification('System ready! Content loaded successfully.', 'success');
+            // window.showNotification('System ready! Content loaded successfully.', 'success');
         }, 1500);
     }
 }
