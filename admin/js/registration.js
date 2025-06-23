@@ -66,7 +66,7 @@ async function initRegistration() {
         }
         
         // Event delegation for dynamically created buttons
-        const tableBody = document.getElementById('registration-sessions-table');
+        const tableBody = document.getElementById('registration-sessions-table-body');
         if (tableBody) {
             tableBody.addEventListener('click', function(e) {
                 const target = e.target.closest('button');
@@ -95,7 +95,7 @@ async function initRegistration() {
     async function loadRegistrationSessions() {
         try {
             console.log('🔄 Registration: Starting loadRegistrationSessions...');
-            const tableBody = document.getElementById('registration-sessions-table');
+            const tableBody = document.getElementById('registration-sessions-table-body');
             if (tableBody) {
                 tableBody.innerHTML = `
                     <tr>
@@ -129,7 +129,7 @@ async function initRegistration() {
             }
         } catch (error) {
             window.utils.handleRegistrationSessionError(error, 'in loadRegistrationSessions');
-            const tableBody = document.getElementById('registration-sessions-table');
+            const tableBody = document.getElementById('registration-sessions-table-body');
             if (tableBody) {
                 tableBody.innerHTML = `
                     <tr>
@@ -146,10 +146,10 @@ async function initRegistration() {
     }
     
     function displayRegistrationSessions() {
-        const tableBody = document.getElementById('registration-sessions-table');
+        const tableBody = document.getElementById('registration-sessions-table-body');
         
         if (!tableBody) {
-            console.error('Registration sessions table body not found');
+            console.warn('Registration sessions table body not found');
             return;
         }
         
