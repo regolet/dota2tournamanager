@@ -15,25 +15,37 @@
         initialized: false
     };
 
+// Utility to wait for an element to exist in the DOM
+async function waitForElement(id, maxAttempts = 10, interval = 100) {
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const check = () => {
+            const el = document.getElementById(id);
+            if (el) return resolve(el);
+            attempts++;
+            if (attempts >= maxAttempts) return reject(new Error('Element not found: ' + id));
+            setTimeout(check, interval);
+        };
+        check();
+    });
+}
+
 // Initialize registration module
 async function initRegistration() {
     try {
         console.log('🚀 Registration: Starting initRegistration...');
-        
         if (state.initialized) {
             console.log('🚀 Registration: Already initialized, skipping...');
             return;
         }
-
         console.log('🚀 Registration: Setting up event listeners...');
         setupEventListeners();
-        
+        // Wait for the table body to exist before loading sessions
+        await waitForElement('registration-sessions-table-body', 20, 100);
         console.log('🚀 Registration: Loading registration sessions...');
         await loadRegistrationSessions();
-        
         state.initialized = true;
         window.registrationModuleLoaded = true;
-        
         console.log('✅ Registration: Initialization complete');
     } catch (error) {
         console.error('❌ Registration: Error in initRegistration:', error);
