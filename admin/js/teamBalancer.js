@@ -921,13 +921,12 @@ function autoBalance() {
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
 
-        // Create a clean copy of available players for this execution
-        const allPlayers = [...state.availablePlayers];
-        
+        // Create a clean copy of all players for this execution (available + reserved)
+        const allPlayers = [...state.availablePlayers, ...(state.reservedPlayers || [])];
         // Always reset reservedPlayers before generating teams
         state.reservedPlayers = [];
 
-        // For all methods, use only availablePlayers as the pool
+        // For all methods, use allPlayers as the pool
         let playersForTeams = [...allPlayers];
         let numTeams = Math.floor(playersForTeams.length / teamSize);
 
