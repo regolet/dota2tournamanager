@@ -327,13 +327,18 @@ async function loadContentFromFile(filename, sectionId, title, initFunc = null) 
  */
 async function loadTeamBalancer() {
     updateActiveTab('team-balancer-tab');
-    return await window.adminApp.loadAndInitModule({
+    const result = await window.adminApp.loadAndInitModule({
         htmlFile: 'team-balancer.html',
         jsFile: 'js/teamBalancer.js',
         contentContainer: 'main-content',
         initFunction: 'initTeamBalancer',
         cleanupFunction: 'cleanupTeamBalancer'
     });
+    // Soft refresh: reload data if function exists
+    if (typeof window.refreshTeamBalancerData === 'function') {
+        window.refreshTeamBalancerData();
+    }
+    return result;
 }
 
 /**
