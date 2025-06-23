@@ -1284,6 +1284,21 @@ async function handleBulkImportSubmit(event) {
         // Update progress
         updateImportProgress(25, 'Sending data to server...');
         
+        // Debug: Log the exact payload being sent
+        console.log('=== BULK IMPORT DEBUG ===');
+        console.log('Method:', method);
+        console.log('Raw data:', data);
+        console.log('Parsed players:', players);
+        console.log('Players to import:', playersToImport);
+        console.log('Skip duplicates:', skipDuplicates);
+        console.log('Update existing:', updateExisting);
+        console.log('Payload being sent:', {
+            players: playersToImport,
+            skipDuplicates: skipDuplicates,
+            updateExisting: updateExisting
+        });
+        console.log('=== END DEBUG ===');
+        
         const response = await fetch('/api/masterlist/bulk-import', {
             method: 'POST',
             headers: {

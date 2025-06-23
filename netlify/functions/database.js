@@ -581,7 +581,9 @@ export async function addMasterlistPlayer(player) {
       nameTrimmedLength: player.name ? player.name.trim().length : 'null'
     });
 
-    if (!player.name || typeof player.name !== 'string' || player.name.trim().length < 2) {
+    // Enhanced validation - consistent with bulk import
+    const trimmedName = player.name ? player.name.trim() : '';
+    if (!trimmedName || trimmedName.length < 2) {
       console.log('Name validation failed:', {
         hasName: !!player.name,
         nameType: typeof player.name,
@@ -590,28 +592,43 @@ export async function addMasterlistPlayer(player) {
       throw new Error('Player must have a valid name (at least 2 characters)');
     }
     
-    if (!player.dota2id || typeof player.dota2id !== 'string' || !/^\d+$/.test(player.dota2id.trim())) {
-      throw new Error('Player must have a valid Dota 2 ID (numeric only)');
+    if (trimmedName.length > 50) {
+      throw new Error('Player name too long (max 50 characters)');
+    }
+    
+    const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
+    if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
+      throw new Error('Player must have a valid Dota 2 ID (6-20 digits)');
+    }
+    
+    // MMR validation
+    if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
+      throw new Error('Player must have a valid MMR (0-20000)');
+    }
+    
+    // Notes validation
+    if (player.notes && player.notes.length > 500) {
+      throw new Error('Player notes too long (max 500 characters)');
     }
     
     // Check if player already exists
     const existingPlayer = await sql`
       SELECT id, name, dota2id FROM masterlist 
-      WHERE dota2id = ${player.dota2id} OR LOWER(name) = LOWER(${player.name})
+      WHERE dota2id = ${trimmedDota2Id} OR LOWER(name) = LOWER(${trimmedName})
     `;
     
     if (existingPlayer.length > 0) {
       const existing = existingPlayer[0];
-      if (existing.dota2id === player.dota2id) {
-        throw new Error(`A player with Dota 2 ID "${player.dota2id}" already exists in the masterlist (${existing.name}).`);
+      if (existing.dota2id === trimmedDota2Id) {
+        throw new Error(`A player with Dota 2 ID "${trimmedDota2Id}" already exists in the masterlist (${existing.name}).`);
       } else {
-        throw new Error(`A player with name "${player.name}" already exists in the masterlist.`);
+        throw new Error(`A player with name "${trimmedName}" already exists in the masterlist.`);
       }
     }
     
     const result = await sql`
       INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes)
-      VALUES (${player.name}, ${player.dota2id}, ${player.mmr || 0}, ${player.team || ''}, ${player.achievements || ''}, ${player.notes || ''})
+      VALUES (${trimmedName}, ${trimmedDota2Id}, ${player.mmr || 0}, ${player.team || ''}, ${player.achievements || ''}, ${player.notes || ''})
       RETURNING *
     `;
     
@@ -639,31 +656,47 @@ export async function updateMasterlistPlayer(playerId, updates) {
   try {
     await initializeDatabase();
 
-    
     // Get default values from current record if not provided
     const { name, dota2id, mmr, team, achievements, notes } = updates;
     
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+    // Enhanced validation - consistent with bulk import
+    const trimmedName = name ? name.trim() : '';
+    if (!trimmedName || trimmedName.length < 2) {
       throw new Error('Player must have a valid name (at least 2 characters)');
     }
     
-    if (!dota2id || typeof dota2id !== 'string' || !/^\d+$/.test(dota2id.trim())) {
-      throw new Error('Player must have a valid Dota 2 ID (numeric only)');
+    if (trimmedName.length > 50) {
+      throw new Error('Player name too long (max 50 characters)');
+    }
+    
+    const trimmedDota2Id = dota2id ? dota2id.trim() : '';
+    if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
+      throw new Error('Player must have a valid Dota 2 ID (6-20 digits)');
+    }
+    
+    // MMR validation
+    if (typeof mmr !== 'number' || isNaN(mmr) || mmr < 0 || mmr > 20000) {
+      throw new Error('Player must have a valid MMR (0-20000)');
+    }
+    
+    // Notes validation
+    if (notes && notes.length > 500) {
+      throw new Error('Player notes too long (max 500 characters)');
     }
     
     // Check if another player already exists with same dota2id or name
     const existingPlayer = await sql`
       SELECT id, name, dota2id FROM masterlist 
-      WHERE (dota2id = ${dota2id} OR LOWER(name) = LOWER(${name})) 
+      WHERE (dota2id = ${trimmedDota2Id} OR LOWER(name) = LOWER(${trimmedName})) 
       AND id != ${parseInt(playerId)}
     `;
     
     if (existingPlayer.length > 0) {
       const existing = existingPlayer[0];
-      if (existing.dota2id === dota2id) {
-        throw new Error(`A different player with Dota 2 ID "${dota2id}" already exists in the masterlist (${existing.name}).`);
+      if (existing.dota2id === trimmedDota2Id) {
+        throw new Error(`A different player with Dota 2 ID "${trimmedDota2Id}" already exists in the masterlist (${existing.name}).`);
       } else {
-        throw new Error(`A different player with name "${name}" already exists in the masterlist.`);
+        throw new Error(`A different player with name "${trimmedName}" already exists in the masterlist.`);
       }
     }
     
@@ -671,8 +704,8 @@ export async function updateMasterlistPlayer(playerId, updates) {
     const result = await sql`
       UPDATE masterlist 
       SET 
-        name = ${name},
-        dota2id = ${dota2id},
+        name = ${trimmedName},
+        dota2id = ${trimmedDota2Id},
         mmr = ${mmr || 0},
         team = ${team || ''},
         achievements = ${achievements || ''},
