@@ -70,21 +70,27 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Validate each player
+    // Validate each player and filter out invalid ones
+    const validPlayers = [];
     const validationErrors = [];
     players.forEach((player, index) => {
       if (!player.name || typeof player.name !== 'string' || player.name.trim().length < 2) {
         validationErrors.push(`Player ${index + 1}: Invalid name`);
+        return;
       }
       if (!player.dota2id || typeof player.dota2id !== 'string' || !/^\d+$/.test(player.dota2id)) {
         validationErrors.push(`Player ${index + 1}: Invalid Dota2 ID`);
+        return;
       }
-      if (!player.mmr || typeof player.mmr !== 'number' || player.mmr < 0 || player.mmr > 20000) {
+      if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
         validationErrors.push(`Player ${index + 1}: Invalid MMR (must be 0-20000)`);
+        return;
       }
+      validPlayers.push(player);
     });
+    const skippedInvalid = players.length - validPlayers.length;
     
-    if (validationErrors.length > 0) {
+    if (validPlayers.length === 0) {
       return {
         statusCode: 400,
         headers: {
@@ -93,7 +99,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          message: 'Validation errors found',
+          message: 'No valid players to import',
           errors: validationErrors
         })
       };
@@ -109,7 +115,7 @@ export const handler = async (event, context) => {
     let skipped = 0;
     const errors = [];
     
-    for (const player of players) {
+    for (const player of validPlayers) {
       try {
         const playerData = {
           name: player.name.trim(),
@@ -149,7 +155,7 @@ export const handler = async (event, context) => {
       }
     }
     
-    console.log(`Bulk import completed: ${added} added, ${updated} updated, ${skipped} skipped`);
+    console.log(`Bulk import completed: ${added} added, ${updated} updated, ${skipped} skipped, ${skippedInvalid} invalid`);
     
     return {
       statusCode: 200,
@@ -163,7 +169,8 @@ export const handler = async (event, context) => {
         added: added,
         updated: updated,
         skipped: skipped,
-        errors: errors,
+        skippedInvalid: skippedInvalid,
+        errors: errors.concat(validationErrors),
         total: players.length,
         timestamp: new Date().toISOString()
       })
