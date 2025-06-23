@@ -13,6 +13,78 @@ let currentSessionId = null;
 let registrationSessions = [];
 let allPlayers = [];
 
+// Add fetchWithAuth function if not already available
+if (typeof fetchWithAuth === 'undefined') {
+    async function fetchWithAuth(url, options = {}) {
+        try {
+            const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+            
+            if (!sessionId) {
+                throw new Error('No session ID found. Please login again.');
+            }
+
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['x-session-id'] = sessionId;
+
+            const response = await fetch(url, options);
+            
+            // Handle different response types
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorData.error || errorMessage;
+                } catch (e) {
+                    // If response is not JSON, use status text
+                }
+
+                // Handle specific error cases
+                if (response.status === 401) {
+                    showNotification('Session expired. Please login again.', 'error');
+                    // Redirect to login after a delay
+                    setTimeout(() => {
+                        window.location.href = '/admin/login.html';
+                    }, 2000);
+                    throw new Error('Session expired');
+                } else if (response.status === 403) {
+                    showNotification('Access denied. You do not have permission for this action.', 'warning');
+                    throw new Error('Access denied');
+                } else if (response.status === 404) {
+                    showNotification('Resource not found. Please check the URL.', 'error');
+                    throw new Error('Resource not found');
+                } else if (response.status >= 500) {
+                    showNotification('Server error. Please try again later.', 'error');
+                    throw new Error('Server error');
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            // Try to parse JSON response
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return await response.json();
+            } else {
+                return response;
+            }
+        } catch (error) {
+            console.error('fetchWithAuth error:', error);
+            
+            // Show user-friendly error message
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                showNotification('Network error. Please check your connection.', 'error');
+            } else if (!error.message.includes('Session expired') && !error.message.includes('Access denied')) {
+                showNotification(`Request failed: ${error.message}`, 'error');
+            }
+            
+            throw error;
+        }
+    }
+}
+
 // Utility function: showNotification
 function showNotification(message, type = 'info') {
     const alert = document.createElement('div');
@@ -207,13 +279,7 @@ async function createSessionSelector() {
  */
 async function loadRegistrationSessions() {
     try {
-        const apiResponse = await fetchWithAuth('/.netlify/functions/registration-sessions');
-
-        if (!apiResponse.ok) {
-            throw new Error(`HTTP error! status: ${apiResponse.status}`);
-        }
-        
-        const data = await apiResponse.json();
+        const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
 
         if (data && data.success && data.sessions) {
             registrationSessions = data.sessions;
@@ -357,30 +423,13 @@ async function loadPlayers(forceRefresh = false) {
             `;
         }
 
-        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-        
-        if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
-                    return;
-                }
-
         // Build API URL with session filter
         let apiUrl = '/.netlify/functions/api-players?includeSessionInfo=true';
         if (currentSessionId) {
             apiUrl += `&sessionId=${currentSessionId}`;
         }
 
-        const response = await fetch(apiUrl, {
-            headers: {
-                'x-session-id': sessionId
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to load players: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await fetchWithAuth(apiUrl);
 
         if (data.success && Array.isArray(data.players)) {
             allPlayers = data.players;
@@ -613,13 +662,6 @@ async function saveNewPlayer() {
             saveButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Adding...';
         }
 
-        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-        
-        if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
-            return;
-        }
-
         const newPlayerData = {
             name: playerName,
             dota2id: playerDota2id,
@@ -627,16 +669,13 @@ async function saveNewPlayer() {
             registrationSessionId: currentSessionId
         };
 
-        const response = await fetch('/.netlify/functions/add-player', {
+        const data = await fetchWithAuth('/.netlify/functions/add-player', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'x-session-id': sessionId
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(newPlayerData)
         });
-
-        const data = await response.json();
 
         if (data.success) {
             showNotification('Player added successfully', 'success');
@@ -738,30 +777,20 @@ async function savePlayerChanges() {
             saveButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
         }
 
-        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-        
-        if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
-        return;
-    }
-    
         const updateData = {
             playerId: playerId,
-        name: playerName,
+            name: playerName,
             dota2id: playerDota2id,
             peakmmr: parseInt(playerPeakmmr) || 0
         };
 
-        const response = await fetch('/.netlify/functions/api-players', {
+        const data = await fetchWithAuth('/.netlify/functions/api-players', {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'x-session-id': sessionId
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(updateData)
         });
-
-        const data = await response.json();
 
         if (data.success) {
             showNotification('Player updated successfully', 'success');
@@ -802,18 +831,13 @@ async function deletePlayer(playerId) {
     }
     
     try {
-        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-        
-        const response = await fetch('/.netlify/functions/api-players', {
+        const data = await fetchWithAuth('/.netlify/functions/api-players', {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json',
-                'x-session-id': sessionId
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ playerId })
         });
-        
-        const data = await response.json();
         
         if (data.success) {
             showNotification('Player deleted successfully', 'success');
@@ -849,29 +873,19 @@ async function confirmRemoveAllPlayers() {
     }
     
     try {
-        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-        
-        if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
-        return;
-    }
-    
         // Show loading notification
         showNotification('Removing all players...', 'info');
 
-        const response = await fetch('/.netlify/functions/api-players', {
+        const data = await fetchWithAuth('/.netlify/functions/api-players', {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json',
-                'x-session-id': sessionId
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 action: 'removeAll',
                 sessionId: currentSessionId 
             })
         });
-        
-        const data = await response.json();
 
         if (data.success) {
             showNotification(`Successfully removed ${playerCount} players`, 'success');
