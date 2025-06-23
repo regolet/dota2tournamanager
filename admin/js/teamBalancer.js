@@ -750,7 +750,7 @@ async function loadPlayersForBalancer() {
         state.availablePlayers = [];
         
         // Clear existing teams when loading new players
-        clearTeams();
+        clearTeams(true);
 
         const loadingElement = document.getElementById('loading-indicator');
         if (loadingElement) {
@@ -1465,7 +1465,7 @@ function restorePlayerFromReserved(playerIndex) {
 /**
  * Clear all teams
  */
-function clearTeams() {
+function clearTeams(suppressNotification = false) {
     state.balancedTeams = [];
     
     const teamsContainer = document.getElementById('teams-display') || // Fixed ID to match HTML
@@ -1480,8 +1480,9 @@ function clearTeams() {
             </div>
         `;
     }
-
-    window.showNotification('Teams cleared', 'info');
+    if (!suppressNotification) {
+        window.showNotification('Teams cleared', 'info');
+    }
 }
 
 /**
