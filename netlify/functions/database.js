@@ -571,7 +571,22 @@ export async function addMasterlistPlayer(player) {
   try {
     await initializeDatabase();
 
+    // Debug logging
+    console.log('addMasterlistPlayer called with:', {
+      player: player,
+      name: player.name,
+      nameType: typeof player.name,
+      nameLength: player.name ? player.name.length : 'null',
+      nameTrimmed: player.name ? player.name.trim() : 'null',
+      nameTrimmedLength: player.name ? player.name.trim().length : 'null'
+    });
+
     if (!player.name || typeof player.name !== 'string' || player.name.trim().length < 2) {
+      console.log('Name validation failed:', {
+        hasName: !!player.name,
+        nameType: typeof player.name,
+        nameTrimLength: player.name ? player.name.trim().length : 'null'
+      });
       throw new Error('Player must have a valid name (at least 2 characters)');
     }
     

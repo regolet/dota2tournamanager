@@ -75,28 +75,39 @@ export const handler = async (event, context) => {
     const validPlayers = [];
     const validationErrors = [];
     players.forEach((player, index) => {
-      // More robust name validation
-      if (!player.name || typeof player.name !== 'string' || player.name.trim().length < 2) {
-        validationErrors.push(`Player ${index + 1}: Invalid name (must be at least 2 characters)`);
+      // Debug logging
+      console.log(`Validating player ${index + 1}:`, {
+        name: player.name,
+        nameType: typeof player.name,
+        nameLength: player.name ? player.name.length : 'null',
+        nameTrimmed: player.name ? player.name.trim() : 'null',
+        nameTrimmedLength: player.name ? player.name.trim().length : 'null'
+      });
+      
+      // More robust name validation - trim first, then validate
+      const trimmedName = player.name ? player.name.trim() : '';
+      if (!trimmedName || trimmedName.length < 2) {
+        validationErrors.push(`Player ${index + 1}: Invalid name (must be at least 2 characters) - got: "${player.name}"`);
         return;
       }
       
       // More robust Dota2 ID validation
-      if (!player.dota2id || typeof player.dota2id !== 'string' || !/^\d+$/.test(player.dota2id.trim())) {
-        validationErrors.push(`Player ${index + 1}: Invalid Dota2 ID (must be numeric)`);
+      const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
+      if (!trimmedDota2Id || !/^\d+$/.test(trimmedDota2Id)) {
+        validationErrors.push(`Player ${index + 1}: Invalid Dota2 ID (must be numeric) - got: "${player.dota2id}"`);
         return;
       }
       
       // More robust MMR validation
       if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
-        validationErrors.push(`Player ${index + 1}: Invalid MMR (must be 0-20000)`);
+        validationErrors.push(`Player ${index + 1}: Invalid MMR (must be 0-20000) - got: ${player.mmr}`);
         return;
       }
       
       // Add trimmed and validated player data
       validPlayers.push({
-        name: player.name,
-        dota2id: player.dota2id,
+        name: trimmedName,
+        dota2id: trimmedDota2Id,
         mmr: parseInt(player.mmr),
         notes: player.notes || ''
       });
@@ -116,12 +127,21 @@ export const handler = async (event, context) => {
     
     for (const player of validPlayers) {
       try {
+        // Debug logging for player processing
+        console.log(`Processing player:`, {
+          originalName: player.name,
+          originalDota2Id: player.dota2id,
+          originalMmr: player.mmr
+        });
+        
         const playerData = {
-          name: player.name.trim(),
-          dota2id: player.dota2id.trim(),
+          name: player.name, // Already trimmed in validation
+          dota2id: player.dota2id, // Already trimmed in validation
           mmr: parseInt(player.mmr),
           notes: player.notes || ''
         };
+        
+        console.log(`Player data for database:`, playerData);
         
         const exists = existingDota2Ids.has(playerData.dota2id);
         
