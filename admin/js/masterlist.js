@@ -5,6 +5,8 @@ window.masterlistPlayers = window.masterlistPlayers || [];
 window.currentEditingPlayer = window.currentEditingPlayer || null;
 window.masterlistStats = window.masterlistStats || {};
 
+let isMasterlistLoading = false;
+
 // Initialize masterlist module
 async function initMasterlist() {
     try {
@@ -89,6 +91,8 @@ function setupMasterlistEventListeners() {
 
 // Load masterlist data from API
 async function loadMasterlistData() {
+    if (isMasterlistLoading) return;
+    isMasterlistLoading = true;
     try {
         window.showNotification('Loading masterlist...', 'info');
         
@@ -129,6 +133,8 @@ async function loadMasterlistData() {
         
         // Show empty state
         renderMasterlistTable([]);
+    } finally {
+        isMasterlistLoading = false;
     }
 }
 
@@ -616,4 +622,7 @@ function escapeHtml(text) {
 // Make functions globally available
 window.initMasterlist = initMasterlist;
 window.editMasterlistPlayer = editMasterlistPlayer;
-window.deleteMasterlistPlayer = deleteMasterlistPlayer; 
+window.deleteMasterlistPlayer = deleteMasterlistPlayer;
+window.refreshMasterlistData = function() {
+    loadMasterlistData();
+}; 

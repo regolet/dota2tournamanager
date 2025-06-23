@@ -707,4 +707,8 @@ async function initRegistration() {
     window.resetRegistrationModule = resetRegistrationModule;
     window.notifyPlayerListsToRefresh = notifyPlayerListsToRefresh;
     
+    window.refreshRegistrationData = function() {
+        loadRegistrationSessions();
+    };
+    
 })(); 

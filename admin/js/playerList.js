@@ -419,6 +419,7 @@ async function loadPlayers(forceRefresh = false) {
             if (sessionPlayerCount) {
                 sessionPlayerCount.textContent = `${allPlayers.length} players`;
             }
+            window.showNotification(`Loaded ${allPlayers.length} players`, 'success');
         } else {
             allPlayers = [];
             displayPlayers([]);
