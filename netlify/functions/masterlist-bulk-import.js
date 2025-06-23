@@ -1,9 +1,10 @@
-// Masterlist bulk import function using Neon DB
+// Enhanced Masterlist bulk import function using Neon DB
 import { getMasterlist, addMasterlistPlayer, updateMasterlistPlayer } from './database.js';
 
 export const handler = async (event, context) => {
   try {
-    console.log('RAW BODY:', event.body); // Debug: log the raw request body
+    console.log('Enhanced bulk import started');
+    
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
       return {
@@ -56,6 +57,8 @@ export const handler = async (event, context) => {
     const requestBody = JSON.parse(event.body || '{}');
     const { players, skipDuplicates = true, updateExisting = false } = requestBody;
     
+    console.log(`Processing ${players?.length || 0} players for bulk import`);
+    
     // Validate input
     if (!players || !Array.isArray(players) || players.length === 0) {
       return {
@@ -71,110 +74,22 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Validate each player and filter out invalid ones
-    const validPlayers = [];
-    const validationErrors = [];
-    players.forEach((player, index) => {
-      // Debug logging
-      console.log(`Validating player ${index + 1}:`, {
-        name: player.name,
-        nameType: typeof player.name,
-        nameLength: player.name ? player.name.length : 'null',
-        nameTrimmed: player.name ? player.name.trim() : 'null',
-        nameTrimmedLength: player.name ? player.name.trim().length : 'null'
-      });
-      
-      // More robust name validation - trim first, then validate
-      const trimmedName = player.name ? player.name.trim() : '';
-      if (!trimmedName || trimmedName.length < 2) {
-        validationErrors.push(`Player ${index + 1}: Invalid name (must be at least 2 characters) - got: "${player.name}"`);
-        return;
-      }
-      
-      // More robust Dota2 ID validation
-      const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
-      if (!trimmedDota2Id || !/^\d+$/.test(trimmedDota2Id)) {
-        validationErrors.push(`Player ${index + 1}: Invalid Dota2 ID (must be numeric) - got: "${player.dota2id}"`);
-        return;
-      }
-      
-      // More robust MMR validation
-      if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
-        validationErrors.push(`Player ${index + 1}: Invalid MMR (must be 0-20000) - got: ${player.mmr}`);
-        return;
-      }
-      
-      // Add trimmed and validated player data
-      validPlayers.push({
-        name: trimmedName,
-        dota2id: trimmedDota2Id,
-        mmr: parseInt(player.mmr),
-        notes: player.notes || ''
-      });
-    });
-    const skippedInvalid = players.length - validPlayers.length;
+    // Enhanced validation with detailed error reporting
+    const validationResults = validatePlayers(players);
+    const { validPlayers, validationErrors } = validationResults;
     
-    // Always process valid players, never fail the whole batch
+    console.log(`Validation complete: ${validPlayers.length} valid, ${validationErrors.length} errors`);
+    
     // Get existing players for duplicate checking
     const existingPlayers = await getMasterlist();
     const existingDota2Ids = new Set(existingPlayers.map(p => p.dota2id));
     
-    // Process players
-    let added = 0;
-    let updated = 0;
-    let skipped = 0;
-    const errors = [];
+    // Process players with enhanced error handling
+    const processResults = await processPlayers(validPlayers, existingPlayers, existingDota2Ids, skipDuplicates, updateExisting);
     
-    for (const player of validPlayers) {
-      try {
-        // Debug logging for player processing
-        console.log(`Processing player:`, {
-          originalName: player.name,
-          originalDota2Id: player.dota2id,
-          originalMmr: player.mmr
-        });
-        
-        const playerData = {
-          name: player.name, // Already trimmed in validation
-          dota2id: player.dota2id, // Already trimmed in validation
-          mmr: parseInt(player.mmr),
-          notes: player.notes || ''
-        };
-        
-        console.log(`Player data for database:`, playerData);
-        
-        const exists = existingDota2Ids.has(playerData.dota2id);
-        
-        if (exists) {
-          if (skipDuplicates && !updateExisting) {
-            skipped++;
-            continue;
-          }
-          
-          if (updateExisting) {
-            // Find existing player and update
-            const existingPlayer = existingPlayers.find(p => p.dota2id === playerData.dota2id);
-            if (existingPlayer) {
-              await updateMasterlistPlayer(existingPlayer.id, playerData);
-              updated++;
-            } else {
-              skipped++;
-            }
-          }
-        } else {
-          // Add new player
-          await addMasterlistPlayer(playerData);
-          added++;
-          existingDota2Ids.add(playerData.dota2id); // Add to set to prevent duplicates in same batch
-        }
-        
-      } catch (error) {
-        console.error(`Error processing player ${player.name}:`, error);
-        errors.push(`Failed to process ${player.name}: ${error.message}`);
-      }
-    }
+    const { added, updated, skipped, processingErrors } = processResults;
     
-    console.log(`Bulk import completed: ${added} added, ${updated} updated, ${skipped} skipped, ${skippedInvalid} invalid`);
+    console.log(`Bulk import completed: ${added} added, ${updated} updated, ${skipped} skipped, ${validationErrors.length} validation errors, ${processingErrors.length} processing errors`);
     
     return {
       statusCode: 200,
@@ -188,15 +103,16 @@ export const handler = async (event, context) => {
         added: added,
         updated: updated,
         skipped: skipped,
-        skippedInvalid: skippedInvalid,
-        errors: errors.concat(validationErrors),
+        validationErrors: validationErrors,
+        processingErrors: processingErrors,
         total: players.length,
+        valid: validPlayers.length,
         timestamp: new Date().toISOString()
       })
     };
     
   } catch (error) {
-    console.error('Bulk import API error:', error);
+    console.error('Enhanced bulk import API error:', error);
     return {
       statusCode: 500,
       headers: {
@@ -211,4 +127,127 @@ export const handler = async (event, context) => {
       })
     };
   }
-}; 
+};
+
+// Enhanced player validation
+function validatePlayers(players) {
+  const validPlayers = [];
+  const validationErrors = [];
+  
+  players.forEach((player, index) => {
+    const playerIndex = index + 1;
+    
+    // Debug logging for validation
+    console.log(`Validating player ${playerIndex}:`, {
+      name: player.name,
+      nameType: typeof player.name,
+      nameLength: player.name ? player.name.length : 'null',
+      nameTrimmed: player.name ? player.name.trim() : 'null',
+      nameTrimmedLength: player.name ? player.name.trim().length : 'null'
+    });
+    
+    // Enhanced name validation
+    const trimmedName = player.name ? player.name.trim() : '';
+    if (!trimmedName || trimmedName.length < 2) {
+      validationErrors.push(`Player ${playerIndex}: Invalid name (must be at least 2 characters) - got: "${player.name}"`);
+      return;
+    }
+    
+    if (trimmedName.length > 50) {
+      validationErrors.push(`Player ${playerIndex}: Name too long (max 50 characters) - got: "${player.name}"`);
+      return;
+    }
+    
+    // Enhanced Dota2 ID validation
+    const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
+    if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
+      validationErrors.push(`Player ${playerIndex}: Invalid Dota2 ID (must be 6-20 digits) - got: "${player.dota2id}"`);
+      return;
+    }
+    
+    // Enhanced MMR validation
+    if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
+      validationErrors.push(`Player ${playerIndex}: Invalid MMR (must be 0-20000) - got: ${player.mmr}`);
+      return;
+    }
+    
+    // Enhanced notes validation
+    if (player.notes && player.notes.length > 500) {
+      validationErrors.push(`Player ${playerIndex}: Notes too long (max 500 characters)`);
+      return;
+    }
+    
+    // Add validated player data
+    validPlayers.push({
+      name: trimmedName,
+      dota2id: trimmedDota2Id,
+      mmr: parseInt(player.mmr),
+      notes: player.notes ? player.notes.trim() : '',
+      originalIndex: playerIndex
+    });
+  });
+  
+  return { validPlayers, validationErrors };
+}
+
+// Enhanced player processing
+async function processPlayers(validPlayers, existingPlayers, existingDota2Ids, skipDuplicates, updateExisting) {
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+  const processingErrors = [];
+  
+  for (const player of validPlayers) {
+    try {
+      console.log(`Processing player:`, {
+        originalName: player.name,
+        originalDota2Id: player.dota2id,
+        originalMmr: player.mmr
+      });
+      
+      const playerData = {
+        name: player.name,
+        dota2id: player.dota2id,
+        mmr: parseInt(player.mmr),
+        notes: player.notes || ''
+      };
+      
+      console.log(`Player data for database:`, playerData);
+      
+      const exists = existingDota2Ids.has(playerData.dota2id);
+      
+      if (exists) {
+        if (skipDuplicates && !updateExisting) {
+          console.log(`Skipping existing player: ${playerData.name} (${playerData.dota2id})`);
+          skipped++;
+          continue;
+        }
+        
+        if (updateExisting) {
+          // Find existing player and update
+          const existingPlayer = existingPlayers.find(p => p.dota2id === playerData.dota2id);
+          if (existingPlayer) {
+            console.log(`Updating existing player: ${playerData.name} (${playerData.dota2id})`);
+            await updateMasterlistPlayer(existingPlayer.id, playerData);
+            updated++;
+          } else {
+            console.log(`Player not found for update: ${playerData.name} (${playerData.dota2id})`);
+            skipped++;
+          }
+        }
+      } else {
+        // Add new player
+        console.log(`Adding new player: ${playerData.name} (${playerData.dota2id})`);
+        await addMasterlistPlayer(playerData);
+        added++;
+        existingDota2Ids.add(playerData.dota2id); // Add to set to prevent duplicates in same batch
+      }
+      
+    } catch (error) {
+      console.error(`Error processing player ${player.name}:`, error);
+      processingErrors.push(`Failed to process ${player.name} (${player.dota2id}): ${error.message}`);
+    }
+  }
+  
+  return { added, updated, skipped, processingErrors };
+} 

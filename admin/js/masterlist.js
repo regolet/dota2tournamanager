@@ -647,25 +647,200 @@ window.initMasterlist = initMasterlist;
 window.editMasterlistPlayer = editMasterlistPlayer;
 window.deleteMasterlistPlayer = deleteMasterlistPlayer;
 
-// Bulk Import Functions
+// Enhanced Bulk Import Functions
+let bulkImportData = {
+    players: [],
+    errors: [],
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalPages: 1,
+    isPaginated: true
+};
 
-// Show bulk import modal
+// Show bulk import modal with enhanced features
 function showBulkImportModal() {
     const modal = new bootstrap.Modal(document.getElementById('bulk-import-masterlist-modal'));
     modal.show();
     
-    // Clear previous data
-    document.getElementById('bulk-import-data').value = '';
-    document.getElementById('bulk-import-preview').style.display = 'none';
-    document.getElementById('bulk-import-alert').style.display = 'none';
-    document.getElementById('execute-bulk-import-btn').disabled = true;
+    // Reset form state
+    resetBulkImportForm();
+    
+    // Set up event listeners
+    setupBulkImportEventListeners();
 }
 
-// Parse bulk import data
-function parseBulkImportData(data) {
-    const lines = data.trim().split('\n');
+// Reset bulk import form
+function resetBulkImportForm() {
+    // Reset form fields
+    document.getElementById('bulk-import-data').value = '';
+    document.getElementById('bulk-import-file').value = '';
+    
+    // Reset options
+    document.getElementById('bulk-import-skip-duplicates').checked = true;
+    document.getElementById('bulk-import-update-existing').checked = false;
+    document.getElementById('bulk-import-validate-only').checked = false;
+    
+    // Reset method to tab
+    document.getElementById('method-tab').checked = true;
+    updateImportMethodUI('tab');
+    
+    // Hide all sections
+    hideAllBulkImportSections();
+    
+    // Reset data
+    bulkImportData = {
+        players: [],
+        errors: [],
+        currentPage: 1,
+        itemsPerPage: 10,
+        totalPages: 1,
+        isPaginated: true
+    };
+}
+
+// Setup bulk import event listeners
+function setupBulkImportEventListeners() {
+    // Import method change
+    document.querySelectorAll('input[name="import-method"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateImportMethodUI(e.target.value);
+        });
+    });
+    
+    // File input change
+    document.getElementById('bulk-import-file').addEventListener('change', handleFileUpload);
+    
+    // Preview button
+    document.getElementById('preview-bulk-import-btn').addEventListener('click', handleBulkImportPreview);
+    
+    // Validate only button
+    document.getElementById('validate-bulk-import-btn').addEventListener('click', handleValidateOnly);
+    
+    // Form submission
+    document.getElementById('bulk-import-form').addEventListener('submit', handleBulkImportSubmit);
+    
+    // Preview navigation
+    document.getElementById('preview-prev-page').addEventListener('click', () => changePreviewPage(-1));
+    document.getElementById('preview-next-page').addEventListener('click', () => changePreviewPage(1));
+    document.getElementById('preview-all-btn').addEventListener('click', () => togglePreviewMode(false));
+    document.getElementById('preview-paginated-btn').addEventListener('click', () => togglePreviewMode(true));
+}
+
+// Update UI based on import method
+function updateImportMethodUI(method) {
+    const textSection = document.getElementById('text-input-section');
+    const fileSection = document.getElementById('file-input-section');
+    const inputHint = document.getElementById('input-hint');
+    
+    // Hide all instruction divs
+    document.querySelectorAll('#format-instructions > div').forEach(div => {
+        div.style.display = 'none';
+    });
+    
+    // Show relevant instruction
+    document.getElementById(`${method}-instructions`).style.display = 'block';
+    
+    // Update input sections
+    if (method === 'file') {
+        textSection.style.display = 'none';
+        fileSection.style.display = 'block';
+    } else {
+        textSection.style.display = 'block';
+        fileSection.style.display = 'none';
+        
+        // Update placeholder and hint
+        const textarea = document.getElementById('bulk-import-data');
+        switch (method) {
+            case 'tab':
+                textarea.placeholder = 'Paste tab-separated data here...\nFormat: PlayerName\tDota2ID\tMMR\tNotes(optional)';
+                inputHint.textContent = 'Use Tab character to separate fields. Each player on a new line.';
+                break;
+            case 'csv':
+                textarea.placeholder = 'Paste CSV data here...\nFormat: PlayerName,Dota2ID,MMR,Notes(optional)';
+                inputHint.textContent = 'Use comma to separate fields. Each player on a new line.';
+                break;
+            case 'json':
+                textarea.placeholder = 'Paste JSON data here...\nFormat: [{"name": "...", "dota2id": "...", "mmr": 0, "notes": "..."}]';
+                inputHint.textContent = 'Paste valid JSON array of player objects.';
+                break;
+        }
+    }
+}
+
+// Handle file upload
+async function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+        showBulkImportAlert('File size exceeds 5MB limit.', 'danger');
+        event.target.value = '';
+        return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['.txt', '.csv', '.json', 'text/plain', 'text/csv', 'application/json'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    const isValidType = allowedTypes.includes(file.type) || allowedTypes.includes(fileExtension);
+    
+    if (!isValidType) {
+        showBulkImportAlert('Invalid file type. Please upload .txt, .csv, or .json files.', 'danger');
+        event.target.value = '';
+        return;
+    }
+    
+    try {
+        const text = await file.text();
+        document.getElementById('bulk-import-data').value = text;
+        
+        // Auto-detect format based on file extension
+        if (fileExtension === '.csv') {
+            document.getElementById('method-csv').checked = true;
+            updateImportMethodUI('csv');
+        } else if (fileExtension === '.json') {
+            document.getElementById('method-json').checked = true;
+            updateImportMethodUI('json');
+        } else {
+            document.getElementById('method-tab').checked = true;
+            updateImportMethodUI('tab');
+        }
+        
+        showBulkImportAlert('File loaded successfully!', 'success');
+    } catch (error) {
+        showBulkImportAlert('Error reading file: ' + error.message, 'danger');
+        event.target.value = '';
+    }
+}
+
+// Parse bulk import data based on selected method
+function parseBulkImportData(data, method) {
     const players = [];
     const errors = [];
+    
+    try {
+        switch (method) {
+            case 'tab':
+                return parseTabSeparatedData(data);
+            case 'csv':
+                return parseCSVData(data);
+            case 'json':
+                return parseJSONData(data);
+            default:
+                errors.push('Invalid import method selected.');
+                return { players, errors };
+        }
+    } catch (error) {
+        errors.push(`Parsing error: ${error.message}`);
+        return { players, errors };
+    }
+}
+
+// Parse tab-separated data
+function parseTabSeparatedData(data) {
+    const players = [];
+    const errors = [];
+    const lines = data.trim().split('\n');
     
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
@@ -675,102 +850,304 @@ function parseBulkImportData(data) {
         
         const parts = trimmedLine.split('\t');
         
-        if (parts.length !== 3) {
-            errors.push(`Line ${lineNumber}: Invalid format. Expected 3 fields separated by tabs.`);
+        if (parts.length < 3) {
+            errors.push(`Line ${lineNumber}: Invalid format. Expected at least 3 fields (PlayerName, Dota2ID, MMR).`);
             return;
         }
         
-        const [name, dota2id, mmr] = parts.map(part => part.trim());
+        const [name, dota2id, mmr, notes] = parts.map(part => part.trim());
         
-        // Validate name
-        if (!name || name.length < 2) {
-            errors.push(`Line ${lineNumber}: Player name is too short or empty.`);
-            return;
+        // Validate and add player
+        const validationResult = validatePlayerData(name, dota2id, mmr, notes, lineNumber);
+        if (validationResult.isValid) {
+            players.push(validationResult.player);
+        } else {
+            errors.push(validationResult.error);
         }
-        
-        // Validate Dota2 ID
-        if (!dota2id || !/^\d+$/.test(dota2id)) {
-            errors.push(`Line ${lineNumber}: Invalid Dota2 ID. Must be numeric.`);
-            return;
-        }
-        
-        // Validate MMR
-        const mmrNum = parseInt(mmr);
-        if (isNaN(mmrNum) || mmrNum < 0 || mmrNum > 20000) {
-            errors.push(`Line ${lineNumber}: Invalid MMR. Must be between 0 and 20000.`);
-            return;
-        }
-        
-        players.push({
-            name: name,
-            dota2id: dota2id,
-            mmr: mmrNum,
-            lineNumber: lineNumber
-        });
     });
     
     return { players, errors };
 }
 
+// Parse CSV data
+function parseCSVData(data) {
+    const players = [];
+    const errors = [];
+    const lines = data.trim().split('\n');
+    
+    lines.forEach((line, index) => {
+        const lineNumber = index + 1;
+        const trimmedLine = line.trim();
+        
+        if (!trimmedLine) return; // Skip empty lines
+        
+        // Simple CSV parsing (handles quoted fields)
+        const parts = parseCSVLine(trimmedLine);
+        
+        if (parts.length < 3) {
+            errors.push(`Line ${lineNumber}: Invalid format. Expected at least 3 fields (PlayerName, Dota2ID, MMR).`);
+            return;
+        }
+        
+        const [name, dota2id, mmr, notes] = parts.map(part => part.trim());
+        
+        // Validate and add player
+        const validationResult = validatePlayerData(name, dota2id, mmr, notes, lineNumber);
+        if (validationResult.isValid) {
+            players.push(validationResult.player);
+        } else {
+            errors.push(validationResult.error);
+        }
+    });
+    
+    return { players, errors };
+}
+
+// Simple CSV line parser
+function parseCSVLine(line) {
+    const parts = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            parts.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    parts.push(current);
+    return parts;
+}
+
+// Parse JSON data
+function parseJSONData(data) {
+    const players = [];
+    const errors = [];
+    
+    try {
+        const jsonData = JSON.parse(data);
+        
+        if (!Array.isArray(jsonData)) {
+            errors.push('JSON data must be an array of player objects.');
+            return { players, errors };
+        }
+        
+        jsonData.forEach((player, index) => {
+            const lineNumber = index + 1;
+            
+            if (!player || typeof player !== 'object') {
+                errors.push(`Line ${lineNumber}: Invalid player object.`);
+                return;
+            }
+            
+            const { name, dota2id, mmr, notes } = player;
+            
+            // Validate and add player
+            const validationResult = validatePlayerData(name, dota2id, mmr, notes, lineNumber);
+            if (validationResult.isValid) {
+                players.push(validationResult.player);
+            } else {
+                errors.push(validationResult.error);
+            }
+        });
+        
+    } catch (error) {
+        errors.push(`JSON parsing error: ${error.message}`);
+    }
+    
+    return { players, errors };
+}
+
+// Validate player data
+function validatePlayerData(name, dota2id, mmr, notes, lineNumber) {
+    // Name validation
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+        return {
+            isValid: false,
+            error: `Line ${lineNumber}: Invalid name (must be at least 2 characters) - got: "${name}"`
+        };
+    }
+    
+    if (name.trim().length > 50) {
+        return {
+            isValid: false,
+            error: `Line ${lineNumber}: Name too long (max 50 characters) - got: "${name}"`
+        };
+    }
+    
+    // Dota2 ID validation
+    if (!dota2id || typeof dota2id !== 'string' || !/^\d{6,20}$/.test(dota2id.trim())) {
+        return {
+            isValid: false,
+            error: `Line ${lineNumber}: Invalid Dota2 ID (must be 6-20 digits) - got: "${dota2id}"`
+        };
+    }
+    
+    // MMR validation
+    const mmrNum = parseInt(mmr);
+    if (isNaN(mmrNum) || mmrNum < 0 || mmrNum > 20000) {
+        return {
+            isValid: false,
+            error: `Line ${lineNumber}: Invalid MMR (must be 0-20000) - got: ${mmr}`
+        };
+    }
+    
+    // Notes validation (optional)
+    if (notes && notes.length > 500) {
+        return {
+            isValid: false,
+            error: `Line ${lineNumber}: Notes too long (max 500 characters)`
+        };
+    }
+    
+    return {
+        isValid: true,
+        player: {
+            name: name.trim(),
+            dota2id: dota2id.trim(),
+            mmr: mmrNum,
+            notes: notes ? notes.trim() : '',
+            lineNumber: lineNumber
+        }
+    };
+}
+
 // Handle bulk import preview
 function handleBulkImportPreview() {
+    const method = document.querySelector('input[name="import-method"]:checked').value;
     const data = document.getElementById('bulk-import-data').value;
-    const { players, errors } = parseBulkImportData(data);
     
-    const alertElement = document.getElementById('bulk-import-alert');
-    const previewElement = document.getElementById('bulk-import-preview');
-    const executeBtn = document.getElementById('execute-bulk-import-btn');
-    
-    // Clear previous alerts
-    alertElement.style.display = 'none';
-    
-    if (errors.length > 0) {
-        alertElement.className = 'alert alert-danger';
-        alertElement.innerHTML = `
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            <strong>Validation Errors:</strong>
-            <ul class="mb-0 mt-2">
-                ${errors.map(error => `<li>${error}</li>`).join('')}
-            </ul>
-        `;
-        alertElement.style.display = 'block';
-        previewElement.style.display = 'none';
-        executeBtn.disabled = true;
+    if (!data.trim()) {
+        showBulkImportAlert('Please enter data to preview.', 'warning');
         return;
     }
     
-    if (players.length === 0) {
-        alertElement.className = 'alert alert-warning';
-        alertElement.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>No valid players found in the data.';
-        alertElement.style.display = 'block';
-        previewElement.style.display = 'none';
-        executeBtn.disabled = true;
+    const { players, errors } = parseBulkImportData(data, method);
+    
+    // Update global data
+    bulkImportData.players = players;
+    bulkImportData.errors = errors;
+    bulkImportData.currentPage = 1;
+    bulkImportData.totalPages = Math.ceil(players.length / bulkImportData.itemsPerPage);
+    
+    // Show results
+    showBulkImportResults(players, errors);
+}
+
+// Handle validate only
+function handleValidateOnly() {
+    const method = document.querySelector('input[name="import-method"]:checked').value;
+    const data = document.getElementById('bulk-import-data').value;
+    
+    if (!data.trim()) {
+        showBulkImportAlert('Please enter data to validate.', 'warning');
         return;
     }
+    
+    const { players, errors } = parseBulkImportData(data, method);
+    
+    // Show validation results
+    showBulkImportAlert(`Validation complete: ${players.length} valid players, ${errors.length} errors.`, 
+                       errors.length === 0 ? 'success' : 'warning');
+    
+    // Show detailed results
+    showBulkImportResults(players, errors);
+}
+
+// Show bulk import results
+function showBulkImportResults(players, errors) {
+    // Update statistics
+    updateBulkImportStats(players, errors);
     
     // Show preview
     renderBulkImportPreview(players);
-    previewElement.style.display = 'block';
-    executeBtn.disabled = false;
     
-    // Show success message
-    alertElement.className = 'alert alert-success';
-    alertElement.innerHTML = `
-        <i class="bi bi-check-circle me-2"></i>
-        <strong>Valid data found!</strong> ${players.length} players ready for import.
-    `;
-    alertElement.style.display = 'block';
+    // Show error details if any
+    if (errors.length > 0) {
+        renderErrorDetails(errors);
+    }
+    
+    // Enable/disable import button
+    const executeBtn = document.getElementById('execute-bulk-import-btn');
+    executeBtn.disabled = players.length === 0;
+    
+    // Show relevant sections
+    document.getElementById('import-stats').style.display = 'block';
+    document.getElementById('bulk-import-preview').style.display = 'block';
+    if (errors.length > 0) {
+        document.getElementById('error-details').style.display = 'block';
+    }
+}
+
+// Update bulk import statistics
+function updateBulkImportStats(players, errors) {
+    const existingPlayers = window.masterlistPlayers || [];
+    const existingDota2Ids = new Set(existingPlayers.map(p => p.dota2id));
+    
+    let updates = 0;
+    let skipped = 0;
+    
+    players.forEach(player => {
+        if (existingDota2Ids.has(player.dota2id)) {
+            updates++;
+        } else {
+            skipped++;
+        }
+    });
+    
+    document.getElementById('stats-valid').textContent = players.length;
+    document.getElementById('stats-errors').textContent = errors.length;
+    document.getElementById('stats-updates').textContent = updates;
+    document.getElementById('stats-skipped').textContent = skipped;
 }
 
 // Render bulk import preview
 function renderBulkImportPreview(players) {
     const previewBody = document.getElementById('bulk-import-preview-body');
     const previewCount = document.getElementById('preview-count');
+    const previewRange = document.getElementById('preview-range');
+    const previewTotal = document.getElementById('preview-total');
     
     previewCount.textContent = players.length;
+    previewTotal.textContent = players.length;
     
-    previewBody.innerHTML = players.map(player => {
-        const existingPlayer = window.masterlistPlayers.find(p => p.dota2id === player.dota2id);
+    if (bulkImportData.isPaginated && players.length > bulkImportData.itemsPerPage) {
+        const start = (bulkImportData.currentPage - 1) * bulkImportData.itemsPerPage;
+        const end = Math.min(start + bulkImportData.itemsPerPage, players.length);
+        const pagePlayers = players.slice(start, end);
+        
+        previewRange.textContent = `${start + 1}-${end}`;
+        renderPreviewTable(pagePlayers, start + 1);
+        
+        // Update navigation buttons
+        document.getElementById('preview-prev-page').disabled = bulkImportData.currentPage === 1;
+        document.getElementById('preview-next-page').disabled = bulkImportData.currentPage === bulkImportData.totalPages;
+    } else {
+        previewRange.textContent = `1-${players.length}`;
+        renderPreviewTable(players, 1);
+        
+        // Disable navigation buttons
+        document.getElementById('preview-prev-page').disabled = true;
+        document.getElementById('preview-next-page').disabled = true;
+    }
+}
+
+// Render preview table
+function renderPreviewTable(players, startIndex) {
+    const previewBody = document.getElementById('bulk-import-preview-body');
+    const existingPlayers = window.masterlistPlayers || [];
+    const existingDota2Ids = new Set(existingPlayers.map(p => p.dota2id));
+    
+    previewBody.innerHTML = players.map((player, index) => {
+        const rowNumber = startIndex + index;
+        const existingPlayer = existingPlayers.find(p => p.dota2id === player.dota2id);
         let status = 'New';
         let statusClass = 'success';
         
@@ -781,65 +1158,121 @@ function renderBulkImportPreview(players) {
         
         return `
             <tr>
+                <td>${rowNumber}</td>
                 <td>${escapeHtml(player.name)}</td>
                 <td><code>${escapeHtml(player.dota2id)}</code></td>
-                <td>${player.mmr}</td>
+                <td>${player.mmr.toLocaleString()}</td>
+                <td>${escapeHtml(player.notes || '')}</td>
                 <td><span class="badge bg-${statusClass}">${status}</span></td>
             </tr>
         `;
     }).join('');
 }
 
-// Handle bulk import submission
+// Render error details
+function renderErrorDetails(errors) {
+    const errorBody = document.getElementById('error-details-body');
+    
+    errorBody.innerHTML = errors.map(error => {
+        const parts = error.split(': ');
+        const lineField = parts[0];
+        const errorMessage = parts.slice(1).join(': ');
+        
+        return `
+            <tr>
+                <td><code>${lineField}</code></td>
+                <td>Validation</td>
+                <td>${escapeHtml(errorMessage)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Change preview page
+function changePreviewPage(direction) {
+    const newPage = bulkImportData.currentPage + direction;
+    if (newPage >= 1 && newPage <= bulkImportData.totalPages) {
+        bulkImportData.currentPage = newPage;
+        renderBulkImportPreview(bulkImportData.players);
+    }
+}
+
+// Toggle preview mode
+function togglePreviewMode(isPaginated) {
+    bulkImportData.isPaginated = isPaginated;
+    bulkImportData.currentPage = 1;
+    renderBulkImportPreview(bulkImportData.players);
+}
+
+// Hide all bulk import sections
+function hideAllBulkImportSections() {
+    const sections = [
+        'import-progress',
+        'bulk-import-preview',
+        'import-stats',
+        'error-details',
+        'bulk-import-alert'
+    ];
+    
+    sections.forEach(sectionId => {
+        document.getElementById(sectionId).style.display = 'none';
+    });
+}
+
+// Show bulk import alert
+function showBulkImportAlert(message, type = 'info') {
+    const alertElement = document.getElementById('bulk-import-alert');
+    alertElement.className = `alert alert-${type}`;
+    alertElement.innerHTML = message;
+    alertElement.style.display = 'block';
+    
+    // Auto-hide success messages after 3 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            alertElement.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// Enhanced bulk import submission
 async function handleBulkImportSubmit(event) {
     event.preventDefault();
     
+    const method = document.querySelector('input[name="import-method"]:checked').value;
     const data = document.getElementById('bulk-import-data').value;
-    const { players, errors } = parseBulkImportData(data);
+    const validateOnly = document.getElementById('bulk-import-validate-only').checked;
     
-    // Only send valid players (as shown in preview) - improved validation
-    const validPlayers = players.filter(player => 
-        player.name && 
-        player.name.trim().length >= 2 && 
-        player.dota2id && 
-        player.dota2id.trim().length > 0 && 
-        !isNaN(player.mmr) && 
-        player.mmr >= 0 && 
-        player.mmr <= 20000
-    );
-    const skippedCount = players.length - validPlayers.length;
-    
-    if (errors.length > 0 || validPlayers.length === 0) {
-        handleBulkImportPreview();
+    if (!data.trim()) {
+        showBulkImportAlert('Please enter data to import.', 'warning');
         return;
     }
+    
+    const { players, errors } = parseBulkImportData(data, method);
+    
+    if (players.length === 0) {
+        showBulkImportAlert('No valid players found to import.', 'warning');
+        return;
+    }
+    
+    if (validateOnly) {
+        showBulkImportAlert(`Validation complete: ${players.length} valid players, ${errors.length} errors.`, 
+                           errors.length === 0 ? 'success' : 'warning');
+        return;
+    }
+    
+    // Show progress
+    showImportProgress();
     
     const skipDuplicates = document.getElementById('bulk-import-skip-duplicates').checked;
     const updateExisting = document.getElementById('bulk-import-update-existing').checked;
     
     // Prepare players for import
-    const playersToImport = validPlayers
-        .filter(player => {
-            const existingPlayer = window.masterlistPlayers.find(p => p.dota2id === player.dota2id);
-            if (existingPlayer) {
-                return updateExisting; // Only include if update existing is checked
-            }
-            return true; // Include new players
-        })
-        .map(player => ({
-            name: player.name,
-            dota2id: player.dota2id,
-            mmr: player.mmr,
-            notes: player.notes || ""
-        }));
-    
-    if (playersToImport.length === 0) {
-        const alertElement = document.getElementById('bulk-import-alert');
-        alertElement.className = 'alert alert-warning';
-        alertElement.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>No players to import. All players already exist and update existing is disabled.';
-        alertElement.style.display = 'block';
-        return;
-    }
+    const playersToImport = players.map(player => ({
+        name: player.name,
+        dota2id: player.dota2id,
+        mmr: player.mmr,
+        notes: player.notes || ""
+    }));
     
     // Disable submit button and show loading
     const executeBtn = document.getElementById('execute-bulk-import-btn');
@@ -848,8 +1281,8 @@ async function handleBulkImportSubmit(event) {
     executeBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Importing...';
     
     try {
-        // Debug: Log the payload being sent to the server
-        console.log('Payload sent to server:', playersToImport);
+        // Update progress
+        updateImportProgress(25, 'Sending data to server...');
         
         const response = await fetch('/api/masterlist/bulk-import', {
             method: 'POST',
@@ -864,21 +1297,28 @@ async function handleBulkImportSubmit(event) {
             })
         });
         
+        updateImportProgress(75, 'Processing import...');
+        
         const result = await response.json();
+        
+        updateImportProgress(100, 'Import completed!');
         
         if (result.success) {
             // Show success message
-            const alertElement = document.getElementById('bulk-import-alert');
-            let msg = `<i class="bi bi-check-circle me-2"></i><strong>Import successful!</strong><br>Added: ${result.added || 0} players<br>Updated: ${result.updated || 0} players<br>Skipped: ${result.skipped || 0} players`;
-            if (skippedCount > 0) {
-                msg += `<br><span class="text-warning">${skippedCount} player(s) were skipped due to missing/invalid data.</span>`;
+            let msg = `<i class="bi bi-check-circle me-2"></i><strong>Import successful!</strong><br>`;
+            msg += `Added: ${result.added || 0} players<br>`;
+            msg += `Updated: ${result.updated || 0} players<br>`;
+            msg += `Skipped: ${result.skipped || 0} players`;
+            
+            if (errors.length > 0) {
+                msg += `<br><span class="text-warning">${errors.length} player(s) had validation errors.</span>`;
             }
+            
             if (result.errors && result.errors.length > 0) {
                 msg += `<br><span class="text-danger">${result.errors.length} error(s) during import.</span>`;
             }
-            alertElement.className = 'alert alert-success';
-            alertElement.innerHTML = msg;
-            alertElement.style.display = 'block';
+            
+            showBulkImportAlert(msg, 'success');
             
             // Reload masterlist data
             await loadMasterlistData();
@@ -887,7 +1327,7 @@ async function handleBulkImportSubmit(event) {
             setTimeout(() => {
                 const modal = bootstrap.Modal.getInstance(document.getElementById('bulk-import-masterlist-modal'));
                 modal.hide();
-            }, 2000);
+            }, 3000);
             
         } else {
             throw new Error(result.message || 'Import failed');
@@ -895,18 +1335,33 @@ async function handleBulkImportSubmit(event) {
         
     } catch (error) {
         console.error('Bulk import error:', error);
-        
-        const alertElement = document.getElementById('bulk-import-alert');
-        alertElement.className = 'alert alert-danger';
-        alertElement.innerHTML = `
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            <strong>Import failed:</strong> ${error.message}
-        `;
-        alertElement.style.display = 'block';
+        showBulkImportAlert(`<i class="bi bi-exclamation-triangle me-2"></i><strong>Import failed:</strong> ${error.message}`, 'danger');
         
     } finally {
         // Re-enable submit button
         executeBtn.disabled = false;
         executeBtn.innerHTML = originalText;
+        
+        // Hide progress after a delay
+        setTimeout(() => {
+            document.getElementById('import-progress').style.display = 'none';
+        }, 2000);
     }
+}
+
+// Show import progress
+function showImportProgress() {
+    document.getElementById('import-progress').style.display = 'block';
+    updateImportProgress(0, 'Starting import...');
+}
+
+// Update import progress
+function updateImportProgress(percentage, text) {
+    const progressBar = document.getElementById('import-progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const progressPercentage = document.getElementById('progress-percentage');
+    
+    progressBar.style.width = `${percentage}%`;
+    progressText.textContent = text;
+    progressPercentage.textContent = `${percentage}%`;
 } 
