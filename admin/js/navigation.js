@@ -306,291 +306,104 @@ async function waitForElement(selector, maxAttempts = 10, interval = 100) {
  * @param {Function|null} initFunc - Optional initialization function to run after loading
  */
 async function loadContentFromFile(filename, sectionId, title, initFunc = null) {
-    // Loading content from file
-    const mainContent = document.getElementById('main-content');
-    if (!mainContent) {
-        // Main content container not found
-        return false;
-    }
+    // This function is deprecated and will be replaced by adminApp.loadAndInitModule
+    console.warn('loadContentFromFile is deprecated. Use loadAndInitModule instead.');
+    
+    // For backward compatibility, redirect to the new module loader
+    const jsFile = `js/${filename.replace('.html', '.js')}`;
+    const initFunctionName = initFunc ? initFunc.name : `init${filename.split('.')[0].charAt(0).toUpperCase() + filename.split('.')[0].slice(1)}`;
 
-    try {
-        // Show loading state
-        mainContent.classList.add('loading');
-        mainContent.innerHTML = `
-            <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <div class="ms-3">Loading ${title}...</div>
-            </div>`;
-
-        // Load the file
-        const response = await fetch(filename);
-        if (!response.ok) {
-            throw new Error(`Failed to load ${filename}: ${response.status} ${response.statusText}`);
-        }
-
-        // Get the HTML content
-        const htmlContent = await response.text();
-        // Received HTML content
-        
-        // Insert the HTML content
-        mainContent.innerHTML = htmlContent;
-        
-        // Update active tab
-        updateActiveTab(sectionId);
-        
-        // Wait for the DOM to be updated with a slightly longer delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // After DOM update, check if the section is actually in the document
-        // Special handling for registration which might use either ID
-        let sectionElement = null;
-        if (sectionId === 'registration' || sectionId === 'registration-manager') {
-            sectionElement = document.getElementById(sectionId) || 
-                           document.getElementById('registration-manager') ||
-                           document.getElementById('registration') ||
-                           document.querySelector(`section[id="${sectionId}"]`) ||
-                           document.querySelector(`section[id="registration-manager"]`) ||
-                           document.querySelector(`section[id="registration"]`) ||
-                           document.querySelector(`.${sectionId}`);
-        } else {
-            sectionElement = document.getElementById(sectionId) || 
-                           document.querySelector(`section[id="${sectionId}"]`) ||
-                           document.querySelector(`.${sectionId}`);
-        }
-                             
-        // Section found in DOM after update
-        
-        if (!sectionElement) {
-            // Section not found in DOM after content was loaded
-            // Load fallback HTML
-            try {
-                const fallbackResponse = await fetch('./fallback.html');
-                if (fallbackResponse.ok) {
-                    const fallbackContent = await fallbackResponse.text();
-                    mainContent.innerHTML = fallbackContent;
-                    // Loaded fallback HTML content
-                }
-            } catch (fallbackError) {
-                // Error loading fallback HTML
-            }
-            throw new Error(`Could not find section #${sectionId} in loaded content`);
-        }
-        
-        // Run initialization function if provided
-        if (initFunc) {
-            // Allow a longer delay for layout to stabilize before initializing
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            try {
-                // Initializing
-                const success = await initFunc();
-                
-                // Only consider explicit false as failure
-                if (success === false) {
-                    throw new Error(`${title} initialization returned false`);
-                }
-                
-                // Initialized successfully
-                return true;
-            } catch (error) {
-                // Error initializing
-                
-                // Load fallback HTML on initialization failure
-                try {
-                    const fallbackResponse = await fetch('./fallback.html');
-                    if (fallbackResponse.ok) {
-                        const fallbackContent = await fallbackResponse.text();
-                        mainContent.innerHTML = fallbackContent;
-                        // Loaded fallback HTML content after initialization failure
-                    }
-                } catch (fallbackError) {
-                    // Error loading fallback HTML
-                }
-                
-                throw error;
-            }
-        }
-        
-        return true;
-    } catch (error) {
-        // Error loading
-        
-        // Try to load fallback HTML
-        try {
-            const fallbackResponse = await fetch('./fallback.html');
-            if (fallbackResponse.ok) {
-                const fallbackContent = await fallbackResponse.text();
-                mainContent.innerHTML = fallbackContent;
-                // Loaded fallback HTML content after error
-            } else {
-                showError(mainContent, `Error Loading ${title}`, 
-                    `Failed to load ${title}. ${error.message}`);
-            }
-        } catch (fallbackError) {
-            showError(mainContent, `Error Loading ${title}`, 
-                `Failed to load ${title}. ${error.message}`);
-        }
-        
-        return false;
-    } finally {
-        mainContent.classList.remove('loading');
-    }
+    return await window.adminApp.loadAndInitModule({
+        htmlFile: filename,
+        jsFile: jsFile,
+        contentContainer: 'main-content',
+        initFunction: initFunctionName,
+        cleanupFunction: `cleanup${filename.split('.')[0].charAt(0).toUpperCase() + filename.split('.')[0].slice(1)}`
+    });
 }
 
 /**
- * Loads and displays the team balancer section
+ * Load the Team Balancer tab
  */
 async function loadTeamBalancer() {
-    // Clean up registration resources if switching from registration tab
-    if (typeof cleanupRegistration === 'function') {
-        cleanupRegistration();
-    }
-
-    // Update active tab immediately
-    updateActiveTab('team-balancer');
-
-    // Load team balancer template and JavaScript
-    const result = await loadTabContent('./team-balancer.html', 'main-content', '/admin/js/teamBalancer.js');
-    
-    return result;
+    updateActiveTab('team-balancer-tab');
+    return await window.adminApp.loadAndInitModule({
+        htmlFile: 'team-balancer.html',
+        jsFile: 'js/teamBalancer.js',
+        contentContainer: 'main-content',
+        initFunction: 'initTeamBalancer',
+        cleanupFunction: 'cleanupTeamBalancer'
+    });
 }
 
 /**
- * Loads and displays the random picker section
+ * Load the Random Picker tab
  */
 async function loadRandomPicker() {
-    // Clean up registration resources if switching from registration tab
-    if (typeof cleanupRegistration === 'function') {
-        cleanupRegistration();
-    }
-
-    // Update active tab immediately
-    updateActiveTab('random-picker');
-
-    // Load random picker template and JavaScript
-    const result = await loadTabContent('./random-picker.html', 'main-content', '/admin/js/randompicker.js');
-    
-    return result;
+    updateActiveTab('random-picker-tab');
+     return await window.adminApp.loadAndInitModule({
+        htmlFile: 'random-picker.html',
+        jsFile: 'js/randomPicker.js',
+        contentContainer: 'main-content',
+        initFunction: 'initRandomPicker',
+        cleanupFunction: 'cleanupRandomPicker'
+    });
 }
 
 /**
- * Loads and displays the masterlist section
+ * Load the Masterlist tab
  */
 async function loadMasterlist() {
-    // Clean up registration resources if switching from registration tab
-    if (typeof cleanupRegistration === 'function') {
-        cleanupRegistration();
-    }
-
-    // Update active tab immediately
-    updateActiveTab('masterlist');
-
-    // Load masterlist template and JavaScript
-    const result = await loadTabContent('./masterlist.html', 'main-content', '/admin/js/masterlist.js');
-    
-    return result;
+    updateActiveTab('masterlist-tab');
+    return await window.adminApp.loadAndInitModule({
+        htmlFile: 'masterlist.html',
+        jsFile: 'js/masterlist.js',
+        contentContainer: 'main-content',
+        initFunction: 'initMasterlist',
+        cleanupFunction: 'cleanupMasterlist'
+    });
 }
 
 /**
- * Loads and displays the player list section
+ * Load the Player List tab
  */
 async function loadPlayerList() {
-    // Clean up registration resources if switching from registration tab
-    if (typeof cleanupRegistration === 'function') {
-        cleanupRegistration();
-    }
-
-    // Update active tab immediately
-    updateActiveTab('player-list');
-
-    // Load player list template and JavaScript
-    const result = await loadTabContent('./player-list.html', 'main-content', '/admin/js/playerList.js');
-    
-    // After template and script are loaded, initialize the player list
-    if (result) {
-        if (typeof window.initPlayerListWhenReady === 'function') {
-            await window.initPlayerListWhenReady();
-        } else if (typeof window.initPlayerList === 'function') {
-            // Fallback to direct initialization with delay
-            await new Promise(resolve => setTimeout(resolve, 50));
-            await window.initPlayerList();
-        }
-    }
-    
-    return result;
+    updateActiveTab('player-list-tab');
+    return await window.adminApp.loadAndInitModule({
+        htmlFile: 'player-list.html',
+        jsFile: 'js/playerList.js',
+        contentContainer: 'main-content',
+        initFunction: 'initPlayerList',
+        cleanupFunction: 'cleanupPlayerList'
+    });
 }
 
 /**
- * Loads and displays the registration section
+ * Load the Registration tab
  */
 async function loadRegistration() {
-    try {
-        console.log('🚀 Navigation: Starting loadRegistration...');
-        
-        // Update active tab immediately
-        updateActiveTab('registration-manager');
-        
-        console.log('🚀 Navigation: Loading registration tab content...');
-        
-        // Load registration template and JavaScript
-        const result = await loadTabContent('./registration.html', 'main-content', '/admin/js/registration.js');
-        
-        console.log('🚀 Navigation: Registration tab content loaded:', {
-            success: result,
-            hasInitRegistration: typeof window.initRegistration === 'function'
-        });
-        
-        // After Registration is loaded, initialize the registration system
-        if (result) {
-            console.log('🚀 Navigation: Initializing registration module...');
-            // Wait a moment for DOM to be fully ready
-            setTimeout(async () => {
-                if (typeof window.initRegistration === 'function') {
-                    console.log('🚀 Navigation: Calling window.initRegistration()...');
-                    await window.initRegistration();
-                } else {
-                    console.error('❌ Navigation: window.initRegistration function not found');
-                }
-            }, 100);
-        } else {
-            console.error('❌ Navigation: Failed to load registration tab content');
-        }
-        
-        return result;
-    } catch (error) {
-        console.error('❌ Navigation: Error in loadRegistration:', error);
-        return false;
-    }
+    updateActiveTab('registration-tab');
+    return await window.adminApp.loadAndInitModule({
+        htmlFile: 'registration.html',
+        jsFile: 'js/registration.js',
+        contentContainer: 'main-content',
+        initFunction: 'initRegistration',
+        cleanupFunction: 'cleanupRegistration'
+    });
 }
 
 /**
- * Loads and displays the tournament bracket section
+ * Load the Tournament Bracket tab
  */
 async function loadTournamentBracket() {
-    // Clean up registration resources if switching from registration tab
-    if (typeof cleanupRegistration === 'function') {
-        cleanupRegistration();
-    }
-
-    // Update active tab immediately
-    updateActiveTab('tournament-bracket');
-
-    // Load tournament bracket template and JavaScript
-    const result = await loadTabContent('./tournament-bracket.html', 'main-content', '/admin/js/tournamentBrackets.js');
-    
-    // After Tournament Bracket is loaded, initialize the tournament bracket system
-    if (result) {
-        // Wait a moment for DOM to be fully ready
-        setTimeout(async () => {
-            if (typeof window.initTournamentBracketPage === 'function') {
-                await window.initTournamentBracketPage();
-            }
-        }, 100);
-    }
-    
-    return result;
+    updateActiveTab('tournament-bracket-tab');
+    return await window.adminApp.loadAndInitModule({
+        htmlFile: 'tournament-bracket.html',
+        jsFile: 'js/tournamentBrackets.js',
+        contentContainer: 'main-content',
+        initFunction: 'initTournamentBrackets',
+        cleanupFunction: 'cleanupTournamentBrackets'
+    });
 }
 
 /**

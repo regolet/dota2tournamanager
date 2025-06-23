@@ -98,32 +98,32 @@
                 <div class="collapse navbar-collapse" id="mainNavbar">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item">
-                            <a class="nav-link" href="javascript:void(0);" onclick="loadTeamBalancer()" id="team-balancer-tab">
+                            <a class="nav-link" href="#" id="team-balancer-tab">
                                 <i class="bi bi-people-fill me-2"></i>Team Balancer
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="javascript:void(0);" onclick="loadTournamentBracket()" id="tournament-bracket-tab">
+                            <a class="nav-link" href="#" id="tournament-bracket-tab">
                                 <i class="bi bi-trophy me-2"></i>Tournament Bracket
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="javascript:void(0);" onclick="loadRandomPicker()" id="random-picker-tab">
+                            <a class="nav-link" href="#" id="random-picker-tab">
                                 <i class="bi bi-shuffle me-2"></i>Random Picker
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" id="player-list-tab" data-section="player-list">
+                            <a class="nav-link" href="#" id="player-list-tab">
                                 <i class="bi bi-list-ul me-1"></i>Player List
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" id="registration-tab" data-section="registration-manager">
+                            <a class="nav-link" href="#" id="registration-tab">
                                 <i class="bi bi-clipboard2-check me-1"></i>Registration
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" id="masterlist-tab" data-section="masterlist">
+                            <a class="nav-link" href="#" id="masterlist-tab">
                                 <i class="bi bi-shield-check me-1"></i>Masterlist
                             </a>
                         </li>
@@ -302,54 +302,22 @@
     <!-- Bootstrap 5 JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Load quickfix first to prevent localStorage interference -->
+    <!-- Core Application Scripts -->
+    <script src="js/sessionManager.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/navigation.js"></script>
 
+    <!--
+        Feature-specific scripts are now loaded dynamically by main.js/navigation.js
+        The following are no longer needed here:
+        <script src="js/teamBalancer.js"></script>
+        <script src="js/randompicker.js"></script>
+        <script src="js/playerList.js"></script>
+        <script src="js/masterlist.js"></script>
+        <script src="js/registration.js"></script>
+        <script src="js/tournamentBrackets.js"></script>
+    -->
     
-    <!-- Session Manager -->
-    <script src="/admin/js/sessionManager.js"></script>
-    
-    <!-- Utilities (needed by other modules) -->
-    <script src="/admin/js/utils.js"></script>
-    
-    <!-- Navigation -->
-    <script src="/admin/js/navigation.js"></script>
-    
-    <!-- Security enhancements (after session management is established) -->
-    <script src="/admin/js/security.js"></script>
-    
-
-    
-    <!-- Tournament bracket system -->
-    <script src="/admin/js/tournamentBrackets.js"></script>
-    
-    <!-- Initialize the page -->
-    <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Page loaded, initializing...
-            
-            // Initialize session management first
-            if (window.sessionManager) {
-                // Initializing SessionManager...
-                const isAuthenticated = await window.sessionManager.init();
-                if (!isAuthenticated) {
-                    // Not authenticated, redirecting to login
-                    return;
-                }
-                // SessionManager initialized successfully
-            }
-            
-            // Initialize navigation
-            if (window.initNavigation) {
-                // Initializing navigation...
-                window.initNavigation();
-            }
-            
-            // Load default content
-            if (window.loadTeamBalancer) {
-                // Loading default team balancer content...
-                await window.loadTeamBalancer();
-            }
-        });
-    </script>
 </body>
 </html>
