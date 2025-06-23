@@ -4,430 +4,354 @@
 // The application now uses static JSON files instead of API calls
 const API_BASE_URL = '/api';
 
-async function fetchWithAuth(endpoint, options = {}) {
-    // The endpoint should be a full path from the root, e.g., '/.netlify/functions/...'
-    const url = endpoint;
-    
-    // Get session ID from session manager or localStorage
-    const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-    
-    // Making request
-    return fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            'x-session-id': sessionId, // Add session ID for authentication
-            ...options.headers,
-        },
-    });
+// Utility functions for the admin panel
+// Floating notification system and error handling
+
+// Global notification system
+class NotificationSystem {
+    constructor() {
+        this.notifications = [];
+        this.container = null;
+        this.init();
+    }
+
+    init() {
+        // Create notification container if it doesn't exist
+        if (!document.getElementById('floating-notifications')) {
+            this.container = document.createElement('div');
+            this.container.id = 'floating-notifications';
+            this.container.className = 'position-fixed top-0 end-0 p-3';
+            this.container.style.cssText = `
+                z-index: 9999;
+                max-width: 400px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(this.container);
+        } else {
+            this.container = document.getElementById('floating-notifications');
+        }
+    }
+
+    show(message, type = 'info', duration = 5000) {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
+        notification.style.cssText = `
+            pointer-events: auto;
+            margin-bottom: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideInRight 0.3s ease-out;
+        `;
+
+        // Get icon based on type
+        const icons = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-exclamation-triangle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill',
+            danger: 'bi-exclamation-triangle-fill'
+        };
+
+        const icon = icons[type] || icons.info;
+        const iconColor = type === 'success' ? 'text-success' : 
+                         type === 'error' || type === 'danger' ? 'text-danger' :
+                         type === 'warning' ? 'text-warning' : 'text-info';
+
+        notification.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="bi ${icon} ${iconColor} me-2 fs-5"></i>
+                <div class="flex-grow-1">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+
+        this.container.appendChild(notification);
+
+        // Auto-remove after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                this.remove(notification);
+            }, duration);
+        }
+
+        // Add click to dismiss
+        notification.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-close') || e.target.closest('.btn-close')) {
+                this.remove(notification);
+            }
+        });
+
+        return notification;
+    }
+
+    remove(notification) {
+        if (notification && notification.parentNode) {
+            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }
+
+    clear() {
+        if (this.container) {
+            this.container.innerHTML = '';
+        }
+    }
 }
 
-// Add styles for notifications if they don't exist
-if (!document.getElementById('notification-styles')) {
+// Global notification instance
+window.notificationSystem = new NotificationSystem();
+
+// Utility function to show notifications
+function showNotification(message, type = 'info', duration = 5000) {
+    if (window.notificationSystem) {
+        return window.notificationSystem.show(message, type, duration);
+    }
+    // Fallback to console if notification system not available
+    console.log(`[${type.toUpperCase()}] ${message}`);
+}
+
+// Enhanced fetchWithAuth with better error handling
+async function fetchWithAuth(url, options = {}) {
+    try {
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        if (!sessionId) {
+            throw new Error('No session ID found. Please login again.');
+        }
+
+        if (!options.headers) {
+            options.headers = {};
+        }
+        options.headers['x-session-id'] = sessionId;
+
+        const response = await fetch(url, options);
+        
+        // Handle different response types
+        if (!response.ok) {
+            let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorData.error || errorMessage;
+            } catch (e) {
+                // If response is not JSON, use status text
+            }
+
+            // Handle specific error cases
+            if (response.status === 401) {
+                showNotification('Session expired. Please login again.', 'error');
+                // Redirect to login after a delay
+                setTimeout(() => {
+                    window.location.href = '/admin/login.html';
+                }, 2000);
+                throw new Error('Session expired');
+            } else if (response.status === 403) {
+                showNotification('Access denied. You do not have permission for this action.', 'warning');
+                throw new Error('Access denied');
+            } else if (response.status === 404) {
+                showNotification('Resource not found. Please check the URL.', 'error');
+                throw new Error('Resource not found');
+            } else if (response.status >= 500) {
+                showNotification('Server error. Please try again later.', 'error');
+                throw new Error('Server error');
+            }
+
+            throw new Error(errorMessage);
+        }
+
+        // Try to parse JSON response
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return await response.json();
+        } else {
+            return response;
+        }
+    } catch (error) {
+        console.error('fetchWithAuth error:', error);
+        
+        // Show user-friendly error message
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            showNotification('Network error. Please check your connection.', 'error');
+        } else if (!error.message.includes('Session expired') && !error.message.includes('Access denied')) {
+            showNotification(`Request failed: ${error.message}`, 'error');
+        }
+        
+        throw error;
+    }
+}
+
+// Registration session error handler
+async function handleRegistrationSessionError(error, context = '') {
+    console.error(`Registration session error ${context}:`, error);
+    
+    let userMessage = 'Failed to load registration sessions';
+    
+    if (error.message.includes('Session expired')) {
+        userMessage = 'Session expired. Please login again.';
+        showNotification(userMessage, 'error');
+        setTimeout(() => {
+            window.location.href = '/admin/login.html';
+        }, 2000);
+    } else if (error.message.includes('Access denied')) {
+        userMessage = 'You do not have permission to access registration sessions.';
+        showNotification(userMessage, 'warning');
+    } else if (error.message.includes('Network error')) {
+        userMessage = 'Network error. Please check your connection and try again.';
+        showNotification(userMessage, 'error');
+    } else if (error.message.includes('Server error')) {
+        userMessage = 'Server error. Please try again later.';
+        showNotification(userMessage, 'error');
+    } else {
+        userMessage = `Error loading registration sessions: ${error.message}`;
+        showNotification(userMessage, 'error');
+    }
+    
+    return { success: false, message: userMessage, error: error.message };
+}
+
+// Enhanced registration session loader with retry logic
+async function loadRegistrationSessionsWithRetry(maxRetries = 3, delay = 1000) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`🔄 Attempting to load registration sessions (attempt ${attempt}/${maxRetries})`);
+            
+            const response = await fetchWithAuth('/.netlify/functions/registration-sessions');
+            
+            if (response.success && Array.isArray(response.sessions)) {
+                console.log(`✅ Registration sessions loaded successfully on attempt ${attempt}`);
+                return response;
+            } else {
+                throw new Error(response.message || 'Invalid response format');
+            }
+        } catch (error) {
+            lastError = error;
+            console.warn(`⚠️ Attempt ${attempt} failed:`, error.message);
+            
+            if (attempt < maxRetries) {
+                showNotification(`Retrying... (${attempt}/${maxRetries})`, 'info', 2000);
+                await new Promise(resolve => setTimeout(resolve, delay * attempt));
+            }
+        }
+    }
+    
+    // All attempts failed
+    return await handleRegistrationSessionError(lastError, `after ${maxRetries} attempts`);
+}
+
+// Utility function to check if user has permission
+function hasPermission(requiredRole, userRole) {
+    if (!userRole) return false;
+    
+    const roleHierarchy = {
+        'superadmin': 3,
+        'admin': 2,
+        'user': 1
+    };
+    
+    return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
+}
+
+// Utility function to format dates
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+        return 'Invalid date';
+    }
+}
+
+// Utility function to copy to clipboard
+function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            textArea.remove();
+            return Promise.resolve();
+        } catch (error) {
+            textArea.remove();
+            return Promise.reject(error);
+        }
+    }
+}
+
+// Add CSS animations for notifications
+function addNotificationStyles() {
+    if (document.getElementById('notification-styles')) return;
+    
     const style = document.createElement('style');
     style.id = 'notification-styles';
     style.textContent = `
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-            width: 320px;
-            max-width: 90%;
-        }
-        
-        .notification {
-            position: relative;
-            padding: 1rem 1.5rem 1rem 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.375rem;
-            color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            display: flex;
-            align-items: center;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease-in-out;
-            animation: slideIn 0.3s ease-out forwards;
-        }
-        
-        .notification.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-        
-        .notification.hide {
-            animation: slideOut 0.3s ease-in forwards;
-        }
-        
-        .notification i {
-            margin-right: 0.75rem;
-            font-size: 1.25rem;
-        }
-        
-        .notification.success {
-            background-color: #10b981;
-            border-left: 4px solid #059669;
-        }
-        
-        .notification.error {
-            background-color: #ef4444;
-            border-left: 4px solid #dc2626;
-        }
-        
-        .notification.warning {
-            background-color: #f59e0b;
-            border-left: 4px solid #d97706;
-        }
-        
-        .notification.info {
-            background-color: #3b82f6;
-            border-left: 4px solid #2563eb;
-        }
-        
-        .notification-close {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-            opacity: 0.7;
-            padding: 0.25rem;
-            font-size: 1rem;
-            line-height: 1;
-        }
-        
-        .notification-close:hover {
-            opacity: 1;
-        }
-        
-        @keyframes slideIn {
+        @keyframes slideInRight {
             from {
-                opacity: 0;
                 transform: translateX(100%);
+                opacity: 0;
             }
             to {
-                opacity: 1;
                 transform: translateX(0);
+                opacity: 1;
             }
         }
         
-        @keyframes slideOut {
+        @keyframes slideOutRight {
             from {
-                opacity: 1;
                 transform: translateX(0);
+                opacity: 1;
             }
             to {
-                opacity: 0;
                 transform: translateX(100%);
+                opacity: 0;
             }
+        }
+        
+        #floating-notifications .alert {
+            transition: all 0.3s ease;
+        }
+        
+        #floating-notifications .alert:hover {
+            transform: translateX(-5px);
         }
     `;
     document.head.appendChild(style);
 }
 
-function showNotification(message, type = 'info') {
-    // Create notification container if it doesn't exist
-    let container = document.querySelector('.notification-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.className = 'notification-container';
-        document.body.appendChild(container);
-    }
-    
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `notification ${type} show`;
-    
-    // Add icon based on notification type
-    let icon = '';
-    switch(type) {
-        case 'success':
-            icon = '<i class="bi bi-check-circle-fill"></i>';
-            break;
-        case 'error':
-            icon = '<i class="bi bi-x-circle-fill"></i>';
-            break;
-        case 'warning':
-            icon = '<i class="bi bi-exclamation-triangle-fill"></i>';
-            break;
-        default: // info
-            icon = '<i class="bi bi-info-circle-fill"></i>';
-    }
-    
-    // Add close button
-    const closeButton = document.createElement('button');
-    closeButton.className = 'notification-close';
-    closeButton.innerHTML = '&times;';
-    closeButton.setAttribute('aria-label', 'Close notification');
-    closeButton.onclick = () => removeNotification(notification, container);
-    
-    // Set notification content
-    notification.innerHTML = `${icon}<span>${message}</span>`;
-    notification.appendChild(closeButton);
-    
-    // Add to container
-    container.insertBefore(notification, container.firstChild);
-    
-    // Auto-remove after delay
-    const timeoutId = setTimeout(() => {
-        removeNotification(notification, container);
-    }, 5000);
-    
-    // Pause auto-remove on hover
-    notification.addEventListener('mouseenter', () => {
-        clearTimeout(timeoutId);
-    });
-    
-    notification.addEventListener('mouseleave', () => {
-        const newTimeoutId = setTimeout(() => {
-            removeNotification(notification, container);
-        }, 2000);
-        notification.dataset.timeoutId = newTimeoutId;
-    });
-    
-    // Store timeout ID on the element for cleanup
-    notification.dataset.timeoutId = timeoutId;
-}
-
-function removeNotification(notification, container) {
-    if (!notification) return;
-    
-    // Clear any pending timeout
-    if (notification.dataset.timeoutId) {
-        clearTimeout(parseInt(notification.dataset.timeoutId));
-    }
-    
-    // Add hide class for exit animation
-    notification.classList.remove('show');
-    notification.classList.add('hide');
-    
-    // Remove after animation completes
-    setTimeout(() => {
-        if (notification && notification.parentNode) {
-            notification.remove();
-            
-            // Remove container if no more notifications
-            if (container && container.children.length === 0) {
-                container.remove();
-            }
-        }
-    }, 300);
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
-
-// Password management functions
-function togglePasswordVisibility(fieldId) {
-    const passwordField = document.getElementById(fieldId);
-    const iconElement = document.getElementById(fieldId + '-icon');
-    
-    if (passwordField.type === 'password') {
-        passwordField.type = 'text';
-        iconElement.className = 'bi bi-eye-slash';
-    } else {
-        passwordField.type = 'password';
-        iconElement.className = 'bi bi-eye';
-    }
-}
-
-function checkPasswordStrength(password) {
-    let score = 0;
-    let feedback = [];
-    
-    // Length check
-    if (password.length >= 8) score += 1;
-    else feedback.push('At least 8 characters');
-    
-    // Uppercase check
-    if (/[A-Z]/.test(password)) score += 1;
-    else feedback.push('Uppercase letter');
-    
-    // Lowercase check
-    if (/[a-z]/.test(password)) score += 1;
-    else feedback.push('Lowercase letter');
-    
-    // Number check
-    if (/[0-9]/.test(password)) score += 1;
-    else feedback.push('Number');
-    
-    // Special character check
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 1;
-    else feedback.push('Special character');
-    
-    // Length bonus
-    if (password.length >= 12) score += 1;
-    
-    const strength = {
-        score: score,
-        percentage: Math.min((score / 5) * 100, 100),
-        level: score < 2 ? 'Weak' : score < 4 ? 'Fair' : score < 5 ? 'Good' : 'Strong',
-        color: score < 2 ? 'danger' : score < 4 ? 'warning' : score < 5 ? 'info' : 'success',
-        feedback: feedback
-    };
-    
-    return strength;
-}
-
-function setupPasswordChangeModal() {
-    const newPasswordField = document.getElementById('new-password');
-    const confirmPasswordField = document.getElementById('confirm-password');
-    const strengthIndicator = document.getElementById('password-strength');
-    const strengthBar = document.getElementById('strength-bar');
-    const strengthText = document.getElementById('strength-text');
-    const matchFeedback = document.getElementById('password-match-feedback');
-    const passwordForm = document.getElementById('password-change-form');
-    
-    if (!newPasswordField) return; // Modal not present
-    
-    // Password strength checking
-    newPasswordField.addEventListener('input', function() {
-        const password = this.value;
-        
-        if (password.length > 0) {
-            const strength = checkPasswordStrength(password);
-            strengthIndicator.style.display = 'block';
-            strengthBar.style.width = strength.percentage + '%';
-            strengthBar.className = `progress-bar bg-${strength.color}`;
-            strengthText.textContent = strength.level;
-            
-            if (strength.feedback.length > 0) {
-                strengthText.textContent += ' - Missing: ' + strength.feedback.join(', ');
-            }
-        } else {
-            strengthIndicator.style.display = 'none';
-        }
-        
-        checkPasswordMatch();
-    });
-    
-    // Password confirmation checking
-    confirmPasswordField.addEventListener('input', checkPasswordMatch);
-    
-    function checkPasswordMatch() {
-        const newPassword = newPasswordField.value;
-        const confirmPassword = confirmPasswordField.value;
-        
-        if (confirmPassword.length > 0) {
-            if (newPassword === confirmPassword) {
-                matchFeedback.textContent = '✓ Passwords match';
-                matchFeedback.className = 'form-text text-success';
-                confirmPasswordField.classList.remove('is-invalid');
-                confirmPasswordField.classList.add('is-valid');
-            } else {
-                matchFeedback.textContent = '✗ Passwords do not match';
-                matchFeedback.className = 'form-text text-danger';
-                confirmPasswordField.classList.remove('is-valid');
-                confirmPasswordField.classList.add('is-invalid');
-            }
-        } else {
-            matchFeedback.textContent = '';
-            confirmPasswordField.classList.remove('is-valid', 'is-invalid');
-        }
-    }
-    
-    // Form submission
-    passwordForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const currentPassword = document.getElementById('current-password').value;
-        const newPassword = newPasswordField.value;
-        const confirmPassword = confirmPasswordField.value;
-        const submitBtn = document.getElementById('change-password-btn');
-        const btnText = submitBtn.querySelector('.btn-text');
-        const spinner = submitBtn.querySelector('.spinner-border');
-        
-        // Validation
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            showNotification('Please fill in all fields', 'error');
-            return;
-        }
-        
-        if (newPassword !== confirmPassword) {
-            showNotification('New password and confirmation do not match', 'error');
-            return;
-        }
-        
-        if (currentPassword === newPassword) {
-            showNotification('New password must be different from current password', 'error');
-            return;
-        }
-        
-        const strength = checkPasswordStrength(newPassword);
-        if (strength.score < 4) {
-            showNotification('Password is not strong enough. Please meet all requirements.', 'error');
-            return;
-        }
-        
-        // Show loading state
-        submitBtn.disabled = true;
-        btnText.textContent = 'Changing...';
-        spinner.classList.remove('d-none');
-        
-        try {
-            const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            
-            const response = await fetch('/.netlify/functions/change-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-session-id': sessionId
-                },
-                body: JSON.stringify({
-                    currentPassword,
-                    newPassword,
-                    confirmPassword
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showNotification('Password changed successfully!', 'success');
-                
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('passwordChangeModal'));
-                modal.hide();
-                
-                // Reset form
-                passwordForm.reset();
-                strengthIndicator.style.display = 'none';
-                matchFeedback.textContent = '';
-                confirmPasswordField.classList.remove('is-valid', 'is-invalid');
-            } else {
-                showNotification(result.message || 'Failed to change password', 'error');
-            }
-            
-        } catch (error) {
-            console.error('Password change error:', error);
-            showNotification('Error changing password. Please try again.', 'error');
-        } finally {
-            // Reset button state
-            submitBtn.disabled = false;
-            btnText.textContent = 'Change Password';
-            spinner.classList.add('d-none');
-        }
-    });
-}
-
-// Initialize password change modal when DOM is ready
+// Initialize notification system when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    setupPasswordChangeModal();
+    addNotificationStyles();
 });
 
-// Make functions globally available
-window.API_BASE_URL = API_BASE_URL;
-window.fetchWithAuth = fetchWithAuth;
-window.showNotification = showNotification;
-window.debounce = debounce;
-window.togglePasswordVisibility = togglePasswordVisibility;
+// Export functions for use in other modules
+window.utils = {
+    showNotification,
+    fetchWithAuth,
+    handleRegistrationSessionError,
+    loadRegistrationSessionsWithRetry,
+    hasPermission,
+    formatDate,
+    copyToClipboard
+};
 
 // Utils loaded and available globally

@@ -95,8 +95,6 @@ async function initRegistration() {
     async function loadRegistrationSessions() {
         try {
             console.log('🔄 Registration: Starting loadRegistrationSessions...');
-            
-            // Show loading state
             const tableBody = document.getElementById('registration-sessions-table');
             if (tableBody) {
                 tableBody.innerHTML = `
@@ -108,70 +106,29 @@ async function initRegistration() {
                     </tr>
                 `;
             }
-            
-            const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
-            
-            console.log('🔐 Registration: Session check:', {
-                hasSessionManager: !!window.sessionManager,
-                sessionManagerSessionId: window.sessionManager?.getSessionId() ? 'present' : 'null',
-                localStorageSessionId: localStorage.getItem('adminSessionId') ? 'present' : 'null',
-                finalSessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'null'
-            });
-            
-            if (!sessionId) {
-                console.error('❌ Registration: No session ID found');
-                showAlert('Session expired. Please login again.', 'danger');
-                return;
-            }
-            
-            console.log('📡 Registration: Calling fetchWithAuth for registration sessions...');
-            const apiResponse = await fetchWithAuth('/.netlify/functions/registration-sessions');
-            
-            if (!apiResponse.ok) {
-                throw new Error(`HTTP error! status: ${apiResponse.status}`);
-            }
-
-            const data = await apiResponse.json();
-            
-            console.log('📊 Registration: Response received:', {
-                hasData: !!data,
-                success: data?.success,
-                hasSessions: !!data?.sessions,
-                sessionCount: data?.sessions?.length || 0,
-                dataKeys: data ? Object.keys(data) : []
-            });
-            
+            // Use the new robust loader from utils.js
+            const data = await window.utils.loadRegistrationSessionsWithRetry(3, 1000);
             if (data.success && data.sessions) {
                 state.registrationSessions = data.sessions;
-                console.log('✅ Registration: Sessions loaded successfully:', {
-                    count: data.sessions.length,
-                    sessions: data.sessions.map(s => ({
-                        id: s.sessionId,
-                        title: s.title,
-                        isActive: s.isActive,
-                        playerCount: s.playerCount
-                    }))
-                });
                 displayRegistrationSessions();
-                console.log(`✅ Registration: Loaded ${data.sessions.length} registration sessions`);
+                window.utils.showNotification(`Loaded ${data.sessions.length} registration sessions`, 'success', 2000);
             } else {
-                console.error('❌ Registration: Failed to load registration sessions:', {
-                    data: data,
-                    success: data?.success,
-                    message: data?.message,
-                    error: data?.error
-                });
-                showAlert(data.message || 'Failed to load registration sessions', 'danger');
+                window.utils.showNotification(data.message || 'Failed to load registration sessions', 'error');
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-danger">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Failed to load registration sessions
+                                <br><small>Please try refreshing or check your connection</small>
+                                <br><small class="text-muted">Error: ${data.error || data.message}</small>
+                            </td>
+                        </tr>
+                    `;
+                }
             }
         } catch (error) {
-            console.error('❌ Registration: Error loading registration sessions:', {
-                error: error.message,
-                stack: error.stack,
-                name: error.name
-            });
-            showAlert(`Error loading registration sessions: ${error.message}`, 'danger');
-            
-            // Show error state in table
+            window.utils.handleRegistrationSessionError(error, 'in loadRegistrationSessions');
             const tableBody = document.getElementById('registration-sessions-table');
             if (tableBody) {
                 tableBody.innerHTML = `
@@ -595,25 +552,7 @@ async function initRegistration() {
     }
     
     function showAlert(message, type = 'info') {
-        const alertArea = document.getElementById('registration-alert-area');
-        if (!alertArea) return;
-        
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-        alertDiv.innerHTML = `
-            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'}-fill me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        alertArea.appendChild(alertDiv);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
-            }
-        }, 5000);
+        window.utils.showNotification(message, type === 'danger' ? 'error' : type);
     }
     
     function showSessionAlert(message, type = 'info') {
