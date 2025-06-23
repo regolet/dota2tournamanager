@@ -1,3 +1,4 @@
+console.log('=== RANDOM PICKER DEBUG VERSION 1 ===');
 // Random Picker with Registration Session Support
 (function() {
     'use strict';
@@ -197,7 +198,7 @@ async function initRandomPicker() {
         // Random picker is loaded - tab will be enabled when clicked
     } catch (error) {
         console.error('Error initializing random picker:', error);
-        showNotification('Failed to initialize random picker', 'error');
+        window.showNotification('Failed to initialize random picker', 'error');
     }
 }
 
@@ -224,7 +225,7 @@ async function loadRegistrationSessions() {
         const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
         
         if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
+            window.showNotification('Session expired. Please login again.', 'error');
             return;
         }
 
@@ -242,11 +243,11 @@ async function loadRegistrationSessions() {
             updateSessionSelector();
         } else {
             console.error('Random Picker: Failed to process sessions. Data received:', data);
-            showNotification(data.message || 'Failed to load registration sessions', 'error');
+            window.showNotification(data.message || 'Failed to load registration sessions', 'error');
         }
     } catch (error) {
         console.error('Error loading registration sessions in Random Picker:', error);
-        showNotification('An error occurred while loading tournaments.', 'error');
+        window.showNotification('An error occurred while loading tournaments.', 'error');
     }
 }
 
@@ -373,8 +374,8 @@ function setupPickerButtons() {
                 addPlayerManually(playerName);
                 playerNameInput.value = '';
                 playerNameInput.focus();
-    } else {
-                showNotification('Please enter a player name', 'warning');
+            } else {
+                window.showNotification('Please enter a player name', 'warning');
             }
         });
 
@@ -385,8 +386,8 @@ function setupPickerButtons() {
                 if (playerName) {
                     addPlayerManually(playerName);
                     this.value = '';
-        } else {
-                    showNotification('Please enter a player name', 'warning');
+                } else {
+                    window.showNotification('Please enter a player name', 'warning');
                 }
             }
         });
@@ -406,7 +407,7 @@ function setupPickerButtons() {
                 availablePlayers = [];
                 excludedPlayers = [];
                 displayPlayersForPicker([]);
-                showNotification('All players cleared from picker', 'success');
+                window.showNotification('All players cleared from picker', 'success');
             }
         });
     }
@@ -417,7 +418,7 @@ function setupPickerButtons() {
  */
 function addPlayerManually(playerName) {
     if (!playerName || !playerName.trim()) {
-        showNotification('Please enter a valid player name', 'warning');
+        window.showNotification('Please enter a valid player name', 'warning');
         return;
     }
 
@@ -427,8 +428,8 @@ function addPlayerManually(playerName) {
     );
     
     if (existingPlayer) {
-        showNotification('Player already exists in the pool', 'warning');
-            return;
+        window.showNotification('Player already exists in the pool', 'warning');
+        return;
     }
 
     // Create a new player object
@@ -446,7 +447,7 @@ function addPlayerManually(playerName) {
     // Update display
     displayPlayersForPicker(availablePlayers);
     
-    showNotification(`Added "${playerName}" to picker`, 'success');
+    window.showNotification(`Added "${playerName}" to picker`, 'success');
 }
 
 /**
@@ -454,7 +455,7 @@ function addPlayerManually(playerName) {
  */
 async function loadPlayersForPicker() {
     if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
+        window.showNotification('Please select a tournament first', 'warning');
         
         // Clear player display
         const playersContainer = document.getElementById('picker-players-container') || 
@@ -489,7 +490,7 @@ async function loadPlayersForPicker() {
         const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
         
         if (!sessionId) {
-            showNotification('Session expired. Please login again.', 'error');
+            window.showNotification('Session expired. Please login again.', 'error');
             return;
         }
 
@@ -525,13 +526,13 @@ async function loadPlayersForPicker() {
             }
 
             if (availablePlayers.length === 0) {
-                showNotification('No players found in selected tournament', 'info');
+                window.showNotification('No players found in selected tournament', 'info');
             } else {
-                showNotification(`Loaded ${availablePlayers.length} players from tournament`, 'success');
+                window.showNotification(`Loaded ${availablePlayers.length} players from tournament`, 'success');
             }
         } else {
             console.error('Failed to load players for Random Picker:', data.message || 'Unknown error');
-            showNotification(data.message || 'Failed to load players', 'error');
+            window.showNotification(data.message || 'Failed to load players', 'error');
             availablePlayers = [];
             displayPlayersForPicker([]);
             
@@ -556,7 +557,7 @@ async function loadPlayersForPicker() {
             `;
         }
         
-        showNotification('Failed to load players for random picker', 'error');
+        window.showNotification('Failed to load players for random picker', 'error');
     }
 }
 
@@ -685,10 +686,10 @@ function pickSpecificPlayer(playerId, playerIndex) {
         // Update history display
         updateHistoryDisplay();
 
-        showNotification(`Selected: ${selectedPlayer.name}`, 'success');
+        window.showNotification(`Selected: ${selectedPlayer.name}`, 'success');
     } else {
         console.error(`Player not found with ID: ${playerId}. Available players: ${availablePlayers.length}`);
-        showNotification('Error: Player not found', 'error');
+        window.showNotification('Error: Player not found', 'error');
     }
 }
 
@@ -719,14 +720,14 @@ function excludePlayerFromPool(playerId, playerIndex) {
                 // Refresh display
                 displayPlayersForPicker(availablePlayers);
                 
-                showNotification(`${player.name} excluded from picker pool`, 'info');
+                window.showNotification(`${player.name} excluded from picker pool`, 'info');
             } else {
-                showNotification(`${player.name} is already excluded`, 'warning');
+                window.showNotification(`${player.name} is already excluded`, 'warning');
             }
         }
     } else {
         console.error(`Player not found with ID: ${playerId}. Available players: ${availablePlayers.length}`);
-        showNotification('Error: Player not found', 'error');
+        window.showNotification('Error: Player not found', 'error');
     }
 }
 
@@ -735,12 +736,12 @@ function excludePlayerFromPool(playerId, playerIndex) {
  */
 function pickRandomPlayerInternal() {
     if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
+        window.showNotification('Please select a tournament first', 'warning');
         return;
     }
 
     if (!availablePlayers || availablePlayers.length === 0) {
-        showNotification('Please load players first', 'warning');
+        window.showNotification('Please load players first', 'warning');
         return;
     }
 
@@ -792,7 +793,7 @@ function pickRandomPlayerInternal() {
             pickButton.innerHTML = '<i class="bi bi-shuffle me-2"></i>Pick Random Player';
         }
 
-        showNotification(`Selected: ${selectedPlayer.name}`, 'success');
+        window.showNotification(`Selected: ${selectedPlayer.name}`, 'success');
     });
 }
 
@@ -940,12 +941,12 @@ function displayPickerResultWithAnimation(players, title) {
  */
 function pickMultiplePlayersInternal() {
     if (!currentSessionId) {
-        showNotification('Please select a tournament first', 'warning');
+        window.showNotification('Please select a tournament first', 'warning');
             return;
         }
 
     if (!availablePlayers || availablePlayers.length === 0) {
-        showNotification('Please load players first', 'warning');
+        window.showNotification('Please load players first', 'warning');
         return;
     }
 
@@ -955,12 +956,12 @@ function pickMultiplePlayersInternal() {
     const numberToPick = numberInput ? parseInt(numberInput.value) || 1 : 1;
 
     if (numberToPick <= 0) {
-        showNotification('Please enter a valid number of players to pick', 'warning');
+        window.showNotification('Please enter a valid number of players to pick', 'warning');
             return;
         }
 
     if (numberToPick > availablePlayers.length) {
-        showNotification(`Cannot pick ${numberToPick} players. Only ${availablePlayers.length} available.`, 'warning');
+        window.showNotification(`Cannot pick ${numberToPick} players. Only ${availablePlayers.length} available.`, 'warning');
         return;
     }
 
@@ -984,7 +985,7 @@ function pickMultiplePlayersInternal() {
     // Update history display
     updateHistoryDisplay();
 
-    showNotification(`Selected ${numberToPick} players`, 'success');
+    window.showNotification(`Selected ${numberToPick} players`, 'success');
 }
 
 /**
@@ -1103,7 +1104,7 @@ function clearPickerHistory() {
 
     pickerHistory = [];
     updateHistoryDisplay();
-    showNotification('Pick history cleared', 'info');
+    window.showNotification('Pick history cleared', 'info');
 }
 
 /**
@@ -1111,7 +1112,7 @@ function clearPickerHistory() {
  */
 function exportPickerHistory() {
     if (!pickerHistory || pickerHistory.length === 0) {
-        showNotification('No history to export', 'warning');
+        window.showNotification('No history to export', 'warning');
         return;
     }
 
@@ -1148,7 +1149,7 @@ function exportPickerHistory() {
     
     URL.revokeObjectURL(url);
 
-    showNotification('Pick history exported successfully', 'success');
+    window.showNotification('Pick history exported successfully', 'success');
 }
 
 /**
@@ -1165,7 +1166,7 @@ function setupRandomPickerRegistrationListener() {
             // Reload players to reflect any new availability
             if (currentSessionId) {
                 loadPlayersForPicker();
-                showNotification('Random picker refreshed due to registration changes', 'info');
+                window.showNotification('Random picker refreshed due to registration changes', 'info');
             }
         });
     };
@@ -1227,7 +1228,7 @@ function showNotification(message, type = 'info') {
  */
 function showExcludedPlayersModal() {
     if (!excludedPlayers || excludedPlayers.length === 0) {
-        showNotification('No excluded players', 'info');
+        window.showNotification('No excluded players', 'info');
         return;
     }
 
@@ -1350,7 +1351,7 @@ function restorePlayerFromExcluded(playerIndex) {
             showExcludedPlayersModal();
         }
         
-        showNotification(`${player.name} restored to picker pool`, 'success');
+        window.showNotification(`${player.name} restored to picker pool`, 'success');
     }
 }
 
@@ -1379,7 +1380,7 @@ function restoreAllExcludedPlayers() {
         modal.hide();
     }
     
-    showNotification(`Restored ${restoredCount} players to picker pool`, 'success');
+    window.showNotification(`Restored ${restoredCount} players to picker pool`, 'success');
 }
 
 // Legacy functions for backward compatibility
