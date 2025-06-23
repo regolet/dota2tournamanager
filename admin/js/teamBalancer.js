@@ -13,6 +13,7 @@
     };
 
     let isTeamBalancerInitialized = false;
+    let lastLoadedPlayerCount = null;
 
 // Helper functions for MMR calculations
 function ensureNumericMmr(mmr) {
@@ -762,8 +763,10 @@ async function loadPlayersForBalancer() {
                 
                 if (state.availablePlayers.length === 0) {
                     window.showNotification('No players found in selected tournament', 'info');
-                } else {
+                    lastLoadedPlayerCount = 0;
+                } else if (state.availablePlayers.length !== lastLoadedPlayerCount) {
                     window.showNotification(`Loaded ${state.availablePlayers.length} players from tournament`, 'success');
+                    lastLoadedPlayerCount = state.availablePlayers.length;
                 }
                 
                 // Enable the tab after data loading is complete
