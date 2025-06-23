@@ -3,6 +3,7 @@ import { getMasterlist, addMasterlistPlayer, updateMasterlistPlayer } from './da
 
 export const handler = async (event, context) => {
   try {
+    console.log('RAW BODY:', event.body); // Debug: log the raw request body
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
       return {
@@ -90,21 +91,7 @@ export const handler = async (event, context) => {
     });
     const skippedInvalid = players.length - validPlayers.length;
     
-    if (validPlayers.length === 0) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'No valid players to import',
-          errors: validationErrors
-        })
-      };
-    }
-    
+    // Always process valid players, never fail the whole batch
     // Get existing players for duplicate checking
     const existingPlayers = await getMasterlist();
     const existingDota2Ids = new Set(existingPlayers.map(p => p.dota2id));
