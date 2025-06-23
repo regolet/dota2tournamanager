@@ -818,15 +818,20 @@ async function handleBulkImportSubmit(event) {
     const updateExisting = document.getElementById('bulk-import-update-existing').checked;
     
     // Prepare players for import
-    const playersToImport = validPlayers.filter(player => {
-        const existingPlayer = window.masterlistPlayers.find(p => p.dota2id === player.dota2id);
-        
-        if (existingPlayer) {
-            return updateExisting; // Only include if update existing is checked
-        }
-        
-        return true; // Include new players
-    });
+    const playersToImport = validPlayers
+        .filter(player => {
+            const existingPlayer = window.masterlistPlayers.find(p => p.dota2id === player.dota2id);
+            if (existingPlayer) {
+                return updateExisting; // Only include if update existing is checked
+            }
+            return true; // Include new players
+        })
+        .map(player => ({
+            name: player.name,
+            dota2id: player.dota2id,
+            mmr: player.mmr,
+            notes: player.notes || ""
+        }));
     
     if (playersToImport.length === 0) {
         const alertElement = document.getElementById('bulk-import-alert');
