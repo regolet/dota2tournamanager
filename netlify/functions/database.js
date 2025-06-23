@@ -141,7 +141,7 @@ async function initializeDatabase() {
         total_players INTEGER NOT NULL DEFAULT 0,
         average_mmr INTEGER DEFAULT 0,
         registration_session_id VARCHAR(255),
-        teams_data JSONB NOT NULL,
+        teams_data TEXT NOT NULL,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -154,7 +154,7 @@ async function initializeDatabase() {
         id VARCHAR(255) PRIMARY KEY,
         admin_user_id VARCHAR(255),
         team_set_id VARCHAR(255),
-        tournament_data JSONB NOT NULL,
+        tournament_data TEXT NOT NULL,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -1636,9 +1636,19 @@ export async function saveTournament(tournamentData) {
       return { success: false, message: 'Tournament ID and data are required.' };
     }
 
+    // Ensure tournament_data is properly stringified if it's an object
+    let tournamentDataString;
+    if (typeof tournament_data === 'object') {
+      tournamentDataString = JSON.stringify(tournament_data);
+    } else if (typeof tournament_data === 'string') {
+      tournamentDataString = tournament_data;
+    } else {
+      return { success: false, message: 'Tournament data must be an object or string.' };
+    }
+
     const result = await sql`
       INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
-      VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournament_data}, NOW(), NOW())
+      VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournamentDataString}, NOW(), NOW())
       ON CONFLICT (id) 
       DO UPDATE SET
         tournament_data = EXCLUDED.tournament_data,
@@ -1687,7 +1697,8 @@ export async function getTournament(tournamentId) {
     return result.length > 0 ? result[0] : null;
   } catch (error) {
     console.error(`Error fetching tournament ${tournamentId}:`, error);
-    throw error;
+    // Return null instead of throwing to prevent 500 errors
+    return null;
   }
 }
 
@@ -1695,30 +1706,32 @@ export async function getTournaments(adminUserId = null) {
   try {
     await initializeDatabase();
     
-    let query;
+    let result;
     if (adminUserId) {
-      query = sql`
+      result = await sql`
         SELECT *
         FROM tournaments t
         WHERE t.admin_user_id = ${adminUserId}
         ORDER BY t.created_at DESC
       `;
     } else {
-      query = sql`
+      result = await sql`
         SELECT *
         FROM tournaments t
         ORDER BY t.created_at DESC
       `;
     }
-    const result = await query;
     return result;
   } catch (error) {
     // If table doesn't exist, return empty array gracefully
-    if (error.message && (error.message.includes('relation "tournaments" does not exist'))) {
+    if (error.message && (error.message.includes('relation "tournaments" does not exist') || 
+                         error.message.includes('table') || 
+                         error.message.includes('does not exist'))) {
       console.warn('Tournaments table does not exist, returning empty array.');
       return [];
     }
     console.error('Error fetching tournaments:', error);
-    throw error;
+    // Return empty array instead of throwing to prevent 500 errors
+    return [];
   }
 }

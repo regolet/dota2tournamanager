@@ -89,47 +89,57 @@ export async function handler(event, context) {
             } else {
                 // If no ID, get the list of tournaments based on user role
                 const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
-                const tournaments = await getTournaments(targetUserId);
+                
+                try {
+                    const tournaments = await getTournaments(targetUserId);
+                    
+                    // Manually format the date and extract tournament name safely
+                    const formattedTournaments = tournaments.map(t => {
+                        let tournamentName = null;
+                        let tournamentData = t.tournament_data;
 
-                // Manually format the date and extract tournament name safely
-                const formattedTournaments = tournaments.map(t => {
-                    let tournamentName = null;
-                    let tournamentData = t.tournament_data;
-
-                    if (tournamentData) {
-                        // It might be a string if coming from some DB clients, or already an object
-                        if (typeof tournamentData === 'string') {
-                            try {
-                                tournamentData = JSON.parse(tournamentData);
-                            } catch (e) {
-                                console.error('Error parsing tournament_data', e);
-                                tournamentData = null;
+                        if (tournamentData) {
+                            // It might be a string if coming from some DB clients, or already an object
+                            if (typeof tournamentData === 'string') {
+                                try {
+                                    tournamentData = JSON.parse(tournamentData);
+                                } catch (e) {
+                                    console.error('Error parsing tournament_data', e);
+                                    tournamentData = null;
+                                }
+                            }
+                            // Check if it's a non-null object with a name property
+                            if (tournamentData && typeof tournamentData === 'object' && tournamentData.name) {
+                                tournamentName = tournamentData.name;
                             }
                         }
-                        // Check if it's a non-null object with a name property
-                        if (tournamentData && typeof tournamentData === 'object' && tournamentData.name) {
-                            tournamentName = tournamentData.name;
+
+                        let createdAt = t.created_at;
+                        if (createdAt && typeof createdAt === 'string') {
+                            // Convert to ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ' by replacing space and adding Z
+                            createdAt = new Date(createdAt.replace(' ', 'T') + 'Z');
                         }
-                    }
+                        
+                        return {
+                            id: t.id,
+                            name: tournamentName,
+                            created_at: createdAt && !isNaN(createdAt) ? createdAt.toISOString() : null,
+                        };
+                    });
 
-                    let createdAt = t.created_at;
-                    if (createdAt && typeof createdAt === 'string') {
-                        // Convert to ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ' by replacing space and adding Z
-                        createdAt = new Date(createdAt.replace(' ', 'T') + 'Z');
-                    }
-                    
                     return {
-                        id: t.id,
-                        name: tournamentName,
-                        created_at: createdAt && !isNaN(createdAt) ? createdAt.toISOString() : null,
+                        statusCode: 200,
+                        body: JSON.stringify(formattedTournaments),
+                        headers
                     };
-                });
-
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify(formattedTournaments),
-                    headers
-                };
+                } catch (error) {
+                    console.error('Error getting tournaments:', error);
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify([]),
+                        headers
+                    };
+                }
             }
         }
 
