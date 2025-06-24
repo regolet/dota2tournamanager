@@ -1034,42 +1034,53 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     // Sort players by MMR (highest first)
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
     const maxPlayersForTeams = numTeams * teamSize;
-
-    // Step 1: Separate players for teams vs reserves
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
 
-    // Step 2: Split into tiers (one tier per team slot)
-    const tiers = [];
-    for (let i = 0; i < teamSize; i++) {
-        tiers.push([]);
+    // Step 1: Assign top and bottom players round-robin
+    const teams = Array.from({ length: numTeams }, () => []);
+    let topIndex = 0;
+    let bottomIndex = playersForTeams.length - 1;
+    let slotsFilled = 0;
+    while (slotsFilled < numTeams * 2 && topIndex < bottomIndex) {
+        // Assign top
+        teams[slotsFilled % numTeams].push(playersForTeams[topIndex++]);
+        slotsFilled++;
+        // Assign bottom
+        teams[slotsFilled % numTeams].push(playersForTeams[bottomIndex--]);
+        slotsFilled++;
     }
-    for (let i = 0; i < playersForTeams.length; i++) {
-        tiers[i % teamSize].push(playersForTeams[i]);
+    // If odd number, assign the last remaining player
+    if (topIndex === bottomIndex) {
+        teams[slotsFilled % numTeams].push(playersForTeams[topIndex]);
+        topIndex++;
+        slotsFilled++;
     }
 
-    // Step 3: Shuffle each tier
-    for (let i = 0; i < tiers.length; i++) {
-        tiers[i] = tiers[i].sort(() => Math.random() - 0.5);
+    // Step 2: Collect mid-tier players
+    const midTierPlayers = playersForTeams.slice(topIndex, bottomIndex + 1);
+    // Shuffle mid-tier
+    for (let i = midTierPlayers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [midTierPlayers[i], midTierPlayers[j]] = [midTierPlayers[j], midTierPlayers[i]];
     }
 
-    // Step 4: Assign one player from each tier to each team
-    // Clear teams
-    for (let t = 0; t < numTeams; t++) {
-        state.balancedTeams[t].players = [];
-        state.balancedTeams[t].totalMmr = 0;
-    }
-    for (let slot = 0; slot < teamSize; slot++) {
+    // Step 3: Fill teams with mid-tier players
+    let midIndex = 0;
+    for (let round = 0; round < teamSize; round++) {
         for (let t = 0; t < numTeams; t++) {
-            const player = tiers[slot][t];
-            if (player) {
-                state.balancedTeams[t].players.push(player);
-                state.balancedTeams[t].totalMmr += player.peakmmr || 0;
+            if (teams[t].length < teamSize && midIndex < midTierPlayers.length) {
+                teams[t].push(midTierPlayers[midIndex++]);
             }
         }
     }
 
-    // Step 5: Return reserve players for proper state management
+    // Step 4: Assign to state.balancedTeams
+    for (let t = 0; t < numTeams; t++) {
+        state.balancedTeams[t].players = teams[t];
+        state.balancedTeams[t].totalMmr = teams[t].reduce((sum, p) => sum + (p.peakmmr || 0), 0);
+    }
+
     return playersForReserves;
 }
 
