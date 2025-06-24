@@ -31,20 +31,17 @@ module.exports = {
         const playerName = interaction.user.username;
 
         try {
-            // Register player through your webapp API (public, no session required)
-            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration`, {
+            // Register player through the correct add-player API endpoint
+            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/add-player`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    sessionId: tournamentId,
-                    player: {
-                        name: playerName,
-                        dota2id: dota2id,
-                        peakmmr: mmr,
-                        discordId: discordId
-                    }
+                    name: playerName,
+                    dota2id: dota2id,
+                    peakmmr: mmr,
+                    registrationSessionId: tournamentId
                 })
             });
 
