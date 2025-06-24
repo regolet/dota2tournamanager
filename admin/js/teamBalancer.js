@@ -1028,85 +1028,39 @@ function distributePlayersByMethod(players, method, numTeams, teamSize) {
 }
 
 /**
- * High Ranked Balance - Prioritize high MMR players for teams, low MMR to reserves (with tiered randomization)
- * Now supports two assignment strategies: 'snake' and 'tiered'.
- * To switch, change the 'assignmentStrategy' variable below.
+ * High Ranked Balance - Prioritize high MMR players for teams, lowest MMR to reserves (tiered randomization)
+ * This version is based on High/Low Shuffle, but reserves the lowest MMR players.
  */
 function distributeHighRankedBalance(players, numTeams, teamSize) {
     // Sort players by MMR (highest first)
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
     const maxPlayersForTeams = numTeams * teamSize;
+    // Players for teams: top N*teamSize
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
+    // Players for reserves: the rest (lowest MMR)
     const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
 
-    // Light shuffle for some randomness
-    const shuffledPlayersForTeams = [...playersForTeams];
-    const shuffleIntensity = Math.min(Math.floor(maxPlayersForTeams * 0.3), 10);
-    for (let i = 0; i < shuffleIntensity; i++) {
-        const index1 = Math.floor(Math.random() * maxPlayersForTeams);
-        const index2 = Math.floor(Math.random() * maxPlayersForTeams);
-        if (index1 !== index2) {
-            [shuffledPlayersForTeams[index1], shuffledPlayersForTeams[index2]] =
-                [shuffledPlayersForTeams[index2], shuffledPlayersForTeams[index1]];
+    // Tiered assignment: distribute top players to teams in tiers
+    const teams = Array.from({ length: numTeams }, () => []);
+    const tiers = [];
+    for (let i = 0; i < teamSize; i++) {
+        tiers.push(playersForTeams.slice(i * numTeams, (i + 1) * numTeams));
+    }
+    // Shuffle each tier and assign
+    for (let i = 0; i < tiers.length; i++) {
+        const tier = tiers[i];
+        for (let j = tier.length - 1; j > 0; j--) {
+            const k = Math.floor(Math.random() * (j + 1));
+            [tier[j], tier[k]] = [tier[k], tier[j]];
+        }
+        for (let t = 0; t < numTeams; t++) {
+            if (tier[t]) teams[t].push(tier[t]);
         }
     }
-
-    // --- Assignment Strategies ---
-    // Change this to 'snake' or 'tiered' to test both
-    const assignmentStrategy = 'snake'; // 'snake' or 'tiered'
-
-    if (assignmentStrategy === 'snake') {
-        // Snake Draft Assignment
-        // Assign players in a snake order: 1->N, N->1, repeat
-        const teams = Array.from({ length: numTeams }, () => []);
-        let direction = 1; // 1 = left to right, -1 = right to left
-        let teamIndex = 0;
-        for (let i = 0; i < shuffledPlayersForTeams.length; i++) {
-            teams[teamIndex].push(shuffledPlayersForTeams[i]);
-            // Move to next team
-            if (direction === 1) {
-                if (teamIndex === numTeams - 1) {
-                    direction = -1;
-                } else {
-                    teamIndex++;
-                }
-            } else {
-                if (teamIndex === 0) {
-                    direction = 1;
-                } else {
-                    teamIndex--;
-                }
-            }
-        }
-        // Assign to state.balancedTeams
-        for (let t = 0; t < numTeams; t++) {
-            state.balancedTeams[t].players = teams[t];
-            state.balancedTeams[t].totalMmr = teams[t].reduce((sum, p) => sum + (p.peakmmr || 0), 0);
-        }
-    } else if (assignmentStrategy === 'tiered') {
-        // Tiered Assignment
-        // Divide into tiers, each team gets one from each tier
-        const teams = Array.from({ length: numTeams }, () => []);
-        const tiers = [];
-        for (let i = 0; i < teamSize; i++) {
-            tiers.push(shuffledPlayersForTeams.slice(i * numTeams, (i + 1) * numTeams));
-        }
-        // Shuffle each tier and assign
-        for (let i = 0; i < tiers.length; i++) {
-            const tier = tiers[i];
-            for (let j = tier.length - 1; j > 0; j--) {
-                const k = Math.floor(Math.random() * (j + 1));
-                [tier[j], tier[k]] = [tier[k], tier[j]];
-            }
-            for (let t = 0; t < numTeams; t++) {
-                if (tier[t]) teams[t].push(tier[t]);
-            }
-        }
-        // Assign to state.balancedTeams
-        for (let t = 0; t < numTeams; t++) {
-            state.balancedTeams[t].players = teams[t];
-            state.balancedTeams[t].totalMmr = teams[t].reduce((sum, p) => sum + (p.peakmmr || 0), 0);
-        }
+    // Assign to state.balancedTeams
+    for (let t = 0; t < numTeams; t++) {
+        state.balancedTeams[t].players = teams[t];
+        state.balancedTeams[t].totalMmr = teams[t].reduce((sum, p) => sum + (p.peakmmr || 0), 0);
     }
     return playersForReserves;
 }
