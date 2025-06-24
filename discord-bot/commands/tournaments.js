@@ -8,11 +8,7 @@ module.exports = {
 
         try {
             // Fetch tournaments from your webapp
-            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
-                headers: {
-                    'x-session-id': process.env.WEBAPP_SESSION_ID
-                }
-            });
+            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
