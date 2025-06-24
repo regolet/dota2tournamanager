@@ -15,37 +15,33 @@ module.exports = {
         const tournamentId = interaction.options.getString('tournament');
 
         try {
-            // Fetch teams from your webapp (public, no session required)
-            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/teams?sessionId=${tournamentId}`);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const teams = await response.json();
-
-            if (Array.isArray(teams) && teams.length > 0) {
-                const embed = {
-                    color: 0x0099ff,
-                    title: '🏆 Tournament Teams',
-                    description: `Teams for tournament \`${tournamentId}\``,
-                    fields: teams.map((team, index) => ({
-                        name: `${team.name}`,
-                        value: `👥 Players: ${team.players.length}\n📊 Total MMR: ${team.totalMmr}\n📈 Avg MMR: ${Math.round(team.totalMmr / team.players.length)}`,
-                        inline: true
-                    })),
-                    footer: {
-                        text: `Total Teams: ${teams.length}`
+            // For now, show a helpful message since team viewing requires admin access
+            const embed = {
+                color: 0x0099ff,
+                title: '🏆 Team Information',
+                description: `Team assignments for tournament \`${tournamentId}\``,
+                fields: [
+                    {
+                        name: 'ℹ️ Information',
+                        value: 'Team assignments are managed by tournament administrators.\n\n**To view teams:**\n• Contact the tournament admin\n• Check the tournament announcement channel\n• Wait for team assignments to be published',
+                        inline: false
+                    },
+                    {
+                        name: '📋 Registration Status',
+                        value: `Use \`/status tournament:${tournamentId}\` to check if you're registered for this tournament.`,
+                        inline: false
                     }
-                };
+                ],
+                footer: {
+                    text: 'Team assignments will be available once the admin creates them'
+                }
+            };
 
-                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-            } else {
-                await interaction.reply({ content: '❌ No teams found for this tournament yet.', flags: MessageFlags.Ephemeral });
-            }
+            await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            
         } catch (error) {
-            console.error('Error fetching teams:', error);
-            await interaction.reply({ content: '❌ Failed to fetch teams. Please try again later.', flags: MessageFlags.Ephemeral });
+            console.error('Error in teams command:', error);
+            await interaction.reply({ content: '❌ Failed to get team information. Please try again later.', flags: MessageFlags.Ephemeral });
         }
     },
 }; 

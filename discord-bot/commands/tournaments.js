@@ -1,3 +1,4 @@
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fetch = require('node-fetch');
 
 module.exports = {
@@ -29,11 +30,23 @@ module.exports = {
                             inline: true
                         })),
                     footer: {
-                        text: 'Use /register to join a tournament'
+                        text: 'Click a button below to register!'
                     }
                 };
 
-                await interaction.editReply({ embeds: [embed] });
+                // Create a row of buttons for each tournament
+                const rows = [];
+                data.sessions.filter(session => session.isActive).forEach(session => {
+                    const row = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`register_tournament_${session.sessionId}`)
+                            .setLabel(`Register for ${session.title}`)
+                            .setStyle(ButtonStyle.Primary)
+                    );
+                    rows.push(row);
+                });
+
+                await interaction.editReply({ embeds: [embed], components: rows });
             } else {
                 await interaction.editReply('❌ No active tournaments found at the moment.');
             }

@@ -72,13 +72,28 @@ module.exports = {
                     }
                 };
 
-                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+                // Check if interaction is still valid before replying
+                if (interaction.isRepliable()) {
+                    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+                } else {
+                    console.log('Interaction expired, but registration was successful');
+                }
             } else {
-                await interaction.reply({ content: `❌ Registration failed: ${data.message || 'Unknown error'}`, flags: MessageFlags.Ephemeral });
+                // Check if interaction is still valid before replying
+                if (interaction.isRepliable()) {
+                    await interaction.reply({ content: `❌ Registration failed: ${data.message || 'Unknown error'}`, flags: MessageFlags.Ephemeral });
+                } else {
+                    console.log('Interaction expired, but registration failed:', data.message);
+                }
             }
         } catch (error) {
             console.error('Error registering player:', error);
-            await interaction.reply({ content: '❌ Failed to register. Please try again later.', flags: MessageFlags.Ephemeral });
+            // Check if interaction is still valid before replying
+            if (interaction.isRepliable()) {
+                await interaction.reply({ content: '❌ Failed to register. Please try again later.', flags: MessageFlags.Ephemeral });
+            } else {
+                console.log('Interaction expired, but registration error occurred:', error.message);
+            }
         }
     },
 }; 

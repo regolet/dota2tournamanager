@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -149,19 +149,92 @@ client.on('messageCreate', async message => {
 
 // Handle tournament button interactions
 client.on(Events.InteractionCreate, async interaction => {
-    if (!interaction.isButton()) return;
-
-    // Register tournament button
-    if (interaction.customId.startsWith('register_tournament_')) {
-        const sessionId = interaction.customId.replace('register_tournament_', '');
-        await interaction.reply({ content: `You selected to register for tournament with sessionId: ${sessionId}`, ephemeral: true });
-        // Registration logic can be added here
+    if (interaction.isButton()) {
+        // Register tournament button
+        if (interaction.customId.startsWith('register_tournament_')) {
+            const sessionId = interaction.customId.replace('register_tournament_', '');
+            // Show modal for Dota2 ID and MMR
+            const modal = new ModalBuilder()
+                .setCustomId(`modal_register_${sessionId}`)
+                .setTitle('Tournament Registration')
+                .addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('dota2id')
+                            .setLabel('Dota 2 ID')
+                            .setStyle(TextInputStyle.Short)
+                            .setPlaceholder('Your Dota 2 Friend ID')
+                            .setRequired(true)
+                    ),
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('mmr')
+                            .setLabel('Peak MMR')
+                            .setStyle(TextInputStyle.Short)
+                            .setPlaceholder('Your highest MMR')
+                            .setRequired(true)
+                    )
+                );
+            await interaction.showModal(modal);
+            return;
+        }
+        // Teams tournament button
+        if (interaction.customId.startsWith('teams_tournament_')) {
+            const sessionId = interaction.customId.replace('teams_tournament_', '');
+            await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
+            // Team display logic can be added here
+            return;
+        }
     }
-    // Teams tournament button
-    if (interaction.customId.startsWith('teams_tournament_')) {
-        const sessionId = interaction.customId.replace('teams_tournament_', '');
-        await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
-        // Team display logic can be added here
+    // Handle modal submission for registration
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_register_')) {
+        const sessionId = interaction.customId.replace('modal_register_', '');
+        const playerName = interaction.user.username;
+        const discordId = interaction.user.id;
+        const dota2id = interaction.fields.getTextInputValue('dota2id');
+        const mmr = interaction.fields.getTextInputValue('mmr');
+        try {
+            // Register player through the add-player API endpoint
+            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/add-player`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: playerName,
+                    dota2id: dota2id,
+                    peakmmr: mmr,
+                    registrationSessionId: sessionId
+                })
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                // Also add/update the user in the masterlist
+                try {
+                    await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/masterlist`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: playerName,
+                            discordId: discordId,
+                            dota2id: dota2id,
+                            mmr: mmr
+                        })
+                    });
+                } catch (mlError) {
+                    console.error('Error updating masterlist:', mlError);
+                }
+                await interaction.reply({ content: '✅ Registration successful! You are now registered for the tournament.', ephemeral: true });
+            } else {
+                await interaction.reply({ content: `❌ Registration failed: ${data.message || 'Unknown error'}`, ephemeral: true });
+            }
+        } catch (error) {
+            console.error('Error registering player via modal:', error);
+            await interaction.reply({ content: '❌ Failed to register. Please try again later.', ephemeral: true });
+        }
+        return;
     }
 });
 
