@@ -1037,48 +1037,45 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
 
-    // Step 1: Assign top and bottom players round-robin
+    // Group players by MMR for shuffling equal MMRs
+    const mmrGroups = {};
+    for (const player of playersForTeams) {
+        const mmr = player.peakmmr || 0;
+        if (!mmrGroups[mmr]) mmrGroups[mmr] = [];
+        mmrGroups[mmr].push(player);
+    }
+    // Flatten back, shuffling each group
+    const balancedOrder = [];
+    Object.keys(mmrGroups).sort((a, b) => b - a).forEach(mmr => {
+        const group = mmrGroups[mmr];
+        for (let i = group.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [group[i], group[j]] = [group[j], group[i]];
+        }
+        balancedOrder.push(...group);
+    });
+
+    // Greedy assignment: always assign next player to team with lowest total MMR
     const teams = Array.from({ length: numTeams }, () => []);
-    let topIndex = 0;
-    let bottomIndex = playersForTeams.length - 1;
-    let slotsFilled = 0;
-    while (slotsFilled < numTeams * 2 && topIndex < bottomIndex) {
-        // Assign top
-        teams[slotsFilled % numTeams].push(playersForTeams[topIndex++]);
-        slotsFilled++;
-        // Assign bottom
-        teams[slotsFilled % numTeams].push(playersForTeams[bottomIndex--]);
-        slotsFilled++;
-    }
-    // If odd number, assign the last remaining player
-    if (topIndex === bottomIndex) {
-        teams[slotsFilled % numTeams].push(playersForTeams[topIndex]);
-        topIndex++;
-        slotsFilled++;
-    }
-
-    // Step 2: Collect mid-tier players
-    const midTierPlayers = playersForTeams.slice(topIndex, bottomIndex + 1);
-    // Shuffle mid-tier
-    for (let i = midTierPlayers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [midTierPlayers[i], midTierPlayers[j]] = [midTierPlayers[j], midTierPlayers[i]];
-    }
-
-    // Step 3: Fill teams with mid-tier players
-    let midIndex = 0;
-    for (let round = 0; round < teamSize; round++) {
+    const teamMmrs = new Array(numTeams).fill(0);
+    for (const player of balancedOrder) {
+        // Find team with lowest total MMR and not full
+        let minMmr = Infinity;
+        let minTeam = 0;
         for (let t = 0; t < numTeams; t++) {
-            if (teams[t].length < teamSize && midIndex < midTierPlayers.length) {
-                teams[t].push(midTierPlayers[midIndex++]);
+            if (teams[t].length < teamSize && teamMmrs[t] < minMmr) {
+                minMmr = teamMmrs[t];
+                minTeam = t;
             }
         }
+        teams[minTeam].push(player);
+        teamMmrs[minTeam] += player.peakmmr || 0;
     }
 
-    // Step 4: Assign to state.balancedTeams
+    // Assign to state.balancedTeams
     for (let t = 0; t < numTeams; t++) {
         state.balancedTeams[t].players = teams[t];
-        state.balancedTeams[t].totalMmr = teams[t].reduce((sum, p) => sum + (p.peakmmr || 0), 0);
+        state.balancedTeams[t].totalMmr = teamMmrs[t];
     }
 
     return playersForReserves;
