@@ -109,7 +109,7 @@ class NotificationSystem {
 window.notificationSystem = new NotificationSystem();
 
 // Utility function to show notifications
-function showNotification(message, type = 'info', duration = 5000) {
+function showNotification(message, type = 'info', duration = 3000) {
     if (window.notificationSystem) {
         return window.notificationSystem.show(message, type, duration);
     }
