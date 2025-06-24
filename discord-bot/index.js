@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -93,6 +93,42 @@ client.on('messageCreate', async message => {
         };
         
         await message.reply({ embeds: [helpEmbed] });
+    }
+
+    // Register button
+    if (message.content.toLowerCase() === '!register') {
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('register_button')
+                .setLabel('Register')
+                .setStyle(ButtonStyle.Primary)
+        );
+        await message.reply({ content: 'Click the button below to register for the tournament!', components: [row] });
+    }
+
+    // View Teams button
+    if (message.content.toLowerCase() === '!teams') {
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('view_teams_button')
+                .setLabel('View Teams')
+                .setStyle(ButtonStyle.Success)
+        );
+        await message.reply({ content: 'Click the button below to view teams!', components: [row] });
+    }
+});
+
+// Handle button interactions
+client.on(Events.InteractionCreate, async interaction => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === 'register_button') {
+        // Here you would call your registration logic or API
+        await interaction.reply({ content: 'You are now registered for the tournament! (Button action)', ephemeral: true });
+    }
+    if (interaction.customId === 'view_teams_button') {
+        // Here you would call your view teams logic or API
+        await interaction.reply({ content: 'Here are the teams! (Button action)', ephemeral: true });
     }
 });
 
