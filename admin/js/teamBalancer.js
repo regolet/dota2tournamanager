@@ -1028,47 +1028,48 @@ function distributePlayersByMethod(players, method, numTeams, teamSize) {
 }
 
 /**
- * High Ranked Balance - Prioritize high MMR players for teams, low MMR to reserves (with randomness)
+ * High Ranked Balance - Prioritize high MMR players for teams, low MMR to reserves (with tiered randomization)
  */
 function distributeHighRankedBalance(players, numTeams, teamSize) {
-    // Sort players by MMR (highest first) - high MMR players get priority
+    // Sort players by MMR (highest first)
     const sortedPlayers = [...players].sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
-    
     const maxPlayersForTeams = numTeams * teamSize;
-    
+
     // Step 1: Separate players for teams vs reserves
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
-    
-    // Step 2: Single shuffle for randomness (much faster than tier-based shuffling)
-    const shuffledPlayersForTeams = [...playersForTeams].sort(() => Math.random() - 0.5);
-    
-    // Step 3: Snake draft with the shuffled players
-    let currentTeam = 0;
-    let direction = 1; // 1 for forward, -1 for backward (snake pattern)
-    
-    for (const player of shuffledPlayersForTeams) {
-        state.balancedTeams[currentTeam].players.push(player);
-        state.balancedTeams[currentTeam].totalMmr += player.peakmmr || 0;
 
-        // Move to next team using snake pattern
-        if (direction === 1) {
-            currentTeam++;
-            if (currentTeam >= numTeams) {
-                currentTeam = numTeams - 1;
-                direction = -1;
-            }
-        } else {
-            currentTeam--;
-            if (currentTeam < 0) {
-                currentTeam = 0;
-                direction = 1;
+    // Step 2: Split into tiers (one tier per team slot)
+    const tiers = [];
+    for (let i = 0; i < teamSize; i++) {
+        tiers.push([]);
+    }
+    for (let i = 0; i < playersForTeams.length; i++) {
+        tiers[i % teamSize].push(playersForTeams[i]);
+    }
+
+    // Step 3: Shuffle each tier
+    for (let i = 0; i < tiers.length; i++) {
+        tiers[i] = tiers[i].sort(() => Math.random() - 0.5);
+    }
+
+    // Step 4: Assign one player from each tier to each team
+    // Clear teams
+    for (let t = 0; t < numTeams; t++) {
+        state.balancedTeams[t].players = [];
+        state.balancedTeams[t].totalMmr = 0;
+    }
+    for (let slot = 0; slot < teamSize; slot++) {
+        for (let t = 0; t < numTeams; t++) {
+            const player = tiers[slot][t];
+            if (player) {
+                state.balancedTeams[t].players.push(player);
+                state.balancedTeams[t].totalMmr += player.peakmmr || 0;
             }
         }
     }
-    
-    // Step 4: Return reserve players for proper state management
-    // The autoBalance function will handle moving these to the reserved list
+
+    // Step 5: Return reserve players for proper state management
     return playersForReserves;
 }
 
