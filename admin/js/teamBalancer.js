@@ -1037,28 +1037,24 @@ function distributeHighRankedBalance(players, numTeams, teamSize) {
     const playersForTeams = sortedPlayers.slice(0, maxPlayersForTeams);
     const playersForReserves = sortedPlayers.slice(maxPlayersForTeams);
 
-    // Group players by MMR for shuffling equal MMRs
-    const mmrGroups = {};
-    for (const player of playersForTeams) {
-        const mmr = player.peakmmr || 0;
-        if (!mmrGroups[mmr]) mmrGroups[mmr] = [];
-        mmrGroups[mmr].push(player);
-    }
-    // Flatten back, shuffling each group
-    const balancedOrder = [];
-    Object.keys(mmrGroups).sort((a, b) => b - a).forEach(mmr => {
-        const group = mmrGroups[mmr];
-        for (let i = group.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [group[i], group[j]] = [group[j], group[i]];
+    // Light shuffle of the entire top N players list before greedy assignment
+    // This introduces randomness while keeping the overall MMR order mostly intact
+    const shuffledPlayersForTeams = [...playersForTeams];
+    const shuffleIntensity = Math.min(Math.floor(maxPlayersForTeams * 0.3), 10); // 30% of players or max 10 swaps
+    
+    for (let i = 0; i < shuffleIntensity; i++) {
+        const index1 = Math.floor(Math.random() * maxPlayersForTeams);
+        const index2 = Math.floor(Math.random() * maxPlayersForTeams);
+        if (index1 !== index2) {
+            [shuffledPlayersForTeams[index1], shuffledPlayersForTeams[index2]] = 
+            [shuffledPlayersForTeams[index2], shuffledPlayersForTeams[index1]];
         }
-        balancedOrder.push(...group);
-    });
+    }
 
     // Greedy assignment: always assign next player to team with lowest total MMR
     const teams = Array.from({ length: numTeams }, () => []);
     const teamMmrs = new Array(numTeams).fill(0);
-    for (const player of balancedOrder) {
+    for (const player of shuffledPlayersForTeams) {
         // Find team with lowest total MMR and not full
         let minMmr = Infinity;
         let minTeam = 0;
