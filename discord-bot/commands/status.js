@@ -1,17 +1,15 @@
-const fetch = require('node-fetch');
+const { MessageFlags } = require('discord.js');
 
 module.exports = {
     name: 'status',
     description: 'Check your registration status',
     async execute(interaction) {
-        await interaction.deferReply();
-
         const discordId = interaction.user.id;
         const playerName = interaction.user.username;
 
         try {
-            // Fetch player status from your webapp
-            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/api-players?discordId=${discordId}`);
+            // Fetch player status from your webapp (public, no session required)
+            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/api-players?discordId=${discordId}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -43,7 +41,7 @@ module.exports = {
                     }
                 };
 
-                await interaction.editReply({ embeds: [embed] });
+                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
             } else {
                 const embed = {
                     color: 0xff9900,
@@ -58,11 +56,11 @@ module.exports = {
                     ]
                 };
 
-                await interaction.editReply({ embeds: [embed] });
+                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
             }
         } catch (error) {
             console.error('Error checking status:', error);
-            await interaction.editReply('❌ Failed to check status. Please try again later.');
+            await interaction.reply({ content: '❌ Failed to check status. Please try again later.', flags: MessageFlags.Ephemeral });
         }
     },
 }; 

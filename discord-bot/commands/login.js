@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const { MessageFlags } = require('discord.js');
 
 // In-memory session store per Discord user
 const userSessions = new Map();
@@ -21,13 +21,13 @@ module.exports = {
         }
     ],
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
-        const username = interaction.options.getString('username');
-        const password = interaction.options.getString('password');
-        const discordId = interaction.user.id;
-
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
-            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/login`, {
+            const username = interaction.options.getString('username');
+            const password = interaction.options.getString('password');
+            const discordId = interaction.user.id;
+
+            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -36,13 +36,17 @@ module.exports = {
 
             if (response.ok && data.success && data.sessionId) {
                 userSessions.set(discordId, data.sessionId);
-                await interaction.editReply({ content: `✅ Login successful! Session ID stored for your account.`, ephemeral: true });
+                await interaction.editReply({ content: `✅ Login successful! Session ID stored for your account.` });
             } else {
-                await interaction.editReply({ content: `❌ Login failed: ${data.error || data.message || 'Unknown error'}`, ephemeral: true });
+                await interaction.editReply({ content: `❌ Login failed: ${data.error || data.message || 'Unknown error'}` });
             }
         } catch (error) {
             console.error('Login command error:', error);
-            await interaction.editReply({ content: '❌ Login failed due to a server or network error.', ephemeral: true });
+            try {
+                await interaction.editReply({ content: '❌ Login failed due to a server or network error.' });
+            } catch (e) {
+                // Ignore if already responded
+            }
         }
     },
     // Helper to get sessionId for a Discord user

@@ -1,11 +1,29 @@
-const fetch = require('node-fetch');
+const { MessageFlags } = require('discord.js');
 
 module.exports = {
     name: 'register',
     description: 'Register for a tournament',
+    options: [
+        {
+            name: 'tournament',
+            type: 3, // STRING
+            description: 'Tournament ID to register for',
+            required: true
+        },
+        {
+            name: 'dota2id',
+            type: 3, // STRING
+            description: 'Your Dota 2 ID',
+            required: true
+        },
+        {
+            name: 'mmr',
+            type: 4, // INTEGER
+            description: 'Your peak MMR',
+            required: true
+        }
+    ],
     async execute(interaction) {
-        await interaction.deferReply();
-
         const tournamentId = interaction.options.getString('tournament');
         const dota2id = interaction.options.getString('dota2id');
         const mmr = interaction.options.getInteger('mmr');
@@ -13,12 +31,11 @@ module.exports = {
         const playerName = interaction.user.username;
 
         try {
-            // Register player through your webapp API
-            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration`, {
+            // Register player through your webapp API (public, no session required)
+            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-session-id': process.env.WEBAPP_SESSION_ID
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     sessionId: tournamentId,
@@ -32,6 +49,9 @@ module.exports = {
             });
 
             const data = await response.json();
+            // Debug: log the full response and data
+            console.log('Register API response status:', response.status);
+            console.log('Register API response data:', data);
 
             if (response.ok && data.success) {
                 const embed = {
@@ -55,13 +75,13 @@ module.exports = {
                     }
                 };
 
-                await interaction.editReply({ embeds: [embed] });
+                await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.editReply(`❌ Registration failed: ${data.message || 'Unknown error'}`);
+                await interaction.reply({ content: `❌ Registration failed: ${data.message || 'Unknown error'}`, flags: MessageFlags.Ephemeral });
             }
         } catch (error) {
             console.error('Error registering player:', error);
-            await interaction.editReply('❌ Failed to register. Please try again later.');
+            await interaction.reply({ content: '❌ Failed to register. Please try again later.', flags: MessageFlags.Ephemeral });
         }
     },
 }; 

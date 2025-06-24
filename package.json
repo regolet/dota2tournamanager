@@ -11,12 +11,13 @@
   },
   "dependencies": {
     "@netlify/neon": "^0.1.0",
-    "node-fetch": "^3.3.2",
     "bcrypt": "^5.1.1",
-    "isomorphic-dompurify": "^2.15.0"
+    "discord.js": "^14.20.0",
+    "isomorphic-dompurify": "^2.15.0",
+    "node-fetch": "^2.7.0"
   },
   "devDependencies": {
-    "netlify-cli": "^17.0.0"
+    "netlify-cli": "^22.1.6"
   },
   "engines": {
     "node": ">=18.0.0"

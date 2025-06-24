@@ -49,6 +49,24 @@ const commands = [
     {
         name: 'status',
         description: 'Check your registration status',
+    },
+    {
+        name: 'login',
+        description: 'Login as admin. Usage: /login username: <username> password: <password>',
+        options: [
+            {
+                name: 'username',
+                type: 3, // STRING
+                description: 'Your admin username',
+                required: true
+            },
+            {
+                name: 'password',
+                type: 3, // STRING
+                description: 'Your admin password',
+                required: true
+            }
+        ]
     }
 ];
 

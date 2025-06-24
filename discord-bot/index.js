@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, 
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
-const fetch = require('node-fetch');
+global.fetch = require('node-fetch');
 
 // Create a new client instance
 const client = new Client({
