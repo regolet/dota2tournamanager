@@ -11,11 +11,7 @@ module.exports = {
 
         try {
             // Fetch player status from your webapp
-            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/api-players?discordId=${discordId}`, {
-                headers: {
-                    'x-session-id': process.env.WEBAPP_SESSION_ID
-                }
-            });
+            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/api-players?discordId=${discordId}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
