@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, 
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const fetch = require('node-fetch');
 
 // Create a new client instance
 const client = new Client({
@@ -95,40 +96,72 @@ client.on('messageCreate', async message => {
         await message.reply({ embeds: [helpEmbed] });
     }
 
-    // Register button
+    // Register button for each tournament
     if (message.content.toLowerCase() === '!register') {
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('register_button')
-                .setLabel('Register')
-                .setStyle(ButtonStyle.Primary)
-        );
-        await message.reply({ content: 'Click the button below to register for the tournament!', components: [row] });
+        // Fetch tournaments from API
+        const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
+            headers: {
+                'x-session-id': process.env.WEBAPP_SESSION_ID || ''
+            }
+        });
+        const data = await response.json();
+        if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
+            const row = new ActionRowBuilder();
+            data.sessions.filter(s => s.isActive).forEach(session => {
+                row.addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`register_tournament_${session.sessionId}`)
+                        .setLabel(session.title)
+                        .setStyle(ButtonStyle.Primary)
+                );
+            });
+            await message.reply({ content: 'Select a tournament to register:', components: [row] });
+        } else {
+            await message.reply('No available tournaments to register.');
+        }
     }
 
-    // View Teams button
+    // Teams button for each tournament
     if (message.content.toLowerCase() === '!teams') {
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('view_teams_button')
-                .setLabel('View Teams')
-                .setStyle(ButtonStyle.Success)
-        );
-        await message.reply({ content: 'Click the button below to view teams!', components: [row] });
+        // Fetch tournaments from API
+        const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
+            headers: {
+                'x-session-id': process.env.WEBAPP_SESSION_ID || ''
+            }
+        });
+        const data = await response.json();
+        if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
+            const row = new ActionRowBuilder();
+            data.sessions.filter(s => s.isActive).forEach(session => {
+                row.addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`teams_tournament_${session.sessionId}`)
+                        .setLabel(session.title)
+                        .setStyle(ButtonStyle.Success)
+                );
+            });
+            await message.reply({ content: 'Select a tournament to view teams:', components: [row] });
+        } else {
+            await message.reply('No available tournaments to view teams.');
+        }
     }
 });
 
-// Handle button interactions
+// Handle tournament button interactions
 client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isButton()) return;
 
-    if (interaction.customId === 'register_button') {
-        // Here you would call your registration logic or API
-        await interaction.reply({ content: 'You are now registered for the tournament! (Button action)', ephemeral: true });
+    // Register tournament button
+    if (interaction.customId.startsWith('register_tournament_')) {
+        const sessionId = interaction.customId.replace('register_tournament_', '');
+        await interaction.reply({ content: `You selected to register for tournament with sessionId: ${sessionId}`, ephemeral: true });
+        // Registration logic can be added here
     }
-    if (interaction.customId === 'view_teams_button') {
-        // Here you would call your view teams logic or API
-        await interaction.reply({ content: 'Here are the teams! (Button action)', ephemeral: true });
+    // Teams tournament button
+    if (interaction.customId.startsWith('teams_tournament_')) {
+        const sessionId = interaction.customId.replace('teams_tournament_', '');
+        await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
+        // Team display logic can be added here
     }
 });
 
