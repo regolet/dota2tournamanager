@@ -339,7 +339,7 @@ client.on('interactionCreate', async interaction => {
                 const attendanceEmbed = {
                     color: 0x00ff00,
                     title: '📋 Tournament Attendance',
-                    description: `**Tournament:** ${tournamentTitle}\n**Registered Players:** ${players.length}\n\nReact with ✅ to mark yourself as **PRESENT** for the tournament.\n\nOnly registered players can mark attendance.`,
+                    description: `**Tournament ID:** ${sessionId}\n**Tournament:** ${tournamentTitle}\n**Registered Players:** ${players.length}\n\nReact with ✅ to mark yourself as **PRESENT** for the tournament.\n\nOnly registered players can mark attendance.`,
                     fields: [
                         {
                             name: '📝 Instructions',
@@ -855,7 +855,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
             try {
                 // Extract session ID from the embed description
                 const description = embed.description;
-                const sessionMatch = description.match(/\*\*Tournament:\*\* ([^\n]+)/);
+                const sessionMatch = description.match(/\*\*Tournament ID:\*\* ([^\n]+)/);
                 
                 if (!sessionMatch) {
                     console.error('[attendance] Could not extract session ID from attendance message');
@@ -946,7 +946,7 @@ client.on('messageReactionRemove', async (reaction, user) => {
             try {
                 // Extract session ID from the embed description
                 const description = embed.description;
-                const sessionMatch = description.match(/\*\*Tournament:\*\* ([^\n]+)/);
+                const sessionMatch = description.match(/\*\*Tournament ID:\*\* ([^\n]+)/);
                 
                 if (!sessionMatch) {
                     console.error('[attendance] Could not extract session ID from attendance message');
