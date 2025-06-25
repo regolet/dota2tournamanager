@@ -386,6 +386,46 @@ export const handler = async (event, context) => {
   } catch (error) {
     console.error('💥 Add Player function critical error:', error);
     console.error('Error stack:', error.stack);
+    
+    // Handle specific validation errors with 400 status
+    if (error.message.includes('already registered') || 
+        error.message.includes('already exists') ||
+        error.message.includes('duplicate')) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: error.message,
+          errorType: 'DUPLICATE_PLAYER',
+          timestamp: new Date().toISOString()
+        })
+      };
+    }
+    
+    // Handle validation errors with 400 status
+    if (error.message.includes('Invalid player data') || 
+        error.message.includes('required') ||
+        error.message.includes('must be')) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          message: error.message,
+          errorType: 'VALIDATION_ERROR',
+          timestamp: new Date().toISOString()
+        })
+      };
+    }
+    
+    // Return 500 for actual server errors
     return {
       statusCode: 500,
       headers: {
