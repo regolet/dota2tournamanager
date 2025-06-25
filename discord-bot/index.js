@@ -562,17 +562,46 @@ client.on('interactionCreate', async interaction => {
                             delete global.generateTeamsSelections[userId];
                             return;
                     }
-                    // Format teams and reserves for Discord embed
+                    // Arrange teams in 2 columns (3 if more than 8 teams)
+                    const numCols = numTeams > 8 ? 3 : 2;
+                    const teamsPerCol = Math.ceil(numTeams / numCols);
+                    // Build each team block as plain text
+                    const teamBlocks = result.teams.map((team, i) => {
+                        const avgMmr = Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1));
+                        const header = `Team ${i + 1} (Avg MMR: ${avgMmr})`;
+                        const players = team.map(p => `${p.name} (${p.peakmmr || 0})`).join('\n');
+                        return [header, players];
+                    });
+                    // Find max width for each block for alignment
+                    const colBlocks = Array.from({ length: numCols }, (_, c) => teamBlocks.slice(c * teamsPerCol, (c + 1) * teamsPerCol));
+                    const colWidths = colBlocks.map(col => Math.max(...col.map(block => Math.max(...block.map(line => line.length)))));
+                    // Pad each block for alignment
+                    for (let c = 0; c < numCols; c++) {
+                        for (let t = 0; t < colBlocks[c].length; t++) {
+                            colBlocks[c][t] = colBlocks[c][t].map(line => line.padEnd(colWidths[c], ' '));
+                        }
+                    }
+                    // Build the final lines row by row
+                    const lines = [];
+                    for (let row = 0; row < teamsPerCol; row++) {
+                        // Header line
+                        const headerLine = colBlocks.map(col => col[row]?.[0] || ''.padEnd(colWidths[colBlocks.indexOf(col)], ' ')).join('   ');
+                        lines.push(headerLine);
+                        // Player lines (max 5 per team)
+                        for (let p = 0; p < 5; p++) {
+                            const playerLine = colBlocks.map(col => (col[row]?.[1]?.split('\n')[p] || '').padEnd(colWidths[colBlocks.indexOf(col)], ' ')).join('   ');
+                            lines.push(playerLine);
+                        }
+                        // Blank line between rows
+                        if (row < teamsPerCol - 1) lines.push('');
+                    }
+                    const teamBlock = lines.join('\n');
+                    const reservesText = result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves';
                     const embed = {
                         color: 0x0099ff,
                         title: `Balanced Teams (${numTeams} teams, ${teamSize} per team)` + (playersData.sessionTitle ? ` - ${playersData.sessionTitle}` : ''),
-                        description: `Balance type: **${selection.balance}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**`,
-                        fields: result.teams.map((team, i) => ({
-                            name: `Team ${i + 1} (Avg MMR: ${Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1))})`,
-                            value: team.map(p => `${p.name} (${p.peakmmr || 0})`).join('\n') || 'No players',
-                            inline: true
-                        })),
-                        footer: { text: result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves' },
+                        description: `Balance type: **${selection.balance}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**\n\n\u200B\n\u200B\n\
+\`\`\`\n${teamBlock}\n\`\`\`\n${reservesText}`,
                         timestamp: new Date().toISOString()
                     };
 
@@ -770,17 +799,46 @@ client.on('interactionCreate', async interaction => {
                     await interaction.editReply('❌ Invalid balance type.');
                     return;
             }
-            // Format teams and reserves for Discord embed
+            // Arrange teams in 2 columns (3 if more than 8 teams)
+            const numCols = numTeams > 8 ? 3 : 2;
+            const teamsPerCol = Math.ceil(numTeams / numCols);
+            // Build each team block as plain text
+            const teamBlocks = result.teams.map((team, i) => {
+                const avgMmr = Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1));
+                const header = `Team ${i + 1} (Avg MMR: ${avgMmr})`;
+                const players = team.map(p => `${p.name} (${p.peakmmr || 0})`).join('\n');
+                return [header, players];
+            });
+            // Find max width for each block for alignment
+            const colBlocks = Array.from({ length: numCols }, (_, c) => teamBlocks.slice(c * teamsPerCol, (c + 1) * teamsPerCol));
+            const colWidths = colBlocks.map(col => Math.max(...col.map(block => Math.max(...block.map(line => line.length)))));
+            // Pad each block for alignment
+            for (let c = 0; c < numCols; c++) {
+                for (let t = 0; t < colBlocks[c].length; t++) {
+                    colBlocks[c][t] = colBlocks[c][t].map(line => line.padEnd(colWidths[c], ' '));
+                }
+            }
+            // Build the final lines row by row
+            const lines = [];
+            for (let row = 0; row < teamsPerCol; row++) {
+                // Header line
+                const headerLine = colBlocks.map(col => col[row]?.[0] || ''.padEnd(colWidths[colBlocks.indexOf(col)], ' ')).join('   ');
+                lines.push(headerLine);
+                // Player lines (max 5 per team)
+                for (let p = 0; p < 5; p++) {
+                    const playerLine = colBlocks.map(col => (col[row]?.[1]?.split('\n')[p] || '').padEnd(colWidths[colBlocks.indexOf(col)], ' ')).join('   ');
+                    lines.push(playerLine);
+                }
+                // Blank line between rows
+                if (row < teamsPerCol - 1) lines.push('');
+            }
+            const teamBlock = lines.join('\n');
+            const reservesText = result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves';
             const embed = {
                 color: 0x0099ff,
                 title: `Balanced Teams (${numTeams} teams, ${teamSize} per team)` + (playersData.sessionTitle ? ` - ${playersData.sessionTitle}` : ''),
-                description: `Balance type: **${balanceType}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**`,
-                fields: result.teams.map((team, i) => ({
-                    name: `Team ${i + 1} (Avg MMR: ${Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1))})`,
-                    value: team.map(p => `${p.name} (${p.peakmmr || 0})`).join('\n') || 'No players',
-                    inline: true
-                })),
-                footer: { text: result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves' },
+                description: `Balance type: **${balanceType}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**\n\n\u200B\n\u200B\n\
+\`\`\`\n${teamBlock}\n\`\`\`\n${reservesText}`,
                 timestamp: new Date().toISOString()
             };
             await interaction.editReply({ embeds: [embed] });
