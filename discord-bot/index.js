@@ -363,7 +363,11 @@ client.on('interactionCreate', async interaction => {
                     },
                     timestamp: new Date().toISOString()
                 };
-                await sendAnnouncement(client, '1387298566858477648', attendanceEmbed);
+                const attendanceMsg = await sendAnnouncement(client, '1387298566858477648', attendanceEmbed);
+                global.lastAttendanceMessages[sessionId] = {
+                    channelId: '1387298566858477648',
+                    messageId: attendanceMsg ? attendanceMsg.id : null
+                };
                 // Fetch the channel to get the message URL for confirmation
                 const attendanceChannel = await client.channels.fetch('1387298566858477648');
                 const messages = await attendanceChannel.messages.fetch({ limit: 1 });
@@ -471,6 +475,19 @@ client.on('interactionCreate', async interaction => {
                     await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent. [View Summary](${summaryMessage.url})`);
                 } else {
                     await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent.`);
+                }
+
+                // When closing attendance, before posting summary:
+                const lastMsg = global.lastAttendanceMessages[sessionId];
+                if (lastMsg && lastMsg.channelId && lastMsg.messageId) {
+                    try {
+                        const channel = await client.channels.fetch(lastMsg.channelId);
+                        const message = await channel.messages.fetch(lastMsg.messageId);
+                        if (message) await message.delete();
+                        delete global.lastAttendanceMessages[sessionId];
+                    } catch (err) {
+                        console.error('Failed to delete previous attendance message:', err);
+                    }
                 }
             } catch (error) {
                 console.error('[closeattendance] Error closing attendance:', error);
@@ -1033,12 +1050,15 @@ async function sendAnnouncement(client, channelId, embed, components = []) {
     try {
         const channel = await client.channels.fetch(channelId);
         if (channel) {
-            await channel.send({ embeds: [embed], components });
+            const sentMsg = await channel.send({ embeds: [embed], components });
+            return sentMsg;
         } else {
             console.error(`Announcement channel ${channelId} not found!`);
+            return null;
         }
     } catch (err) {
         console.error(`Error sending announcement to channel ${channelId}:`, err);
+        return null;
     }
 }
 
