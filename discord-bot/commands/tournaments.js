@@ -9,13 +9,16 @@ module.exports = {
 
         try {
             // Fetch tournaments from your webapp
+            console.log('[tournaments] Fetching tournaments from API:', `${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
             const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            console.log('[tournaments] API response status:', response.status);
+            let data = {};
+            try {
+                data = await response.json();
+                console.log('[tournaments] API response data:', data);
+            } catch (jsonErr) {
+                console.error('[tournaments] Error parsing API response JSON:', jsonErr);
             }
-
-            const data = await response.json();
 
             if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
                 const embed = {
@@ -48,10 +51,11 @@ module.exports = {
 
                 await interaction.editReply({ embeds: [embed], components: rows });
             } else {
+                console.warn('[tournaments] No active tournaments found or API returned error:', data);
                 await interaction.editReply('❌ No active tournaments found at the moment.');
             }
         } catch (error) {
-            console.error('Error fetching tournaments:', error);
+            console.error('[tournaments] Error fetching tournaments:', error);
             await interaction.editReply('❌ Failed to fetch tournaments. Please try again later.');
         }
     },
