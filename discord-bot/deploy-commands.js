@@ -75,6 +75,10 @@ const commands = [
     {
         name: 'closeattendance',
         description: 'Close attendance for a tournament session',
+    },
+    {
+        name: 'generate_teams',
+        description: 'Generate balanced teams for a tournament (present players only)'
     }
 ];
 

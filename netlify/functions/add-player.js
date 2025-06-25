@@ -79,22 +79,21 @@ export const handler = async (event, context) => {
     if (event.headers['x-bulk-import'] === 'true') {
       // skip rate limit for bulk import
     } else {
-      const rateLimit = checkSimpleRateLimit(`add-player-${clientIP}`, 5, 60000);
-      if (!rateLimit.allowed) {
-        console.warn(`Rate limit exceeded for player registration from IP: ${clientIP}`);
-        return {
-          statusCode: 429,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Retry-After': rateLimit.retryAfter.toString()
-          },
-          body: JSON.stringify({
-            success: false,
-            message: 'Too many registration attempts. Please wait before trying again.',
-            retryAfter: rateLimit.retryAfter
-          })
-        };
-      }
+      // const rateLimit = checkSimpleRateLimit(`add-player-${clientIP}`, 5, 60000);
+      // if (!rateLimit.allowed) {
+      //   console.warn(`Rate limit exceeded for player registration from IP: ${clientIP}`);
+      //   return {
+      //     statusCode: 429,
+      //     headers: {
+      //       'Access-Control-Allow-Origin': '*',
+      //       'Retry-After': rateLimit.retryAfter.toString()
+      //     },
+      //     body: JSON.stringify({
+      //       success: false,
+      //       message: 'Too many registration attempts. Please wait before trying again.',
+      //       retryAfter: rateLimit.retryAfter
+      //     })
+      //   };
     }
     
     // Handle CORS preflight

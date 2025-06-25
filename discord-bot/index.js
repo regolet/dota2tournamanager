@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 global.fetch = require('node-fetch');
+const teamBalancer = require('./teamBalancer');
 
 // Create a new client instance
 const client = new Client({
@@ -10,7 +11,8 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageReactions
     ]
 });
 
@@ -44,26 +46,945 @@ client.once('ready', () => {
 
 // Message interaction handler
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
+    console.log(`[interaction] Received interaction type: ${interaction.type}, customId: ${interaction.customId || 'N/A'}`);
+    
+    // Handle slash commands
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
 
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(`Error executing command ${interaction.commandName}:`, error);
-        // Check if interaction is still valid before replying
-        if (interaction.isRepliable()) {
-            try {
-                await interaction.reply({
-                    content: 'There was an error while executing this command!',
-                    ephemeral: true
-                });
-            } catch (replyError) {
-                console.error('Failed to send error reply:', replyError);
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(`Error executing command ${interaction.commandName}:`, error);
+            // Check if interaction is still valid before replying
+            if (interaction.isRepliable()) {
+                try {
+                    await interaction.reply({
+                        content: 'There was an error while executing this command!',
+                        ephemeral: true
+                    });
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
             }
         }
+        return;
+    }
+    
+    // Handle button interactions
+    if (interaction.isButton()) {
+        // Register tournament button
+        if (interaction.customId.startsWith('register_tournament_')) {
+            const sessionId = interaction.customId.replace('register_tournament_', '');
+            console.log(`[button] Showing registration modal for session ${sessionId}`);
+            
+            // Show modal for Dota2 ID and MMR
+            const modal = new ModalBuilder()
+                .setCustomId(`modal_register_${sessionId}`)
+                .setTitle('Tournament Registration')
+                .addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('dota2id')
+                            .setLabel('Dota 2 ID')
+                            .setStyle(TextInputStyle.Short)
+                            .setPlaceholder('Your Dota 2 Friend ID')
+                            .setRequired(true)
+                    ),
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('mmr')
+                            .setLabel('Peak MMR')
+                            .setStyle(TextInputStyle.Short)
+                            .setPlaceholder('Your highest MMR')
+                            .setRequired(true)
+                    )
+                );
+            try {
+                await interaction.showModal(modal);
+            } catch (error) {
+                console.error('Error showing modal:', error);
+            }
+            return;
+        }
+        
+        // Teams tournament button
+        if (interaction.customId.startsWith('teams_tournament_')) {
+            const sessionId = interaction.customId.replace('teams_tournament_', '');
+            try {
+                await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
+            } catch (error) {
+                console.error('Error replying to teams button:', error);
+            }
+            // Team display logic can be added here
+            return;
+        }
+
+        // Save teams and create tournament bracket button
+        if (interaction.customId.startsWith('save_teams_')) {
+            const userId = interaction.user.id;
+            const teamsData = global.generatedTeamsData?.[userId];
+            
+            if (!teamsData) {
+                try {
+                    await interaction.reply({ 
+                        content: '❌ No teams data found. Please generate teams again.', 
+                        ephemeral: true 
+                    });
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+                return;
+            }
+
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                
+                // Format teams for saving to database
+                const formattedTeams = teamsData.teams.map((team, index) => ({
+                    teamNumber: index + 1,
+                    name: `Team ${index + 1}`,
+                    players: team.map(player => ({
+                        id: player.id,
+                        name: player.name,
+                        dota2id: player.dota2id,
+                        peakmmr: player.peakmmr || 0
+                    })),
+                    averageMmr: Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1))
+                }));
+
+                // Create tournament bracket
+                const tournamentData = {
+                    id: `tournament_${Date.now()}`,
+                    team_set_id: `teamset_${Date.now()}`,
+                    name: `${teamsData.sessionTitle || 'Tournament'} - Single Elimination`,
+                    description: `Generated from ${teamsData.balance} balance with ${teamsData.teamcount} teams`,
+                    format: 'single_elimination',
+                    teams: formattedTeams,
+                    rounds: [],
+                    currentRound: 0,
+                    status: 'created',
+                    createdAt: new Date().toISOString()
+                };
+
+                // Generate single elimination bracket
+                const shuffledTeams = [...formattedTeams];
+                for (let i = shuffledTeams.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledTeams[i], shuffledTeams[j]] = [shuffledTeams[j], shuffledTeams[i]];
+                }
+
+                const numRounds = Math.ceil(Math.log2(shuffledTeams.length));
+                tournamentData.rounds = [];
+
+                // Generate first round matches
+                const firstRoundMatches = [];
+                for (let i = 0; i < shuffledTeams.length; i += 2) {
+                    if (i + 1 < shuffledTeams.length) {
+                        firstRoundMatches.push({
+                            id: `match_r1_${Math.floor(i/2) + 1}`,
+                            round: 1,
+                            team1: shuffledTeams[i],
+                            team2: shuffledTeams[i + 1],
+                            winner: null,
+                            status: 'pending'
+                        });
+                    } else {
+                        firstRoundMatches.push({
+                            id: `match_r1_${Math.floor(i/2) + 1}`,
+                            round: 1,
+                            team1: shuffledTeams[i],
+                            team2: null,
+                            winner: shuffledTeams[i],
+                            status: 'bye'
+                        });
+                    }
+                }
+
+                tournamentData.rounds.push({
+                    round: 1,
+                    name: 'First Round',
+                    matches: firstRoundMatches,
+                    status: 'ready'
+                });
+
+                // Generate subsequent rounds
+                for (let round = 2; round <= numRounds; round++) {
+                    const roundMatches = [];
+                    const numMatches = Math.ceil(Math.pow(2, numRounds - round));
+                    
+                    for (let i = 0; i < numMatches; i++) {
+                        roundMatches.push({
+                            id: `match_r${round}_${i + 1}`,
+                            round: round,
+                            team1: null,
+                            team2: null,
+                            winner: null,
+                            status: 'waiting'
+                        });
+                    }
+                    
+                    tournamentData.rounds.push({
+                        round: round,
+                        name: round === numRounds ? 'Final' : 
+                              round === numRounds - 1 ? 'Semi-Final' : 
+                              `Round ${round}`,
+                        matches: roundMatches,
+                        status: 'waiting'
+                    });
+                }
+
+                // Save teams to database
+                const saveResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/save-teams-discord`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: `${teamsData.sessionTitle || 'Tournament'} - ${teamsData.balance} Balance`,
+                        teams: formattedTeams,
+                        tournament: teamsData.tournament,
+                        balance: teamsData.balance,
+                        description: `Generated from Discord bot with ${teamsData.teamcount} teams`,
+                        tournamentData: tournamentData
+                    })
+                });
+
+                if (!saveResponse.ok) {
+                    const errorData = await saveResponse.text();
+                    console.error('Save teams response error:', saveResponse.status, errorData);
+                    throw new Error(`Failed to save teams to database: ${saveResponse.status} - ${errorData}`);
+                }
+
+                const saveData = await saveResponse.json();
+                const teamSetId = saveData.teamSetId;
+
+                // Create bracket visualization embed
+                const bracketEmbed = {
+                    color: 0x00ff00,
+                    title: '🏆 Tournament Bracket Created!',
+                    description: `**Tournament:** ${tournamentData.name}\n**Format:** Single Elimination\n**Teams:** ${shuffledTeams.length}\n**Rounds:** ${numRounds}`,
+                    fields: [
+                        {
+                            name: '📋 First Round Matches',
+                            value: firstRoundMatches.map(match => {
+                                if (match.status === 'bye') {
+                                    return `• ${match.team1.name} (Bye)`;
+                                }
+                                return `• ${match.team1.name} vs ${match.team2.name}`;
+                            }).join('\n'),
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Tournament bracket saved to database'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                await interaction.editReply({ 
+                    content: '✅ Teams saved and tournament bracket created successfully!',
+                    embeds: [bracketEmbed]
+                });
+
+                // Clean up stored data
+                delete global.generatedTeamsData[userId];
+
+            } catch (error) {
+                console.error('Error saving teams and creating tournament:', error);
+                try {
+                    await interaction.editReply({ 
+                        content: `❌ Error: ${error.message}`, 
+                        ephemeral: true 
+                    });
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+            }
+            return;
+        }
+    }
+    
+    // Handle select menu interactions
+    if (interaction.isStringSelectMenu()) {
+        // Attendance tournament selection
+        if (interaction.customId === 'attendance_tournament_select') {
+            const sessionId = interaction.values[0];
+            try {
+                await interaction.deferReply({ ephemeral: true });
+
+                // Fetch all tournaments to get the title
+                const sessionsResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
+                const sessionsData = await sessionsResponse.json();
+                let tournamentTitle = sessionId;
+                if (sessionsData.success && Array.isArray(sessionsData.sessions)) {
+                    const session = sessionsData.sessions.find(s => s.sessionId === sessionId);
+                    if (session) tournamentTitle = session.title;
+                }
+
+                // Fetch registered players for this session
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
+                const data = await response.json();
+                if (!data.success) {
+                    await interaction.editReply('❌ Failed to fetch tournament players. Please try again.');
+                    return;
+                }
+                const players = data.players || [];
+                if (players.length === 0) {
+                    await interaction.editReply('❌ No players registered for this tournament yet.');
+                    return;
+                }
+                // Post attendance message in the channel
+                const attendanceEmbed = {
+                    color: 0x00ff00,
+                    title: '📋 Tournament Attendance',
+                    description: `**Tournament:** ${tournamentTitle}\n**Registered Players:** ${players.length}\n\nReact with ✅ to mark yourself as **PRESENT** for the tournament.\n\nOnly registered players can mark attendance.`,
+                    fields: [
+                        {
+                            name: '📝 Instructions',
+                            value: 'Click the ✅ reaction below to confirm your attendance. This will mark you as present for the tournament.',
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Attendance will be closed by an admin'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                const attendanceMessage = await interaction.channel.send({
+                    embeds: [attendanceEmbed]
+                });
+                await attendanceMessage.react('✅');
+                await interaction.editReply(`✅ Attendance message posted! [View Message](${attendanceMessage.url})`);
+            } catch (error) {
+                console.error('[attendance] Error posting attendance message:', error);
+                try {
+                    await interaction.editReply('❌ Failed to post attendance message. Please try again.');
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+            }
+            return;
+        }
+        
+        // Close attendance tournament selection
+        if (interaction.customId === 'closeattendance_tournament_select') {
+            const sessionId = interaction.values[0];
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                // Fetch all tournaments to get the title
+                const sessionsResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
+                const sessionsData = await sessionsResponse.json();
+                let tournamentTitle = sessionId;
+                if (sessionsData.success && Array.isArray(sessionsData.sessions)) {
+                    const session = sessionsData.sessions.find(s => s.sessionId === sessionId);
+                    if (session) tournamentTitle = session.title;
+                }
+                // Fetch registered players for this session
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
+                const data = await response.json();
+                if (!data.success) {
+                    await interaction.editReply('❌ Failed to fetch tournament players. Please try again.');
+                    return;
+                }
+                const players = data.players || [];
+                if (players.length === 0) {
+                    await interaction.editReply('❌ No players registered for this tournament.');
+                    return;
+                }
+                // Mark all non-present players as absent
+                let presentCount = 0;
+                let absentCount = 0;
+                const absentPlayers = [];
+                for (const player of players) {
+                    if (!player.present) {
+                        const updateResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/update-player`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                playerId: player.id,
+                                updates: {
+                                    present: false
+                                }
+                            })
+                        });
+                        if (updateResponse.ok) {
+                            absentCount++;
+                            absentPlayers.push(player.name);
+                        }
+                    } else {
+                        presentCount++;
+                    }
+                }
+                // Post attendance summary in the channel
+                const summaryEmbed = {
+                    color: 0xff9900,
+                    title: '🏁 Tournament Attendance Closed',
+                    description: `**Tournament:** ${tournamentTitle}\n**Attendance Period:** Closed`,
+                    fields: [
+                        {
+                            name: '📊 Attendance Summary',
+                            value: `✅ **Present:** ${presentCount} players\n❌ **Absent:** ${absentCount} players\n📋 **Total Registered:** ${players.length} players`,
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Attendance closed by admin'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                if (absentPlayers.length > 0) {
+                    const absentList = absentPlayers.slice(0, 10).join(', ');
+                    const moreText = absentPlayers.length > 10 ? ` and ${absentPlayers.length - 10} more` : '';
+                    summaryEmbed.fields.push({
+                        name: '❌ Absent Players',
+                        value: `${absentList}${moreText}`,
+                        inline: false
+                    });
+                }
+                const summaryMessage = await interaction.channel.send({
+                    embeds: [summaryEmbed]
+                });
+                await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent. [View Summary](${summaryMessage.url})`);
+            } catch (error) {
+                console.error('[closeattendance] Error closing attendance:', error);
+                await interaction.editReply('❌ Failed to close attendance. Please try again.');
+            }
+            return;
+        }
+        
+        // Generate Teams: Tournament, Balance, Team Count selection
+        if (
+            interaction.customId === 'generate_teams_tournament' ||
+            interaction.customId === 'generate_teams_balance' ||
+            interaction.customId === 'generate_teams_teamcount'
+        ) {
+            try {
+                // Store selections in a temporary map (in-memory, per process)
+                if (!global.generateTeamsSelections) global.generateTeamsSelections = {};
+                const userId = interaction.user.id;
+                if (!global.generateTeamsSelections[userId]) global.generateTeamsSelections[userId] = {};
+                // Save the selection
+                if (interaction.customId === 'generate_teams_tournament') {
+                    global.generateTeamsSelections[userId].tournament = interaction.values[0];
+                }
+                if (interaction.customId === 'generate_teams_balance') {
+                    global.generateTeamsSelections[userId].balance = interaction.values[0];
+                }
+                if (interaction.customId === 'generate_teams_teamcount') {
+                    global.generateTeamsSelections[userId].teamcount = parseInt(interaction.values[0], 10);
+                }
+                // If all three are selected, proceed
+                const selection = global.generateTeamsSelections[userId];
+                if (selection.tournament && selection.balance && selection.teamcount) {
+                    await interaction.deferReply({ ephemeral: true });
+                    // Fetch present players for the selected tournament
+                    const playersRes = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${selection.tournament}`);
+                    const playersData = await playersRes.json();
+                    if (!playersData.success) {
+                        await interaction.editReply('❌ Failed to fetch players.');
+                        return;
+                    }
+                    const presentPlayers = (playersData.players || []).filter(p => p.present);
+                    if (presentPlayers.length < 2) {
+                        await interaction.editReply('❌ Not enough present players to form teams.');
+                        return;
+                    }
+                    // Calculate team size
+                    const numTeams = selection.teamcount;
+                    const teamSize = Math.floor(presentPlayers.length / numTeams);
+                    if (teamSize < 1) {
+                        await interaction.editReply('❌ Not enough players for the selected number of teams.');
+                        delete global.generateTeamsSelections[userId];
+                        return;
+                    }
+                    // Run the selected balance logic
+                    let result;
+                    switch (selection.balance) {
+                        case 'highRanked':
+                            result = teamBalancer.highRanked(presentPlayers, numTeams, teamSize); break;
+                        case 'perfectMmr':
+                            result = teamBalancer.perfectMmr(presentPlayers, numTeams, teamSize); break;
+                        case 'highLowShuffle':
+                            result = teamBalancer.highLowShuffle(presentPlayers, numTeams, teamSize); break;
+                        case 'random':
+                            result = teamBalancer.random(presentPlayers, numTeams, teamSize); break;
+                        default:
+                            await interaction.editReply('❌ Invalid balance type.');
+                            delete global.generateTeamsSelections[userId];
+                            return;
+                    }
+                    // Format teams and reserves for Discord embed
+                    const embed = {
+                        color: 0x0099ff,
+                        title: `Balanced Teams (${numTeams} teams, ${teamSize} per team)` + (playersData.sessionTitle ? ` - ${playersData.sessionTitle}` : ''),
+                        description: `Balance type: **${selection.balance}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**`,
+                        fields: result.teams.map((team, i) => ({
+                            name: `Team ${i + 1} (Avg MMR: ${Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1))})`,
+                            value: team.map(p => `${p.name} (${p.peakmmr || 0})`).join('\n') || 'No players',
+                            inline: true
+                        })),
+                        footer: { text: result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves' },
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // Create button to save teams and create tournament bracket
+                    const saveButton = new ButtonBuilder()
+                        .setCustomId(`save_teams_${selection.tournament}_${selection.balance}_${selection.teamcount}`)
+                        .setLabel('Save & Proceed to Tournament Bracket')
+                        .setStyle(ButtonStyle.Success)
+                        .setEmoji('🏆');
+
+                    const buttonRow = new ActionRowBuilder().addComponents(saveButton);
+
+                    // Store the generated teams data for later use
+                    if (!global.generatedTeamsData) global.generatedTeamsData = {};
+                    global.generatedTeamsData[userId] = {
+                        teams: result.teams,
+                        reserves: result.reserves,
+                        tournament: selection.tournament,
+                        balance: selection.balance,
+                        teamcount: selection.teamcount,
+                        sessionTitle: playersData.sessionTitle
+                    };
+
+                    await interaction.editReply({ 
+                        embeds: [embed],
+                        components: [buttonRow]
+                    });
+                    delete global.generateTeamsSelections[userId];
+                } else {
+                    // Acknowledge the selection and prompt for the others
+                    await interaction.reply({
+                        content: 'Selection saved! Please select the remaining options to proceed.',
+                        ephemeral: true
+                    });
+                }
+            } catch (error) {
+                console.error('Error in team generation selection:', error);
+                try {
+                    if (interaction.deferred) {
+                        await interaction.editReply('❌ An error occurred while processing your selection. Please try again.');
+                    } else {
+                        await interaction.reply({ 
+                            content: '❌ An error occurred while processing your selection. Please try again.', 
+                            ephemeral: true 
+                        });
+                    }
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+            }
+            return;
+        }
+
+        // Create Tournament: Tournament, Balance, Team Count selection (new simplified command)
+        if (
+            interaction.customId === 'create_tournament_tournament' ||
+            interaction.customId === 'create_tournament_balance' ||
+            interaction.customId === 'create_tournament_teamcount'
+        ) {
+            try {
+                // Store selections in a temporary map (in-memory, per process)
+                if (!global.createTournamentSelections) global.createTournamentSelections = {};
+                const userId = interaction.user.id;
+                if (!global.createTournamentSelections[userId]) global.createTournamentSelections[userId] = {};
+                
+                // Save the selection
+                if (interaction.customId === 'create_tournament_tournament') {
+                    global.createTournamentSelections[userId].tournament = interaction.values[0];
+                }
+                if (interaction.customId === 'create_tournament_balance') {
+                    global.createTournamentSelections[userId].balance = interaction.values[0];
+                }
+                if (interaction.customId === 'create_tournament_teamcount') {
+                    global.createTournamentSelections[userId].teamcount = parseInt(interaction.values[0], 10);
+                }
+                
+                // If all three are selected, proceed with team generation and tournament creation
+                const selection = global.createTournamentSelections[userId];
+                if (selection.tournament && selection.balance && selection.teamcount) {
+                    await interaction.deferReply({ ephemeral: true });
+                    
+                    // Fetch present players for the selected tournament
+                    const playersRes = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${selection.tournament}`);
+                    const playersData = await playersRes.json();
+                    if (!playersData.success) {
+                        await interaction.editReply('❌ Failed to fetch players.');
+                        return;
+                    }
+                    const presentPlayers = (playersData.players || []).filter(p => p.present);
+                    if (presentPlayers.length < 2) {
+                        await interaction.editReply('❌ Not enough present players to form teams.');
+                        return;
+                    }
+                    
+                    // Calculate team size
+                    const numTeams = selection.teamcount;
+                    const teamSize = Math.floor(presentPlayers.length / numTeams);
+                    if (teamSize < 1) {
+                        await interaction.editReply('❌ Not enough players for the selected number of teams.');
+                        delete global.createTournamentSelections[userId];
+                        return;
+                    }
+                    
+                    // Run the selected balance logic
+                    let result;
+                    switch (selection.balance) {
+                        case 'highRanked':
+                            result = teamBalancer.highRanked(presentPlayers, numTeams, teamSize); break;
+                        case 'perfectMmr':
+                            result = teamBalancer.perfectMmr(presentPlayers, numTeams, teamSize); break;
+                        case 'highLowShuffle':
+                            result = teamBalancer.highLowShuffle(presentPlayers, numTeams, teamSize); break;
+                        case 'random':
+                            result = teamBalancer.random(presentPlayers, numTeams, teamSize); break;
+                        default:
+                            await interaction.editReply('❌ Invalid balance type.');
+                            delete global.createTournamentSelections[userId];
+                            return;
+                    }
+                    
+                    // Format teams for saving to database
+                    const formattedTeams = result.teams.map((team, index) => ({
+                        teamNumber: index + 1,
+                        name: `Team ${index + 1}`,
+                        players: team.map(player => ({
+                            id: player.id,
+                            name: player.name,
+                            dota2id: player.dota2id,
+                            peakmmr: player.peakmmr || 0
+                        })),
+                        averageMmr: Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1))
+                    }));
+
+                    // Create tournament bracket
+                    const tournamentData = {
+                        id: `tournament_${Date.now()}`,
+                        team_set_id: `teamset_${Date.now()}`,
+                        name: `${playersData.sessionTitle || 'Tournament'} - Single Elimination`,
+                        description: `Generated from ${selection.balance} balance with ${selection.teamcount} teams`,
+                        format: 'single_elimination',
+                        teams: formattedTeams,
+                        rounds: [],
+                        currentRound: 0,
+                        status: 'created',
+                        createdAt: new Date().toISOString()
+                    };
+
+                    // Generate single elimination bracket
+                    const shuffledTeams = [...formattedTeams];
+                    for (let i = shuffledTeams.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffledTeams[i], shuffledTeams[j]] = [shuffledTeams[j], shuffledTeams[i]];
+                    }
+
+                    const numRounds = Math.ceil(Math.log2(shuffledTeams.length));
+                    tournamentData.rounds = [];
+
+                    // Generate first round matches
+                    const firstRoundMatches = [];
+                    for (let i = 0; i < shuffledTeams.length; i += 2) {
+                        if (i + 1 < shuffledTeams.length) {
+                            firstRoundMatches.push({
+                                id: `match_r1_${Math.floor(i/2) + 1}`,
+                                round: 1,
+                                team1: shuffledTeams[i],
+                                team2: shuffledTeams[i + 1],
+                                winner: null,
+                                status: 'pending'
+                            });
+                        } else {
+                            firstRoundMatches.push({
+                                id: `match_r1_${Math.floor(i/2) + 1}`,
+                                round: 1,
+                                team1: shuffledTeams[i],
+                                team2: null,
+                                winner: shuffledTeams[i],
+                                status: 'bye'
+                            });
+                        }
+                    }
+
+                    tournamentData.rounds.push({
+                        round: 1,
+                        name: 'First Round',
+                        matches: firstRoundMatches,
+                        status: 'ready'
+                    });
+
+                    // Generate subsequent rounds
+                    for (let round = 2; round <= numRounds; round++) {
+                        const roundMatches = [];
+                        const numMatches = Math.ceil(Math.pow(2, numRounds - round));
+                        
+                        for (let i = 0; i < numMatches; i++) {
+                            roundMatches.push({
+                                id: `match_r${round}_${i + 1}`,
+                                round: round,
+                                team1: null,
+                                team2: null,
+                                winner: null,
+                                status: 'waiting'
+                            });
+                        }
+                        
+                        tournamentData.rounds.push({
+                            round: round,
+                            name: round === numRounds ? 'Final' : 
+                                  round === numRounds - 1 ? 'Semi-Final' : 
+                                  `Round ${round}`,
+                            matches: roundMatches,
+                            status: 'waiting'
+                        });
+                    }
+
+                    // Save teams and tournament to database
+                    const saveResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/save-teams-discord`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            title: `${playersData.sessionTitle || 'Tournament'} - ${selection.balance} Balance`,
+                            teams: formattedTeams,
+                            tournament: selection.tournament,
+                            balance: selection.balance,
+                            description: `Generated from Discord bot with ${selection.teamcount} teams`,
+                            tournamentData: tournamentData
+                        })
+                    });
+
+                    if (!saveResponse.ok) {
+                        const errorData = await saveResponse.text();
+                        console.error('Save teams response error:', saveResponse.status, errorData);
+                        throw new Error(`Failed to save teams to database: ${saveResponse.status} - ${errorData}`);
+                    }
+
+                    const saveData = await saveResponse.json();
+
+                    // Create success embed
+                    const successEmbed = {
+                        color: 0x00ff00,
+                        title: '🏆 Tournament Created Successfully!',
+                        description: `**Tournament:** ${tournamentData.name}\n**Format:** Single Elimination\n**Teams:** ${shuffledTeams.length}\n**Rounds:** ${numRounds}`,
+                        fields: [
+                            {
+                                name: '📋 First Round Matches',
+                                value: firstRoundMatches.map(match => {
+                                    if (match.status === 'bye') {
+                                        return `• ${match.team1.name} (Bye)`;
+                                    }
+                                    return `• ${match.team1.name} vs ${match.team2.name}`;
+                                }).join('\n'),
+                                inline: false
+                            },
+                            {
+                                name: '📊 Team Summary',
+                                value: `**Balance Type:** ${selection.balance}\n**Total Players:** ${presentPlayers.length}\n**Players in Teams:** ${numTeams * teamSize}\n**Reserves:** ${result.reserves.length}`,
+                                inline: false
+                            }
+                        ],
+                        footer: {
+                            text: 'Tournament bracket saved to database'
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+
+                    await interaction.editReply({ 
+                        content: '✅ Teams generated and tournament bracket created successfully!',
+                        embeds: [successEmbed]
+                    });
+
+                    // Clean up stored data
+                    delete global.createTournamentSelections[userId];
+                    
+                } else {
+                    // Acknowledge the selection and prompt for the others
+                    await interaction.reply({
+                        content: 'Selection saved! Please select the remaining options to proceed.',
+                        ephemeral: true
+                    });
+                }
+            } catch (error) {
+                console.error('Error in create tournament selection:', error);
+                try {
+                    if (interaction.deferred) {
+                        await interaction.editReply('❌ An error occurred while creating the tournament. Please try again.');
+                    } else {
+                        await interaction.reply({ 
+                            content: '❌ An error occurred while creating the tournament. Please try again.', 
+                            ephemeral: true 
+                        });
+                    }
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+            }
+            return;
+        }
+    }
+    
+    // Handle modal submission for registration
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_register_')) {
+        const sessionId = interaction.customId.replace('modal_register_', '');
+        const playerName = interaction.user.username;
+        const discordId = interaction.user.id;
+        const dota2id = interaction.fields.getTextInputValue('dota2id');
+        const mmr = interaction.fields.getTextInputValue('mmr');
+        
+        console.log(`[modal] Processing registration for ${playerName} (${discordId}) in session ${sessionId}`);
+        
+        try {
+            // Defer reply immediately to prevent timeout
+            await interaction.deferReply({ ephemeral: true });
+            console.log(`[modal] Deferred reply for ${playerName}`);
+            
+            // Register player through the add-player API endpoint
+            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/add-player`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: playerName,
+                    dota2id: dota2id,
+                    peakmmr: mmr,
+                    registrationSessionId: sessionId,
+                    discordId: discordId
+                })
+            });
+
+            const data = await response.json();
+            console.log('[modal] Registration API response status:', response.status);
+            console.log('[modal] Registration API response data:', data);
+
+            if (response.ok && data.success) {
+                await interaction.editReply({
+                    content: `✅ Registration successful! You have been registered for the tournament.\n\n**Player Info:**\n• Name: ${playerName}\n• Dota 2 ID: ${dota2id}\n• MMR: ${mmr}\n• Tournament: ${sessionId}`,
+                    ephemeral: true
+                });
+                console.log(`[modal] Registration successful for ${playerName}`);
+            } else {
+                // Handle API errors (400, 500, etc.) - these are expected for validation/duplicate errors
+                const errorMessage = data.message || 'Unknown error occurred';
+                await interaction.editReply({
+                    content: `❌ Registration failed: ${errorMessage}`,
+                    ephemeral: true
+                });
+                console.log(`[modal] Registration failed for ${playerName}: ${errorMessage}`);
+            }
+        } catch (error) {
+            console.error('[modal] Error registering player via modal:', error);
+            
+            // Check if interaction is still valid and not already replied to
+            if (interaction.deferred && !interaction.replied) {
+                try {
+                    await interaction.editReply({
+                        content: '❌ Failed to register. Please try again later.',
+                        ephemeral: true
+                    });
+                    console.log('[modal] Sent error reply via editReply');
+                } catch (editError) {
+                    console.error('[modal] Failed to edit reply:', editError);
+                }
+            } else if (!interaction.deferred && !interaction.replied) {
+                try {
+                    await interaction.reply({
+                        content: '❌ Failed to register. Please try again later.',
+                        ephemeral: true
+                    });
+                    console.log('[modal] Sent error reply via reply');
+                } catch (replyError) {
+                    console.error('[modal] Failed to send reply:', replyError);
+                }
+            } else {
+                console.log('[modal] Interaction already handled, cannot send error message');
+            }
+        }
+    }
+
+    // Handle modal submission for generate teams
+    if (interaction.isModalSubmit() && interaction.customId === 'modal_generate_teams') {
+        const tournamentId = interaction.fields.getTextInputValue('tournament_id').trim();
+        const balanceType = interaction.fields.getTextInputValue('balance_type').trim();
+        const teamCountStr = interaction.fields.getTextInputValue('team_count').trim();
+        const validBalanceTypes = ['highRanked', 'perfectMmr', 'highLowShuffle', 'random'];
+        let teamCount = parseInt(teamCountStr, 10);
+
+        await interaction.deferReply({ ephemeral: true });
+
+        // Validate inputs
+        if (!tournamentId) {
+            await interaction.editReply('❌ Tournament ID is required.');
+            return;
+        }
+        if (!validBalanceTypes.includes(balanceType)) {
+            await interaction.editReply('❌ Invalid balance type. Use one of: highRanked, perfectMmr, highLowShuffle, random');
+            return;
+        }
+        if (isNaN(teamCount) || teamCount < 2) {
+            await interaction.editReply('❌ Number of teams must be a number (2 or more).');
+            return;
+        }
+
+        // Fetch present players for the selected tournament
+        try {
+            const playersRes = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${tournamentId}`);
+            const playersData = await playersRes.json();
+            if (!playersData.success) {
+                await interaction.editReply('❌ Failed to fetch players for this tournament.');
+                return;
+            }
+            const presentPlayers = (playersData.players || []).filter(p => p.present);
+            if (presentPlayers.length < 2) {
+                await interaction.editReply('❌ Not enough present players to form teams.');
+                return;
+            }
+            // Calculate team size
+            const numTeams = teamCount;
+            const teamSize = Math.floor(presentPlayers.length / numTeams);
+            if (teamSize < 1) {
+                await interaction.editReply('❌ Not enough players for the selected number of teams.');
+                return;
+            }
+            // Run the selected balance logic
+            let result;
+            switch (balanceType) {
+                case 'highRanked':
+                    result = teamBalancer.highRanked(presentPlayers, numTeams, teamSize); break;
+                case 'perfectMmr':
+                    result = teamBalancer.perfectMmr(presentPlayers, numTeams, teamSize); break;
+                case 'highLowShuffle':
+                    result = teamBalancer.highLowShuffle(presentPlayers, numTeams, teamSize); break;
+                case 'random':
+                    result = teamBalancer.random(presentPlayers, numTeams, teamSize); break;
+                default:
+                    await interaction.editReply('❌ Invalid balance type.');
+                    return;
+            }
+            // Format teams and reserves for Discord embed
+            const embed = {
+                color: 0x0099ff,
+                title: `Balanced Teams (${numTeams} teams, ${teamSize} per team)` + (playersData.sessionTitle ? ` - ${playersData.sessionTitle}` : ''),
+                description: `Balance type: **${balanceType}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**`,
+                fields: result.teams.map((team, i) => ({
+                    name: `Team ${i + 1} (Avg MMR: ${Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1))})`,
+                    value: team.map(p => `${p.name} (${p.peakmmr || 0})`).join('\n') || 'No players',
+                    inline: true
+                })),
+                footer: { text: result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves' },
+                timestamp: new Date().toISOString()
+            };
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('[generate_teams modal] Error:', error);
+            await interaction.editReply('❌ An error occurred while generating teams.');
+        }
+        return;
     }
 });
 
@@ -154,276 +1075,6 @@ client.on('messageCreate', async message => {
     }
 });
 
-// Handle tournament button interactions
-client.on(Events.InteractionCreate, async interaction => {
-    if (interaction.isButton()) {
-        // Register tournament button
-        if (interaction.customId.startsWith('register_tournament_')) {
-            const sessionId = interaction.customId.replace('register_tournament_', '');
-            // Show modal for Dota2 ID and MMR
-            const modal = new ModalBuilder()
-                .setCustomId(`modal_register_${sessionId}`)
-                .setTitle('Tournament Registration')
-                .addComponents(
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder()
-                            .setCustomId('dota2id')
-                            .setLabel('Dota 2 ID')
-                            .setStyle(TextInputStyle.Short)
-                            .setPlaceholder('Your Dota 2 Friend ID')
-                            .setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder()
-                            .setCustomId('mmr')
-                            .setLabel('Peak MMR')
-                            .setStyle(TextInputStyle.Short)
-                            .setPlaceholder('Your highest MMR')
-                            .setRequired(true)
-                    )
-                );
-            try {
-                await interaction.showModal(modal);
-            } catch (error) {
-                console.error('Error showing modal:', error);
-            }
-            return;
-        }
-        // Teams tournament button
-        if (interaction.customId.startsWith('teams_tournament_')) {
-            const sessionId = interaction.customId.replace('teams_tournament_', '');
-            try {
-                await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
-            } catch (error) {
-                console.error('Error replying to teams button:', error);
-            }
-            // Team display logic can be added here
-            return;
-        }
-    }
-    
-    // Handle select menu interactions
-    if (interaction.isStringSelectMenu()) {
-        // Attendance tournament selection
-        if (interaction.customId === 'attendance_tournament_select') {
-            const sessionId = interaction.values[0];
-            
-            try {
-                await interaction.deferReply({ ephemeral: true });
-                
-                // Fetch registered players for this session
-                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
-                const data = await response.json();
-                
-                if (!data.success) {
-                    await interaction.editReply('❌ Failed to fetch tournament players. Please try again.');
-                    return;
-                }
-                
-                const players = data.players || [];
-                
-                if (players.length === 0) {
-                    await interaction.editReply('❌ No players registered for this tournament yet.');
-                    return;
-                }
-                
-                // Post attendance message in the channel
-                const attendanceEmbed = {
-                    color: 0x00ff00,
-                    title: '📋 Tournament Attendance',
-                    description: `**Tournament:** ${sessionId}\n**Registered Players:** ${players.length}\n\nReact with ✅ to mark yourself as **PRESENT** for the tournament.\n\nOnly registered players can mark attendance.`,
-                    fields: [
-                        {
-                            name: '📝 Instructions',
-                            value: 'Click the ✅ reaction below to confirm your attendance. This will mark you as present for the tournament.',
-                            inline: false
-                        }
-                    ],
-                    footer: {
-                        text: 'Attendance will be closed by an admin'
-                    },
-                    timestamp: new Date().toISOString()
-                };
-                
-                const attendanceMessage = await interaction.channel.send({
-                    embeds: [attendanceEmbed]
-                });
-                
-                // Add reaction button
-                await attendanceMessage.react('✅');
-                
-                // Store attendance message info for later use
-                // TODO: Store in database or cache for tracking
-                
-                await interaction.editReply(`✅ Attendance message posted! [View Message](${attendanceMessage.url})`);
-                
-            } catch (error) {
-                console.error('[attendance] Error posting attendance message:', error);
-                await interaction.editReply('❌ Failed to post attendance message. Please try again.');
-            }
-            return;
-        }
-        
-        // Close attendance tournament selection
-        if (interaction.customId === 'closeattendance_tournament_select') {
-            const sessionId = interaction.values[0];
-            
-            try {
-                await interaction.deferReply({ ephemeral: true });
-                
-                // Fetch registered players for this session
-                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
-                const data = await response.json();
-                
-                if (!data.success) {
-                    await interaction.editReply('❌ Failed to fetch tournament players. Please try again.');
-                    return;
-                }
-                
-                const players = data.players || [];
-                
-                if (players.length === 0) {
-                    await interaction.editReply('❌ No players registered for this tournament.');
-                    return;
-                }
-                
-                // Mark all non-present players as absent
-                let presentCount = 0;
-                let absentCount = 0;
-                const absentPlayers = [];
-                
-                for (const player of players) {
-                    if (!player.present) {
-                        // Mark as absent
-                        const updateResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/update-player`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                playerId: player.id,
-                                updates: {
-                                    present: false
-                                }
-                            })
-                        });
-                        
-                        if (updateResponse.ok) {
-                            absentCount++;
-                            absentPlayers.push(player.name);
-                        }
-                    } else {
-                        presentCount++;
-                    }
-                }
-                
-                // Post attendance summary in the channel
-                const summaryEmbed = {
-                    color: 0xff9900,
-                    title: '🏁 Tournament Attendance Closed',
-                    description: `**Tournament:** ${sessionId}\n**Attendance Period:** Closed`,
-                    fields: [
-                        {
-                            name: '📊 Attendance Summary',
-                            value: `✅ **Present:** ${presentCount} players\n❌ **Absent:** ${absentCount} players\n📋 **Total Registered:** ${players.length} players`,
-                            inline: false
-                        }
-                    ],
-                    footer: {
-                        text: 'Attendance closed by admin'
-                    },
-                    timestamp: new Date().toISOString()
-                };
-                
-                // Add absent players list if any
-                if (absentPlayers.length > 0) {
-                    const absentList = absentPlayers.slice(0, 10).join(', '); // Show first 10
-                    const moreText = absentPlayers.length > 10 ? ` and ${absentPlayers.length - 10} more` : '';
-                    summaryEmbed.fields.push({
-                        name: '❌ Absent Players',
-                        value: `${absentList}${moreText}`,
-                        inline: false
-                    });
-                }
-                
-                const summaryMessage = await interaction.channel.send({
-                    embeds: [summaryEmbed]
-                });
-                
-                await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent. [View Summary](${summaryMessage.url})`);
-                
-            } catch (error) {
-                console.error('[closeattendance] Error closing attendance:', error);
-                await interaction.editReply('❌ Failed to close attendance. Please try again.');
-            }
-            return;
-        }
-    }
-    
-    // Handle modal submission for registration
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_register_')) {
-        const sessionId = interaction.customId.replace('modal_register_', '');
-        const playerName = interaction.user.username;
-        const discordId = interaction.user.id;
-        const dota2id = interaction.fields.getTextInputValue('dota2id');
-        const mmr = interaction.fields.getTextInputValue('mmr');
-        
-        try {
-            await interaction.deferReply({ ephemeral: true }); // Respond immediately
-            
-            // Register player through the add-player API endpoint
-            const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/add-player`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: playerName,
-                    dota2id: dota2id,
-                    peakmmr: mmr,
-                    registrationSessionId: sessionId,
-                    discordId: discordId
-                })
-            });
-
-            const data = await response.json();
-            console.log('Modal registration API response status:', response.status);
-            console.log('Modal registration API response data:', data);
-
-            if (response.ok && data.success) {
-                await interaction.editReply({
-                    content: `✅ Registration successful! You have been registered for the tournament.\n\n**Player Info:**\n• Name: ${playerName}\n• Dota 2 ID: ${dota2id}\n• MMR: ${mmr}\n• Tournament: ${sessionId}`,
-                    ephemeral: true
-                });
-            } else {
-                // Handle API errors (400, 500, etc.) - these are expected for validation/duplicate errors
-                const errorMessage = data.message || 'Unknown error occurred';
-                await interaction.editReply({
-                    content: `❌ Registration failed: ${errorMessage}`,
-                    ephemeral: true
-                });
-            }
-        } catch (error) {
-            console.error('Error registering player via modal:', error);
-            try {
-                if (interaction.deferred) {
-                    await interaction.editReply({
-                        content: '❌ Failed to register. Please try again later.',
-                        ephemeral: true
-                    });
-                } else {
-                    await interaction.reply({
-                        content: '❌ Failed to register. Please try again later.',
-                        ephemeral: true
-                    });
-                }
-            } catch (replyError) {
-                console.error('Error sending error reply:', replyError);
-            }
-        }
-    }
-});
-
 // Error handling
 client.on('error', error => {
     console.error('Discord client error:', error);
@@ -431,13 +1082,21 @@ client.on('error', error => {
 
 // Handle reaction events for attendance tracking
 client.on('messageReactionAdd', async (reaction, user) => {
+    console.log(`[DEBUG] Reaction added by ${user.username} (${user.id}) with emoji ${reaction.emoji.name}`);
+    
     // Ignore bot reactions
-    if (user.bot) return;
+    if (user.bot) {
+        console.log('[DEBUG] Ignoring bot reaction');
+        return;
+    }
     
     // Check if this is an attendance message (has attendance embed)
     if (reaction.message.embeds.length > 0) {
         const embed = reaction.message.embeds[0];
+        console.log(`[DEBUG] Message has embed with title: "${embed.title}"`);
+        
         if (embed.title === '📋 Tournament Attendance' && reaction.emoji.name === '✅') {
+            console.log('[DEBUG] Processing attendance reaction');
             try {
                 // Extract session ID from the embed description
                 const description = embed.description;
@@ -509,7 +1168,11 @@ client.on('messageReactionAdd', async (reaction, user) => {
             } catch (error) {
                 console.error('[attendance] Error handling attendance reaction:', error);
             }
+        } else {
+            console.log(`[DEBUG] Not an attendance message or wrong emoji. Title: "${embed.title}", Emoji: ${reaction.emoji.name}`);
         }
+    } else {
+        console.log('[DEBUG] Message has no embeds');
     }
 });
 
