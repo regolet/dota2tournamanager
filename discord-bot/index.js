@@ -282,10 +282,17 @@ client.on('interactionCreate', async interaction => {
                     },
                     timestamp: new Date().toISOString()
                 };
-
-                await interaction.editReply({ 
-                    content: '✅ Teams saved and tournament bracket created successfully!',
-                    embeds: [bracketEmbed]
+                // Send the bracket embed to the bracket channel as a public announcement
+                const bracketChannel = client.channels.cache.get('1387453843394007120');
+                if (bracketChannel) {
+                    await bracketChannel.send({ embeds: [bracketEmbed] });
+                } else {
+                    console.error('Bracket channel not found!');
+                }
+                // Also reply to the user for confirmation
+                await interaction.editReply({
+                    content: '✅ Teams saved and tournament bracket created! Announcement posted in the bracket channel.',
+                    ephemeral: true
                 });
 
                 // Clean up stored data
@@ -552,9 +559,17 @@ client.on('interactionCreate', async interaction => {
                         sessionTitle: playersData.sessionTitle
                     };
 
-                    await interaction.editReply({ 
-                        embeds: [embed],
-                        components: [buttonRow]
+                    // Send the embed to the teams channel as a public announcement
+                    const teamsChannel = client.channels.cache.get('1387454177743208609');
+                    if (teamsChannel) {
+                        await teamsChannel.send({ embeds: [embed], components: [buttonRow] });
+                    } else {
+                        console.error('Teams channel not found!');
+                    }
+                    // Also reply to the user for confirmation
+                    await interaction.editReply({
+                        content: '✅ Teams generated and posted in the teams channel!',
+                        ephemeral: true
                     });
                     delete global.generateTeamsSelections[userId];
                 } else {
