@@ -142,8 +142,9 @@ export const handler = async (event, context) => {
       };
     }
     
-    const { name, dota2id, peakmmr, registrationSessionId } = requestBody;
-    console.log('📝 Player data received:', { name, dota2id, peakmmr, hasSessionId: !!registrationSessionId });
+    const { name, dota2id, peakmmr, registrationSessionId, discordId } = requestBody;
+    console.log('📝 Player data received:', { name, dota2id, peakmmr, hasSessionId: !!registrationSessionId, discordId });
+    console.log('🔍 Registration session ID:', registrationSessionId);
     
     // Validate player data using simplified validation
     const playerValidation = validatePlayerData(name, dota2id, peakmmr);
@@ -164,6 +165,13 @@ export const handler = async (event, context) => {
     }
     
     console.log('✅ Player validation passed');
+    console.log('🎯 About to call addPlayer with data:', {
+      name: playerValidation.player.name,
+      dota2id: playerValidation.player.dota2id,
+      peakmmr: playerValidation.player.peakmmr,
+      registrationSessionId,
+      discordId
+    });
     
     // Validate registration session if provided
     let registrationSession = null;
@@ -259,7 +267,8 @@ export const handler = async (event, context) => {
       peakmmr: playerValidation.player.peakmmr,
       ipAddress: clientIP.split(',')[0].trim(), // Take first IP if multiple
       registrationDate: new Date().toISOString(),
-      registrationSessionId: registrationSessionId // Link player to registration session
+      registrationSessionId: registrationSessionId, // Link player to registration session
+      discordid: discordId || null // Save discordid if provided
     };
     
     console.log('👤 Player data prepared for database:', playerData);

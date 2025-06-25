@@ -325,24 +325,46 @@ export async function addPlayer(player) {
     
     // Check if player already exists in the same registration session
     if (player.registrationSessionId) {
+      console.log('[addPlayer] Checking for duplicates in session:', player.registrationSessionId);
+      console.log('[addPlayer] Checking name:', player.name, 'and dota2id:', player.dota2id);
+      
       const existing = await sql`
-        SELECT id FROM players 
+        SELECT id, name, dota2id FROM players 
         WHERE (dota2id = ${player.dota2id} OR name = ${player.name}) 
         AND registration_session_id = ${player.registrationSessionId}
       `;
       
+      console.log('[addPlayer] Found existing players:', existing);
+      
       if (existing.length > 0) {
+        const duplicateFields = existing.map(p => {
+          if (p.dota2id === player.dota2id) return 'Dota 2 ID';
+          if (p.name === player.name) return 'Name';
+          return 'Unknown';
+        });
+        console.log('[addPlayer] Duplicate found for fields:', duplicateFields);
         throw new Error('Player with this name or Dota2ID already exists in this tournament');
       }
     } else {
       // Legacy check for players without session (global scope)
+      console.log('[addPlayer] Checking for global duplicates (no session)');
+      console.log('[addPlayer] Checking name:', player.name, 'and dota2id:', player.dota2id);
+      
       const existing = await sql`
-        SELECT id FROM players 
+        SELECT id, name, dota2id FROM players 
         WHERE (dota2id = ${player.dota2id} OR name = ${player.name}) 
         AND registration_session_id IS NULL
       `;
       
+      console.log('[addPlayer] Found existing players (global):', existing);
+      
       if (existing.length > 0) {
+        const duplicateFields = existing.map(p => {
+          if (p.dota2id === player.dota2id) return 'Dota 2 ID';
+          if (p.name === player.name) return 'Name';
+          return 'Unknown';
+        });
+        console.log('[addPlayer] Global duplicate found for fields:', duplicateFields);
         throw new Error('Player with this name or Dota2ID already exists');
       }
     }
