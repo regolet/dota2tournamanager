@@ -537,11 +537,12 @@ client.on('interactionCreate', async interaction => {
                         delete global.generateTeamsSelections[userId];
                         return;
                     }
-                    // Calculate team size
+                    // Force 5 players per team
+                    const teamSize = 5;
                     const numTeams = selection.teamcount;
-                    const teamSize = Math.floor(presentPlayers.length / numTeams);
-                    if (teamSize < 1) {
-                        await interaction.editReply('❌ Not enough players for the selected number of teams.');
+                    const maxTeams = Math.floor(presentPlayers.length / teamSize);
+                    if (numTeams > maxTeams) {
+                        await interaction.editReply(`❌ Not enough players for ${numTeams} teams of 5. You can form up to ${maxTeams} teams with the current number of present players.`);
                         delete global.generateTeamsSelections[userId];
                         return;
                     }
@@ -746,11 +747,12 @@ client.on('interactionCreate', async interaction => {
                 await interaction.editReply('❌ Not enough present players to form teams.');
                 return;
             }
-            // Calculate team size
+            // Force 5 players per team
+            const teamSize = 5;
             const numTeams = teamCount;
-            const teamSize = Math.floor(presentPlayers.length / numTeams);
-            if (teamSize < 1) {
-                await interaction.editReply('❌ Not enough players for the selected number of teams.');
+            const maxTeams = Math.floor(presentPlayers.length / teamSize);
+            if (numTeams > maxTeams) {
+                await interaction.editReply(`❌ Not enough players for ${numTeams} teams of 5. You can form up to ${maxTeams} teams with the current number of present players.`);
                 return;
             }
             // Run the selected balance logic
