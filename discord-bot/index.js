@@ -881,9 +881,8 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 
                 if (!registeredPlayer) {
                     // Remove reaction if user is not registered
-                    await reaction.users.remove(user.id);
-                    console.log(`[attendance] Removed reaction from unregistered user ${user.username}`);
-                    
+                    // await reaction.users.remove(user.id); // <-- Commented out to avoid permission errors
+                    console.log(`[attendance] Would remove reaction from unregistered user ${user.username} (skipped)`);
                     // Send ephemeral message to user
                     try {
                         await user.send('❌ You are not registered for this tournament. Only registered players can mark attendance.');
