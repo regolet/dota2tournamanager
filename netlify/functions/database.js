@@ -337,7 +337,7 @@ export async function addPlayer(player) {
       
       if (nameExisting.length > 0) {
         console.log('[addPlayer] Name duplicate found:', player.name);
-        throw new Error('A player with this name is already registered in this tournament');
+        throw new Error(`A player with the name "${player.name}" is already registered in this tournament`);
       }
       
       // Check for Dota 2 ID duplicates
@@ -349,7 +349,7 @@ export async function addPlayer(player) {
       
       if (dota2idExisting.length > 0) {
         console.log('[addPlayer] Dota 2 ID duplicate found:', player.dota2id);
-        throw new Error('A player with this Dota 2 ID is already registered in this tournament');
+        throw new Error(`A player with the Dota 2 ID "${player.dota2id}" is already registered in this tournament`);
       }
       
     } else {
@@ -366,7 +366,7 @@ export async function addPlayer(player) {
       
       if (nameExisting.length > 0) {
         console.log('[addPlayer] Global name duplicate found:', player.name);
-        throw new Error('A player with this name is already registered');
+        throw new Error(`A player with the name "${player.name}" is already registered`);
       }
       
       // Check for Dota 2 ID duplicates
@@ -378,7 +378,7 @@ export async function addPlayer(player) {
       
       if (dota2idExisting.length > 0) {
         console.log('[addPlayer] Global Dota 2 ID duplicate found:', player.dota2id);
-        throw new Error('A player with this Dota 2 ID is already registered');
+        throw new Error(`A player with the Dota 2 ID "${player.dota2id}" is already registered`);
       }
     }
     
@@ -392,7 +392,7 @@ export async function addPlayer(player) {
       `;
       if (discordExisting.length > 0) {
         console.warn('[addPlayer] Duplicate discordId found:', player.discordId, 'in session:', player.registrationSessionId);
-        throw new Error('A player with this Discord account is already registered in this tournament');
+        throw new Error(`A player with the Discord account "${player.discordId}" is already registered in this tournament`);
       }
     }
     
