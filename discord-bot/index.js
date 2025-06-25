@@ -53,10 +53,17 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(`Error executing command ${interaction.commandName}:`, error);
-        await interaction.reply({
-            content: 'There was an error while executing this command!',
-            ephemeral: true
-        });
+        // Check if interaction is still valid before replying
+        if (interaction.isRepliable()) {
+            try {
+                await interaction.reply({
+                    content: 'There was an error while executing this command!',
+                    ephemeral: true
+                });
+            } catch (replyError) {
+                console.error('Failed to send error reply:', replyError);
+            }
+        }
     }
 });
 
@@ -175,13 +182,21 @@ client.on(Events.InteractionCreate, async interaction => {
                             .setRequired(true)
                     )
                 );
-            await interaction.showModal(modal);
+            try {
+                await interaction.showModal(modal);
+            } catch (error) {
+                console.error('Error showing modal:', error);
+            }
             return;
         }
         // Teams tournament button
         if (interaction.customId.startsWith('teams_tournament_')) {
             const sessionId = interaction.customId.replace('teams_tournament_', '');
-            await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
+            try {
+                await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
+            } catch (error) {
+                console.error('Error replying to teams button:', error);
+            }
             // Team display logic can be added here
             return;
         }
@@ -193,8 +208,10 @@ client.on(Events.InteractionCreate, async interaction => {
         const discordId = interaction.user.id;
         const dota2id = interaction.fields.getTextInputValue('dota2id');
         const mmr = interaction.fields.getTextInputValue('mmr');
-        await interaction.deferReply({ ephemeral: true }); // Respond immediately
+        
         try {
+            await interaction.deferReply({ ephemeral: true }); // Respond immediately
+            
             // Register player through the add-player API endpoint
             const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/add-player`, {
                 method: 'POST',
@@ -206,37 +223,43 @@ client.on(Events.InteractionCreate, async interaction => {
                     dota2id: dota2id,
                     peakmmr: mmr,
                     registrationSessionId: sessionId,
-                    discordId: discordId // Pass discordId to backend
+                    discordId: discordId
                 })
             });
+
             const data = await response.json();
+            console.log('Modal registration API response status:', response.status);
+            console.log('Modal registration API response data:', data);
+
             if (response.ok && data.success) {
-                // Also add/update the user in the masterlist
-                try {
-                    await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/masterlist`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            name: playerName,
-                            discordId: discordId,
-                            dota2id: dota2id,
-                            mmr: mmr
-                        })
-                    });
-                } catch (mlError) {
-                    console.error('Error updating masterlist:', mlError);
-                }
-                await interaction.editReply({ content: '✅ Registration successful! You are now registered for the tournament.' });
+                await interaction.editReply({
+                    content: `✅ Registration successful! You have been registered for the tournament.\n\n**Player Info:**\n• Name: ${playerName}\n• Dota 2 ID: ${dota2id}\n• MMR: ${mmr}\n• Tournament: ${sessionId}`,
+                    ephemeral: true
+                });
             } else {
-                await interaction.editReply({ content: `❌ Registration failed: ${data.message || 'Unknown error'}` });
+                await interaction.editReply({
+                    content: `❌ Registration failed: ${data.message || 'Unknown error'}`,
+                    ephemeral: true
+                });
             }
         } catch (error) {
             console.error('Error registering player via modal:', error);
-            await interaction.editReply({ content: '❌ Failed to register. Please try again later.' });
+            try {
+                if (interaction.deferred) {
+                    await interaction.editReply({
+                        content: '❌ Failed to register. Please try again later.',
+                        ephemeral: true
+                    });
+                } else {
+                    await interaction.reply({
+                        content: '❌ Failed to register. Please try again later.',
+                        ephemeral: true
+                    });
+                }
+            } catch (replyError) {
+                console.error('Error sending error reply:', replyError);
+            }
         }
-        return;
     }
 });
 

@@ -41,7 +41,8 @@ module.exports = {
                     name: playerName,
                     dota2id: dota2id,
                     peakmmr: mmr,
-                    registrationSessionId: tournamentId
+                    registrationSessionId: tournamentId,
+                    discordId: discordId
                 })
             });
 
