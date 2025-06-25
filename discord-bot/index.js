@@ -237,8 +237,10 @@ client.on(Events.InteractionCreate, async interaction => {
                     ephemeral: true
                 });
             } else {
+                // Handle API errors (400, 500, etc.) - these are expected for validation/duplicate errors
+                const errorMessage = data.message || 'Unknown error occurred';
                 await interaction.editReply({
-                    content: `❌ Registration failed: ${data.message || 'Unknown error'}`,
+                    content: `❌ Registration failed: ${errorMessage}`,
                     ephemeral: true
                 });
             }
