@@ -877,6 +877,10 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 }
                 
                 const players = data.players || [];
+                // Debug: print all player Discord IDs and names
+                console.log('[attendance][DEBUG] Player list for session:', sessionId);
+                players.forEach(p => console.log(`  - name: ${p.name}, discordid: ${p.discordid}`));
+                console.log(`[attendance][DEBUG] Looking for Discord ID: ${discordId}`);
                 const registeredPlayer = players.find(player => player.discordid === discordId);
                 
                 if (!registeredPlayer) {
