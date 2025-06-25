@@ -20,6 +20,7 @@ async function initializeDatabase() {
         ip_address INET,
         registration_date TIMESTAMP DEFAULT NOW(),
         registration_session_id VARCHAR(255),
+        discordid VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(dota2id, registration_session_id)
@@ -351,7 +352,7 @@ export async function addPlayer(player) {
       console.log('[addPlayer] Checking for duplicate discordId:', player.discordId, 'in session:', player.registrationSessionId);
       const discordExisting = await sql`
         SELECT id FROM players 
-        WHERE discord_id = ${player.discordId} 
+        WHERE discordid = ${player.discordId} 
         AND registration_session_id = ${player.registrationSessionId || null}
       `;
       if (discordExisting.length > 0) {
@@ -361,7 +362,7 @@ export async function addPlayer(player) {
     }
     
     await sql`
-      INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date, registration_session_id)
+      INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date, registration_session_id, discordid)
       VALUES (
         ${player.id}, 
         ${player.name}, 
@@ -369,7 +370,8 @@ export async function addPlayer(player) {
         ${player.peakmmr || 0}, 
         ${player.ipAddress || '::1'}, 
         ${player.registrationDate || new Date().toISOString()},
-        ${player.registrationSessionId || null}
+        ${player.registrationSessionId || null},
+        ${player.discordid || null}
       )
     `;
 
