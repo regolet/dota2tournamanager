@@ -346,6 +346,20 @@ export async function addPlayer(player) {
       }
     }
     
+    // Check if player with same discordId is already registered in this session
+    if (player.discordId) {
+      console.log('[addPlayer] Checking for duplicate discordId:', player.discordId, 'in session:', player.registrationSessionId);
+      const discordExisting = await sql`
+        SELECT id FROM players 
+        WHERE discord_id = ${player.discordId} 
+        AND registration_session_id = ${player.registrationSessionId || null}
+      `;
+      if (discordExisting.length > 0) {
+        console.warn('[addPlayer] Duplicate discordId found:', player.discordId, 'in session:', player.registrationSessionId);
+        throw new Error('A player with this Discord account is already registered in this tournament');
+      }
+    }
+    
     await sql`
       INSERT INTO players (id, name, dota2id, peakmmr, ip_address, registration_date, registration_session_id)
       VALUES (
