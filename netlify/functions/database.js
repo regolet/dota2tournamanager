@@ -63,10 +63,18 @@ async function initializeDatabase() {
         team VARCHAR(255) DEFAULT '',
         achievements TEXT DEFAULT '',
         notes TEXT DEFAULT '',
+        discordid VARCHAR(255) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `;
+
+    // Add discordid column to masterlist table if it doesn't exist (for backward compatibility)
+    try {
+      await sql`ALTER TABLE masterlist ADD COLUMN IF NOT EXISTS discordid VARCHAR(255) DEFAULT NULL`;
+    } catch (error) {
+      console.warn('Could not add discordid column to masterlist table:', error.message);
+    }
 
     // Create registration_settings table
     await sql`
@@ -664,12 +672,34 @@ export async function addMasterlistPlayer(player) {
     
     // Check if player already exists
     const existingPlayer = await sql`
-      SELECT id, name, dota2id FROM masterlist 
+      SELECT id, name, dota2id, discordid FROM masterlist 
       WHERE dota2id = ${trimmedDota2Id} OR LOWER(name) = LOWER(${trimmedName})
     `;
     
     if (existingPlayer.length > 0) {
       const existing = existingPlayer[0];
+      
+      // If player exists and has Discord ID, update it
+      if (player.discordid && existing.dota2id === trimmedDota2Id) {
+        console.log('🔄 Updating existing masterlist player with Discord ID:', {
+          existingId: existing.id,
+          existingDiscordId: existing.discordid,
+          newDiscordId: player.discordid
+        });
+        
+        const updateResult = await sql`
+          UPDATE masterlist 
+          SET 
+            discordid = ${player.discordid},
+            updated_at = NOW()
+          WHERE id = ${existing.id}
+        `;
+        
+        console.log('✅ Updated masterlist player with Discord ID');
+        return await getMasterlist();
+      }
+      
+      // If player exists but no Discord ID update needed, throw error
       if (existing.dota2id === trimmedDota2Id) {
         throw new Error(`A player with Dota 2 ID "${trimmedDota2Id}" already exists in the masterlist (${existing.name}).`);
       } else {
@@ -677,12 +707,14 @@ export async function addMasterlistPlayer(player) {
       }
     }
     
+    // Add new player to masterlist
     const result = await sql`
-      INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes)
-      VALUES (${trimmedName}, ${trimmedDota2Id}, ${player.mmr || 0}, ${player.team || ''}, ${player.achievements || ''}, ${player.notes || ''})
+      INSERT INTO masterlist (name, dota2id, mmr, team, achievements, notes, discordid)
+      VALUES (${trimmedName}, ${trimmedDota2Id}, ${player.mmr || 0}, ${player.team || ''}, ${player.achievements || ''}, ${player.notes || ''}, ${player.discordid || null})
       RETURNING *
     `;
     
+    console.log('✅ Added new player to masterlist with Discord ID:', player.discordid || 'none');
 
     return await getMasterlist();
   } catch (error) {
@@ -708,7 +740,7 @@ export async function updateMasterlistPlayer(playerId, updates) {
     await initializeDatabase();
 
     // Get default values from current record if not provided
-    const { name, dota2id, mmr, team, achievements, notes } = updates;
+    const { name, dota2id, mmr, team, achievements, notes, discordid } = updates;
     
     // Enhanced validation - consistent with bulk import
     const trimmedName = name ? name.trim() : '';
@@ -751,7 +783,7 @@ export async function updateMasterlistPlayer(playerId, updates) {
       }
     }
     
-    // Execute update query with all fields
+    // Execute update query with all fields including discordid
     const result = await sql`
       UPDATE masterlist 
       SET 
@@ -761,16 +793,16 @@ export async function updateMasterlistPlayer(playerId, updates) {
         team = ${team || ''},
         achievements = ${achievements || ''},
         notes = ${notes || ''},
+        discordid = ${discordid || null},
         updated_at = NOW()
       WHERE id = ${parseInt(playerId)}
     `;
-    
-
     
     if (result.count === 0) {
       throw new Error('Player not found in masterlist');
     }
     
+    console.log('✅ Updated masterlist player with Discord ID:', discordid || 'none');
 
     return await getMasterlist();
   } catch (error) {

@@ -276,6 +276,7 @@ export const handler = async (event, context) => {
     // Check if player exists in masterlist for MMR verification
     let verifiedFromMasterlist = false;
     let verifiedMmr = null;
+    let masterlistUpdated = false;
     
     try {
       console.log('📚 Checking masterlist...');
@@ -290,13 +291,34 @@ export const handler = async (event, context) => {
         verifiedFromMasterlist = true;
         verifiedMmr = masterlistPlayer.mmr;
         playerData.peakmmr = masterlistPlayer.mmr; // Use masterlist MMR
+        
+        // If player has Discord ID and masterlist entry doesn't, update it
+        if (playerData.discordid && !masterlistPlayer.discordid) {
+          console.log('🔄 Updating masterlist entry with Discord ID...');
+          try {
+            await updateMasterlistPlayer(masterlistPlayer.id, {
+              name: masterlistPlayer.name,
+              dota2id: masterlistPlayer.dota2id,
+              mmr: masterlistPlayer.mmr,
+              team: masterlistPlayer.team || '',
+              achievements: masterlistPlayer.achievements || '',
+              notes: masterlistPlayer.notes || '',
+              discordid: playerData.discordid
+            });
+            masterlistUpdated = true;
+            console.log('✅ Masterlist updated with Discord ID');
+          } catch (updateError) {
+            console.warn('⚠️ Failed to update masterlist with Discord ID (non-critical):', updateError.message);
+          }
+        }
       } else {
         console.log('📝 Adding player to masterlist...');
         // Add player to masterlist if not exists
         await addMasterlistPlayer({
           name: playerData.name,
           dota2id: playerData.dota2id,
-          mmr: playerData.peakmmr
+          mmr: playerData.peakmmr,
+          discordid: playerData.discordid
         });
         console.log('✅ Player added to masterlist');
       }
@@ -375,6 +397,7 @@ export const handler = async (event, context) => {
         },
         verifiedFromMasterlist,
         verifiedMmr,
+        masterlistUpdated,
         registrationSession: registrationSession ? {
           title: registrationSession.title,
           adminUsername: registrationSession.adminUsername
