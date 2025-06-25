@@ -292,12 +292,7 @@ client.on('interactionCreate', async interaction => {
                     timestamp: new Date().toISOString()
                 };
                 // Send the bracket embed to the bracket channel as a public announcement
-                const bracketChannel = client.channels.cache.get('1387453843394007120');
-                if (bracketChannel) {
-                    await bracketChannel.send({ embeds: [bracketEmbed] });
-                } else {
-                    console.error('Bracket channel not found!');
-                }
+                await sendAnnouncement(client, '1387453843394007120', bracketEmbed);
                 // Also reply to the user for confirmation
                 await interaction.editReply({
                     content: '✅ Teams saved and tournament bracket created! Announcement posted in the bracket channel.',
@@ -351,7 +346,7 @@ client.on('interactionCreate', async interaction => {
                     await interaction.editReply('❌ No players registered for this tournament yet.');
                     return;
                 }
-                // Post attendance message in the channel
+                // Post attendance message in the attendance channel as a public announcement
                 const attendanceEmbed = {
                     color: 0x00ff00,
                     title: '📋 Tournament Attendance',
@@ -368,11 +363,17 @@ client.on('interactionCreate', async interaction => {
                     },
                     timestamp: new Date().toISOString()
                 };
-                const attendanceMessage = await interaction.channel.send({
-                    embeds: [attendanceEmbed]
-                });
-                await attendanceMessage.react('✅');
-                await interaction.editReply(`✅ Attendance message posted! [View Message](${attendanceMessage.url})`);
+                await sendAnnouncement(client, '1387298566858477648', attendanceEmbed);
+                // Fetch the channel to get the message URL for confirmation
+                const attendanceChannel = await client.channels.fetch('1387298566858477648');
+                const messages = await attendanceChannel.messages.fetch({ limit: 1 });
+                const attendanceMessage = messages.first();
+                if (attendanceMessage) {
+                    await attendanceMessage.react('✅');
+                    await interaction.editReply(`✅ Attendance message posted! [View Message](${attendanceMessage.url})`);
+                } else {
+                    await interaction.editReply('✅ Attendance message posted!');
+                }
             } catch (error) {
                 console.error('[attendance] Error posting attendance message:', error);
                 try {
@@ -435,7 +436,7 @@ client.on('interactionCreate', async interaction => {
                         presentCount++;
                     }
                 }
-                // Post attendance summary in the channel
+                // Post attendance summary in the attendance channel as a public announcement
                 const summaryEmbed = {
                     color: 0xff9900,
                     title: '🏁 Tournament Attendance Closed',
@@ -461,10 +462,16 @@ client.on('interactionCreate', async interaction => {
                         inline: false
                     });
                 }
-                const summaryMessage = await interaction.channel.send({
-                    embeds: [summaryEmbed]
-                });
-                await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent. [View Summary](${summaryMessage.url})`);
+                await sendAnnouncement(client, '1387298566858477648', summaryEmbed);
+                // Fetch the channel to get the message URL for confirmation
+                const attendanceChannel = await client.channels.fetch('1387298566858477648');
+                const messages = await attendanceChannel.messages.fetch({ limit: 1 });
+                const summaryMessage = messages.first();
+                if (summaryMessage) {
+                    await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent. [View Summary](${summaryMessage.url})`);
+                } else {
+                    await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent.`);
+                }
             } catch (error) {
                 console.error('[closeattendance] Error closing attendance:', error);
                 await interaction.editReply('❌ Failed to close attendance. Please try again.');
@@ -570,12 +577,7 @@ client.on('interactionCreate', async interaction => {
                     };
 
                     // Send the embed to the teams channel as a public announcement
-                    const teamsChannel = client.channels.cache.get('1387454177743208609');
-                    if (teamsChannel) {
-                        await teamsChannel.send({ embeds: [embed], components: [buttonRow] });
-                    } else {
-                        console.error('Teams channel not found!');
-                    }
+                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow]);
                     // Also reply to the user for confirmation
                     await interaction.editReply({
                         content: '✅ Teams generated and posted in the teams channel!',
@@ -1024,4 +1026,20 @@ process.on('unhandledRejection', error => {
 });
 
 // Login to Discord
-client.login(process.env.DISCORD_TOKEN); 
+client.login(process.env.DISCORD_TOKEN);
+
+// Utility function to send announcements to specific channels
+async function sendAnnouncement(client, channelId, embed, components = []) {
+    try {
+        const channel = await client.channels.fetch(channelId);
+        if (channel) {
+            await channel.send({ embeds: [embed], components });
+        } else {
+            console.error(`Announcement channel ${channelId} not found!`);
+        }
+    } catch (err) {
+        console.error(`Error sending announcement to channel ${channelId}:`, err);
+    }
+}
+
+client.sendAnnouncement = sendAnnouncement; 

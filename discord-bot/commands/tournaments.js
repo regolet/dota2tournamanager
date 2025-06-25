@@ -69,14 +69,20 @@ module.exports = {
 
                 if (interaction.deferred) {
                     await interaction.editReply({ embeds: [embed], components: rows });
-                    // Announce in registration channel if triggered by admin
-                    const adminIds = [process.env.ADMIN_DISCORD_ID, 'user_admin_001', '1387059600930639992']; // Add your admin Discord IDs here
-                    if (adminIds.includes(interaction.user.id)) {
-                        const regChannel = interaction.client.channels.cache.get('1387298687214161940');
-                        if (regChannel) {
-                            await regChannel.send({ embeds: [embed], components: rows });
-                        } else {
-                            console.error('Registration channel not found!');
+                    // Announce in registration channel using the shared utility
+                    if (interaction.client.sendAnnouncement) {
+                        await interaction.client.sendAnnouncement(interaction.client, '1387298687214161940', embed, rows);
+                    } else {
+                        // fallback if not attached to client
+                        try {
+                            const regChannel = await interaction.client.channels.fetch('1387298687214161940');
+                            if (regChannel) {
+                                await regChannel.send({ embeds: [embed], components: rows });
+                            } else {
+                                console.error('Registration channel not found!');
+                            }
+                        } catch (fetchErr) {
+                            console.error('Error fetching registration channel:', fetchErr);
                         }
                     }
                 }
