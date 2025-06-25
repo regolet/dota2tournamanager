@@ -14,6 +14,7 @@ module.exports = {
     async execute(interaction) {
         let tournamentId = interaction.options.getString('tournament');
         const playerName = interaction.user.username;
+        let tournamentTitle = null;
 
         try {
             // If no tournamentId provided, fetch all tournaments and find the first one the user is registered for
@@ -33,6 +34,7 @@ module.exports = {
                         const player = data.players.find(p => p.name && p.name.toLowerCase() === playerName.toLowerCase());
                         if (player) {
                             tournamentId = session.sessionId;
+                            tournamentTitle = session.title || session.sessionId;
                             found = true;
                             break;
                         }
@@ -56,6 +58,17 @@ module.exports = {
                 }
             }
 
+            // If tournamentTitle is still null (user provided tournamentId), fetch its title
+            if (!tournamentTitle) {
+                const sessionsRes = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
+                const sessionsData = await sessionsRes.json();
+                if (sessionsData.success && Array.isArray(sessionsData.sessions)) {
+                    const session = sessionsData.sessions.find(s => s.sessionId === tournamentId);
+                    if (session) tournamentTitle = session.title || tournamentId;
+                }
+                if (!tournamentTitle) tournamentTitle = tournamentId;
+            }
+
             // Fetch players for the specific tournament (public access)
             const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/api-players?sessionId=${tournamentId}`);
 
@@ -75,7 +88,7 @@ module.exports = {
                     const embed = {
                         color: 0x00ff00,
                         title: '✅ Registration Status',
-                        description: `You are registered for tournament \`${tournamentId}\`!`,
+                        description: `You are registered for tournament **${tournamentTitle}**!`,
                         fields: [
                             {
                                 name: 'Player Info',
@@ -84,7 +97,7 @@ module.exports = {
                             },
                             {
                                 name: 'Tournament',
-                                value: `\`${tournamentId}\``,
+                                value: `**${tournamentTitle}**` ,
                                 inline: true
                             }
                         ],
@@ -98,7 +111,7 @@ module.exports = {
                     const embed = {
                         color: 0xff9900,
                         title: '❌ Not Registered',
-                        description: `You are not registered for tournament \`${tournamentId}\`.`,
+                        description: `You are not registered for tournament **${tournamentTitle}**.`,
                         fields: [
                             {
                                 name: 'How to Register',
@@ -114,7 +127,7 @@ module.exports = {
                 const embed = {
                     color: 0xff9900,
                     title: '❌ Tournament Not Found',
-                    description: `Tournament \`${tournamentId}\` not found or has no registrations.`,
+                    description: `Tournament **${tournamentTitle}** not found or has no registrations.`,
                     fields: [
                         {
                             name: 'Available Tournaments',
