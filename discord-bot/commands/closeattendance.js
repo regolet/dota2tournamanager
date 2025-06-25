@@ -1,10 +1,9 @@
-const { SlashCommandBuilder, StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
+const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('closeattendance')
-    .setDescription('Close attendance for a tournament session'),
+  name: 'closeattendance',
+  description: 'Close attendance for a tournament session',
   async execute(interaction) {
     try {
       await interaction.deferReply({ ephemeral: true });

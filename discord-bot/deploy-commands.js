@@ -67,6 +67,14 @@ const commands = [
                 required: true
             }
         ]
+    },
+    {
+        name: 'attendance',
+        description: 'Post an attendance message for a tournament session',
+    },
+    {
+        name: 'closeattendance',
+        description: 'Close attendance for a tournament session',
     }
 ];
 
