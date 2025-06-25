@@ -141,6 +141,15 @@ client.on('interactionCreate', async interaction => {
             try {
                 await interaction.deferReply({ ephemeral: true });
                 
+                // Restrict button usage to the creator/admin
+                if (teamsData.creatorId && interaction.user.id !== teamsData.creatorId) {
+                    await interaction.editReply({
+                        content: '❌ Only the admin/creator who generated the teams can proceed to the tournament bracket.',
+                        ephemeral: true
+                    });
+                    return;
+                }
+                
                 // Format teams for saving to database
                 const formattedTeams = teamsData.teams.map((team, index) => ({
                     teamNumber: index + 1,
@@ -556,7 +565,8 @@ client.on('interactionCreate', async interaction => {
                         tournament: selection.tournament,
                         balance: selection.balance,
                         teamcount: selection.teamcount,
-                        sessionTitle: playersData.sessionTitle
+                        sessionTitle: playersData.sessionTitle,
+                        creatorId: userId // Store the creator's Discord ID
                     };
 
                     // Send the embed to the teams channel as a public announcement
