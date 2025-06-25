@@ -193,6 +193,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const discordId = interaction.user.id;
         const dota2id = interaction.fields.getTextInputValue('dota2id');
         const mmr = interaction.fields.getTextInputValue('mmr');
+        await interaction.deferReply({ ephemeral: true }); // Respond immediately
         try {
             // Register player through the add-player API endpoint
             const response = await global.fetch(`${process.env.WEBAPP_URL}/.netlify/functions/add-player`, {
@@ -204,7 +205,8 @@ client.on(Events.InteractionCreate, async interaction => {
                     name: playerName,
                     dota2id: dota2id,
                     peakmmr: mmr,
-                    registrationSessionId: sessionId
+                    registrationSessionId: sessionId,
+                    discordId: discordId // Pass discordId to backend
                 })
             });
             const data = await response.json();
@@ -226,13 +228,13 @@ client.on(Events.InteractionCreate, async interaction => {
                 } catch (mlError) {
                     console.error('Error updating masterlist:', mlError);
                 }
-                await interaction.reply({ content: '✅ Registration successful! You are now registered for the tournament.', ephemeral: true });
+                await interaction.editReply({ content: '✅ Registration successful! You are now registered for the tournament.' });
             } else {
-                await interaction.reply({ content: `❌ Registration failed: ${data.message || 'Unknown error'}`, ephemeral: true });
+                await interaction.editReply({ content: `❌ Registration failed: ${data.message || 'Unknown error'}` });
             }
         } catch (error) {
             console.error('Error registering player via modal:', error);
-            await interaction.reply({ content: '❌ Failed to register. Please try again later.', ephemeral: true });
+            await interaction.editReply({ content: '❌ Failed to register. Please try again later.' });
         }
         return;
     }
