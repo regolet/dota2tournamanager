@@ -53,8 +53,8 @@ export const handler = async (event, context) => {
     
     const isAuthenticated = sessionId && sessionId.length >= 10;
     
-    // For non-GET operations, require authentication
-    if (event.httpMethod !== 'GET' && !isAuthenticated) {
+    // For non-GET operations, require authentication (except for POST which is for adding players)
+    if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST' && !isAuthenticated) {
       return {
         statusCode: 401,
         headers: {
