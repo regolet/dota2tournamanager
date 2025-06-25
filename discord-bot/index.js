@@ -201,6 +201,165 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
         }
     }
+    
+    // Handle select menu interactions
+    if (interaction.isStringSelectMenu()) {
+        // Attendance tournament selection
+        if (interaction.customId === 'attendance_tournament_select') {
+            const sessionId = interaction.values[0];
+            
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                
+                // Fetch registered players for this session
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    await interaction.editReply('❌ Failed to fetch tournament players. Please try again.');
+                    return;
+                }
+                
+                const players = data.players || [];
+                
+                if (players.length === 0) {
+                    await interaction.editReply('❌ No players registered for this tournament yet.');
+                    return;
+                }
+                
+                // Post attendance message in the channel
+                const attendanceEmbed = {
+                    color: 0x00ff00,
+                    title: '📋 Tournament Attendance',
+                    description: `**Tournament:** ${sessionId}\n**Registered Players:** ${players.length}\n\nReact with ✅ to mark yourself as **PRESENT** for the tournament.\n\nOnly registered players can mark attendance.`,
+                    fields: [
+                        {
+                            name: '📝 Instructions',
+                            value: 'Click the ✅ reaction below to confirm your attendance. This will mark you as present for the tournament.',
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Attendance will be closed by an admin'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                
+                const attendanceMessage = await interaction.channel.send({
+                    embeds: [attendanceEmbed]
+                });
+                
+                // Add reaction button
+                await attendanceMessage.react('✅');
+                
+                // Store attendance message info for later use
+                // TODO: Store in database or cache for tracking
+                
+                await interaction.editReply(`✅ Attendance message posted! [View Message](${attendanceMessage.url})`);
+                
+            } catch (error) {
+                console.error('[attendance] Error posting attendance message:', error);
+                await interaction.editReply('❌ Failed to post attendance message. Please try again.');
+            }
+            return;
+        }
+        
+        // Close attendance tournament selection
+        if (interaction.customId === 'closeattendance_tournament_select') {
+            const sessionId = interaction.values[0];
+            
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                
+                // Fetch registered players for this session
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    await interaction.editReply('❌ Failed to fetch tournament players. Please try again.');
+                    return;
+                }
+                
+                const players = data.players || [];
+                
+                if (players.length === 0) {
+                    await interaction.editReply('❌ No players registered for this tournament.');
+                    return;
+                }
+                
+                // Mark all non-present players as absent
+                let presentCount = 0;
+                let absentCount = 0;
+                const absentPlayers = [];
+                
+                for (const player of players) {
+                    if (!player.present) {
+                        // Mark as absent
+                        const updateResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/update-player`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                playerId: player.id,
+                                updates: {
+                                    present: false
+                                }
+                            })
+                        });
+                        
+                        if (updateResponse.ok) {
+                            absentCount++;
+                            absentPlayers.push(player.name);
+                        }
+                    } else {
+                        presentCount++;
+                    }
+                }
+                
+                // Post attendance summary in the channel
+                const summaryEmbed = {
+                    color: 0xff9900,
+                    title: '🏁 Tournament Attendance Closed',
+                    description: `**Tournament:** ${sessionId}\n**Attendance Period:** Closed`,
+                    fields: [
+                        {
+                            name: '📊 Attendance Summary',
+                            value: `✅ **Present:** ${presentCount} players\n❌ **Absent:** ${absentCount} players\n📋 **Total Registered:** ${players.length} players`,
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Attendance closed by admin'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Add absent players list if any
+                if (absentPlayers.length > 0) {
+                    const absentList = absentPlayers.slice(0, 10).join(', '); // Show first 10
+                    const moreText = absentPlayers.length > 10 ? ` and ${absentPlayers.length - 10} more` : '';
+                    summaryEmbed.fields.push({
+                        name: '❌ Absent Players',
+                        value: `${absentList}${moreText}`,
+                        inline: false
+                    });
+                }
+                
+                const summaryMessage = await interaction.channel.send({
+                    embeds: [summaryEmbed]
+                });
+                
+                await interaction.editReply(`✅ Attendance closed! **${presentCount}** present, **${absentCount}** absent. [View Summary](${summaryMessage.url})`);
+                
+            } catch (error) {
+                console.error('[closeattendance] Error closing attendance:', error);
+                await interaction.editReply('❌ Failed to close attendance. Please try again.');
+            }
+            return;
+        }
+    }
+    
     // Handle modal submission for registration
     if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_register_')) {
         const sessionId = interaction.customId.replace('modal_register_', '');
@@ -268,6 +427,150 @@ client.on(Events.InteractionCreate, async interaction => {
 // Error handling
 client.on('error', error => {
     console.error('Discord client error:', error);
+});
+
+// Handle reaction events for attendance tracking
+client.on('messageReactionAdd', async (reaction, user) => {
+    // Ignore bot reactions
+    if (user.bot) return;
+    
+    // Check if this is an attendance message (has attendance embed)
+    if (reaction.message.embeds.length > 0) {
+        const embed = reaction.message.embeds[0];
+        if (embed.title === '📋 Tournament Attendance' && reaction.emoji.name === '✅') {
+            try {
+                // Extract session ID from the embed description
+                const description = embed.description;
+                const sessionMatch = description.match(/\*\*Tournament:\*\* ([^\n]+)/);
+                
+                if (!sessionMatch) {
+                    console.error('[attendance] Could not extract session ID from attendance message');
+                    return;
+                }
+                
+                const sessionId = sessionMatch[1].trim();
+                const discordId = user.id;
+                
+                console.log(`[attendance] User ${user.username} (${discordId}) reacted to attendance for session ${sessionId}`);
+                
+                // Check if user is registered for this tournament
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    console.error('[attendance] Failed to fetch players for attendance check');
+                    return;
+                }
+                
+                const players = data.players || [];
+                const registeredPlayer = players.find(player => player.discordid === discordId);
+                
+                if (!registeredPlayer) {
+                    // Remove reaction if user is not registered
+                    await reaction.users.remove(user.id);
+                    console.log(`[attendance] Removed reaction from unregistered user ${user.username}`);
+                    
+                    // Send ephemeral message to user
+                    try {
+                        await user.send('❌ You are not registered for this tournament. Only registered players can mark attendance.');
+                    } catch (dmError) {
+                        console.error('[attendance] Failed to send DM to user:', dmError);
+                    }
+                    return;
+                }
+                
+                // Update player's present status in database
+                const updateResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/update-player`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        playerId: registeredPlayer.id,
+                        updates: {
+                            present: true
+                        }
+                    })
+                });
+                
+                if (updateResponse.ok) {
+                    console.log(`[attendance] Marked ${user.username} as present for session ${sessionId}`);
+                    
+                    // Send confirmation to user
+                    try {
+                        await user.send(`✅ Attendance confirmed! You are marked as present for the tournament.`);
+                    } catch (dmError) {
+                        console.error('[attendance] Failed to send confirmation DM:', dmError);
+                    }
+                } else {
+                    console.error('[attendance] Failed to update player attendance status');
+                }
+                
+            } catch (error) {
+                console.error('[attendance] Error handling attendance reaction:', error);
+            }
+        }
+    }
+});
+
+// Handle reaction removal (mark as absent)
+client.on('messageReactionRemove', async (reaction, user) => {
+    // Ignore bot reactions
+    if (user.bot) return;
+    
+    // Check if this is an attendance message
+    if (reaction.message.embeds.length > 0) {
+        const embed = reaction.message.embeds[0];
+        if (embed.title === '📋 Tournament Attendance' && reaction.emoji.name === '✅') {
+            try {
+                // Extract session ID from the embed description
+                const description = embed.description;
+                const sessionMatch = description.match(/\*\*Tournament:\*\* ([^\n]+)/);
+                
+                if (!sessionMatch) {
+                    console.error('[attendance] Could not extract session ID from attendance message');
+                    return;
+                }
+                
+                const sessionId = sessionMatch[1].trim();
+                const discordId = user.id;
+                
+                console.log(`[attendance] User ${user.username} (${discordId}) removed attendance reaction for session ${sessionId}`);
+                
+                // Find the player and mark as absent
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${sessionId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const players = data.players || [];
+                    const registeredPlayer = players.find(player => player.discordid === discordId);
+                    
+                    if (registeredPlayer) {
+                        // Update player's present status to false
+                        const updateResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/update-player`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                playerId: registeredPlayer.id,
+                                updates: {
+                                    present: false
+                                }
+                            })
+                        });
+                        
+                        if (updateResponse.ok) {
+                            console.log(`[attendance] Marked ${user.username} as absent for session ${sessionId}`);
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('[attendance] Error handling attendance reaction removal:', error);
+            }
+        }
+    }
 });
 
 process.on('unhandledRejection', error => {

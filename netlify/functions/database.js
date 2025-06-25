@@ -21,6 +21,7 @@ async function initializeDatabase() {
         registration_date TIMESTAMP DEFAULT NOW(),
         registration_session_id VARCHAR(255),
         discordid VARCHAR(255),
+        present BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(dota2id, registration_session_id)
@@ -31,6 +32,12 @@ async function initializeDatabase() {
     await sql`
       ALTER TABLE players 
       ADD COLUMN IF NOT EXISTS registration_session_id VARCHAR(255)
+    `;
+
+    // Add present column if it doesn't exist (for existing installations)
+    await sql`
+      ALTER TABLE players 
+      ADD COLUMN IF NOT EXISTS present BOOLEAN DEFAULT false
     `;
 
     // Drop the old unique constraint on dota2id and add new composite constraint
@@ -290,7 +297,9 @@ export async function getPlayers(registrationSessionId = null) {
           peakmmr, 
           ip_address as "ipAddress", 
           registration_date as "registrationDate",
-          registration_session_id as "registrationSessionId"
+          registration_session_id as "registrationSessionId",
+          discordid,
+          present
         FROM players 
         WHERE registration_session_id = ${registrationSessionId}
         ORDER BY registration_date DESC
@@ -305,7 +314,9 @@ export async function getPlayers(registrationSessionId = null) {
           peakmmr, 
           ip_address as "ipAddress", 
           registration_date as "registrationDate",
-          registration_session_id as "registrationSessionId"
+          registration_session_id as "registrationSessionId",
+          discordid,
+          present
         FROM players 
         ORDER BY registration_date DESC
       `;
@@ -457,6 +468,10 @@ export async function updatePlayer(playerId, updates) {
     
     if (updates.registrationSessionId !== undefined) {
       await sql`UPDATE players SET registration_session_id = ${updates.registrationSessionId}, updated_at = NOW() WHERE id = ${playerId}`;
+    }
+    
+    if (updates.present !== undefined) {
+      await sql`UPDATE players SET present = ${updates.present}, updated_at = NOW() WHERE id = ${playerId}`;
     }
 
     // Get the player to determine which session to return

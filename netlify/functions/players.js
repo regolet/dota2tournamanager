@@ -69,8 +69,11 @@ export const handler = async (event, context) => {
     
     // Handle different HTTP methods
     if (event.httpMethod === 'GET') {
-      // Get all players from database
-      const players = await getPlayers();
+      // Get session ID from query parameters for filtering
+      const sessionId = event.queryStringParameters?.sessionId;
+      
+      // Get players from database (filtered by session if provided)
+      const players = await getPlayers(sessionId);
       
       return {
         statusCode: 200,
