@@ -5,19 +5,37 @@ module.exports = {
     name: 'tournaments',
     description: 'List available tournaments',
     async execute(interaction) {
-        await interaction.deferReply();
+        try {
+            await interaction.deferReply();
+        } catch (error) {
+            console.error('[tournaments] Failed to defer reply:', error);
+            return;
+        }
 
         try {
-            // Fetch tournaments from your webapp
+            // Fetch tournaments from your webapp with timeout
             console.log('[tournaments] Fetching tournaments from API:', `${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
-            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
             console.log('[tournaments] API response status:', response.status);
+            
             let data = {};
             try {
                 data = await response.json();
                 console.log('[tournaments] API response data:', data);
             } catch (jsonErr) {
                 console.error('[tournaments] Error parsing API response JSON:', jsonErr);
+                if (interaction.deferred) {
+                    await interaction.editReply('❌ Error processing tournament data. Please try again later.');
+                }
+                return;
             }
 
             if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
@@ -49,14 +67,28 @@ module.exports = {
                     rows.push(row);
                 });
 
-                await interaction.editReply({ embeds: [embed], components: rows });
+                if (interaction.deferred) {
+                    await interaction.editReply({ embeds: [embed], components: rows });
+                }
             } else {
                 console.warn('[tournaments] No active tournaments found or API returned error:', data);
-                await interaction.editReply('❌ No active tournaments found at the moment.');
+                if (interaction.deferred) {
+                    await interaction.editReply('❌ No active tournaments found at the moment.');
+                }
             }
         } catch (error) {
             console.error('[tournaments] Error fetching tournaments:', error);
-            await interaction.editReply('❌ Failed to fetch tournaments. Please try again later.');
+            
+            if (error.name === 'AbortError') {
+                console.error('[tournaments] Request timed out');
+                if (interaction.deferred) {
+                    await interaction.editReply('❌ Request timed out. Please try again later.');
+                }
+            } else {
+                if (interaction.deferred) {
+                    await interaction.editReply('❌ Failed to fetch tournaments. Please try again later.');
+                }
+            }
         }
     },
 }; 
