@@ -824,6 +824,15 @@ client.on('interactionCreate', async interaction => {
         }
         return;
     }
+
+    // Autocomplete handler for generate_teams
+    if (interaction.isAutocomplete() && interaction.commandName === 'generate_teams') {
+        const command = client.commands.get('generate_teams');
+        if (command && typeof command.autocomplete === 'function') {
+            await command.autocomplete(interaction);
+        }
+        return;
+    }
 });
 
 // Basic message handler for testing
