@@ -383,8 +383,16 @@ client.on('interactionCreate', async interaction => {
                     // Move each player in the team
                     for (const player of team.players) {
                         try {
+                            // Check if player has a valid Discord ID
+                            const discordId = player.discordId || player.id;
+                            if (!isValidSnowflake(discordId)) {
+                                moveResults.push(`❌ ${player.name} does not have a valid Discord ID`);
+                                errorCount++;
+                                continue;
+                            }
+                            
                             // Find the Discord member by their Discord ID
-                            const member = await guild.members.fetch(player.discordId || player.id);
+                            const member = await guild.members.fetch(discordId);
                             
                             if (!member) {
                                 moveResults.push(`❌ Could not find Discord member for ${player.name}`);
@@ -490,8 +498,16 @@ client.on('interactionCreate', async interaction => {
                 // Move each player in the team
                 for (const player of team) {
                     try {
+                        // Check if player has a valid Discord ID
+                        const discordId = player.discordId || player.id;
+                        if (!isValidSnowflake(discordId)) {
+                            moveResults.push(`❌ ${player.name} does not have a valid Discord ID`);
+                            errorCount++;
+                            continue;
+                        }
+                        
                         // Find the Discord member by their Discord ID
-                        const member = await guild.members.fetch(player.discordId || player.id);
+                        const member = await guild.members.fetch(discordId);
                         
                         if (!member) {
                             moveResults.push(`❌ Could not find Discord member for ${player.name}`);
@@ -1387,4 +1403,9 @@ async function sendAnnouncement(client, channelId, embed, components = [], files
     }
 }
 
-client.sendAnnouncement = sendAnnouncement; 
+client.sendAnnouncement = sendAnnouncement;
+
+// Utility function to check if a string is a valid Discord snowflake
+function isValidSnowflake(id) {
+    return typeof id === 'string' && /^\d{17,19}$/.test(id);
+} 
