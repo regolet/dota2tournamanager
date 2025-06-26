@@ -562,37 +562,16 @@ client.on('interactionCreate', async interaction => {
                             delete global.generateTeamsSelections[userId];
                             return;
                     }
-                    // Build each team block as an array: first line is header + first player, then just players
+                    // Build each team as a separate code block
                     const teamBlocks = result.teams.map((team, i) => {
                         const avgMmr = Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1));
                         const header = `Team ${i + 1} (Avg MMR: ${avgMmr})`;
                         const players = team.map(p => `${p.name} (${p.peakmmr || 0})`);
-                        // Combine header and first player
-                        const lines = [];
-                        if (players.length > 0) {
-                            lines.push(`${header}\t${players[0]}`);
-                            for (let j = 1; j < players.length; j++) {
-                                lines.push(players[j]);
-                            }
-                        } else {
-                            lines.push(header);
-                        }
-                        return lines;
+                        return `\`\`\`\n${header}\n${players.join('\n')}\n\`\`\``;
                     });
-                    // Find the max number of lines in any team block
-                    const maxLines = Math.max(...teamBlocks.map(block => block.length));
-                    // Pad each team block to maxLines with empty strings
-                    for (let i = 0; i < teamBlocks.length; i++) {
-                        while (teamBlocks[i].length < maxLines) {
-                            teamBlocks[i].push('');
-                        }
-                    }
-                    // Build the final lines row by row, joining with tabs
-                    const lines = [];
-                    for (let row = 0; row < maxLines; row++) {
-                        lines.push(teamBlocks.map(block => block[row]).join('\t'));
-                    }
-                    const teamBlock = lines.join('\n');
+                    
+                    // Join all team blocks with blank lines between them
+                    const teamBlock = teamBlocks.join('\n\n');
                     const reservesText = result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves';
                     const fullTeamText = `${teamBlock}\n\n${reservesText}`;
                     let embed, files = [];
@@ -609,8 +588,7 @@ client.on('interactionCreate', async interaction => {
                         embed = {
                             color: 0x0099ff,
                             title: `Balanced Teams (${numTeams} teams, ${teamSize} per team)` + (playersData.sessionTitle ? ` - ${playersData.sessionTitle}` : ''),
-                            description: `Balance type: **${selection.balance}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**\n\n\u200B\n\u200B\n\
-\`\`\`\n${teamBlock}\n\`\`\`\n${reservesText}`,
+                            description: `Balance type: **${selection.balance}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**\n\n${teamBlock}\n\n${reservesText}`,
                             timestamp: new Date().toISOString()
                         };
                     }
@@ -809,37 +787,16 @@ client.on('interactionCreate', async interaction => {
                     await interaction.editReply('❌ Invalid balance type.');
                     return;
             }
-            // Build each team block as an array: first line is header + first player, then just players
+            // Build each team as a separate code block
             const teamBlocks = result.teams.map((team, i) => {
                 const avgMmr = Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1));
                 const header = `Team ${i + 1} (Avg MMR: ${avgMmr})`;
                 const players = team.map(p => `${p.name} (${p.peakmmr || 0})`);
-                // Combine header and first player
-                const lines = [];
-                if (players.length > 0) {
-                    lines.push(`${header}\t${players[0]}`);
-                    for (let j = 1; j < players.length; j++) {
-                        lines.push(players[j]);
-                    }
-                } else {
-                    lines.push(header);
-                }
-                return lines;
+                return `\`\`\`\n${header}\n${players.join('\n')}\n\`\`\``;
             });
-            // Find the max number of lines in any team block
-            const maxLines = Math.max(...teamBlocks.map(block => block.length));
-            // Pad each team block to maxLines with empty strings
-            for (let i = 0; i < teamBlocks.length; i++) {
-                while (teamBlocks[i].length < maxLines) {
-                    teamBlocks[i].push('');
-                }
-            }
-            // Build the final lines row by row, joining with tabs
-            const lines = [];
-            for (let row = 0; row < maxLines; row++) {
-                lines.push(teamBlocks.map(block => block[row]).join('\t'));
-            }
-            const teamBlock = lines.join('\n');
+            
+            // Join all team blocks with blank lines between them
+            const teamBlock = teamBlocks.join('\n\n');
             const reservesText = result.reserves.length > 0 ? `Reserve players: ${result.reserves.map(p => p.name).join(', ')}` : 'No reserves';
             const fullTeamText = `${teamBlock}\n\n${reservesText}`;
             let embed, files = [];
@@ -856,8 +813,7 @@ client.on('interactionCreate', async interaction => {
                 embed = {
                     color: 0x0099ff,
                     title: `Balanced Teams (${numTeams} teams, ${teamSize} per team)` + (playersData.sessionTitle ? ` - ${playersData.sessionTitle}` : ''),
-                    description: `Balance type: **${balanceType}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**\n\n\u200B\n\u200B\n\
-\`\`\`\n${teamBlock}\n\`\`\`\n${reservesText}`,
+                    description: `Balance type: **${balanceType}**\nTotal present: **${presentPlayers.length}**\nPlayers in teams: **${numTeams * teamSize}**\nReserves: **${result.reserves.length}**\n\n${teamBlock}\n\n${reservesText}`,
                     timestamp: new Date().toISOString()
                 };
             }
