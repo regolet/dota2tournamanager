@@ -622,6 +622,9 @@ client.on('interactionCreate', async interaction => {
                         files
                     });
                     delete global.generateTeamsSelections[userId];
+                } else {
+                    // Acknowledge the interaction so Discord doesn't show 'interaction failed'
+                    await interaction.deferUpdate();
                 }
             } catch (error) {
                 console.error('Error in team generation selection:', error);
