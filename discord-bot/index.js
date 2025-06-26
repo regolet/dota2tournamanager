@@ -621,16 +621,10 @@ client.on('interactionCreate', async interaction => {
                             for (let i = 0; i < result.teams.length; i++) {
                                 const teamNumber = i + 1;
                                 const voiceChannelName = `Team ${teamNumber}`;
-                                const textChannelName = `team-${teamNumber}`;
                                 
                                 // Check if voice channel already exists
                                 const existingVoiceChannel = guild.channels.cache.find(
                                     channel => channel.type === 2 && channel.name === voiceChannelName
-                                );
-                                
-                                // Check if text channel already exists
-                                const existingTextChannel = guild.channels.cache.find(
-                                    channel => channel.type === 0 && channel.name === textChannelName
                                 );
                                 
                                 // Create voice channel if it doesn't exist
@@ -647,22 +641,6 @@ client.on('interactionCreate', async interaction => {
                                     }
                                 } else {
                                     console.log(`⏭️ Voice channel ${voiceChannelName} already exists, skipping`);
-                                }
-                                
-                                // Create text channel if it doesn't exist
-                                if (!existingTextChannel) {
-                                    try {
-                                        await guild.channels.create({
-                                            name: textChannelName,
-                                            type: 0, // Text channel
-                                            reason: `Auto-created for ${playersData.sessionTitle || 'Tournament'} teams`
-                                        });
-                                        console.log(`✅ Created text channel: ${textChannelName}`);
-                                    } catch (textError) {
-                                        console.error(`❌ Failed to create text channel ${textChannelName}:`, textError);
-                                    }
-                                } else {
-                                    console.log(`⏭️ Text channel ${textChannelName} already exists, skipping`);
                                 }
                             }
                         }
