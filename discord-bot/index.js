@@ -594,12 +594,12 @@ client.on('interactionCreate', async interaction => {
                         // Build the final lines row by row
                         const lines = [];
                         for (let row = 0; row < teamsPerCol; row++) {
-                            // Header line (no padding)
-                            const headerLine = colBlocks.map(col => col[row]?.[0] || '').join('  ');
+                            // Header line (tab separator)
+                            const headerLine = colBlocks.map(col => col[row]?.[0] || '').join('\t');
                             lines.push(headerLine);
-                            // Player lines (max 5 per team, no padding)
+                            // Player lines (max 5 per team, tab separator)
                             for (let p = 0; p < 5; p++) {
-                                const playerLine = colBlocks.map(col => (col[row]?.[1]?.split('\n')[p] || '')).join('  ');
+                                const playerLine = colBlocks.map(col => (col[row]?.[1]?.split('\n')[p] || '')).join('\t');
                                 lines.push(playerLine);
                             }
                             // Blank line between rows
@@ -855,12 +855,12 @@ client.on('interactionCreate', async interaction => {
                 // Build the final lines row by row
                 const lines = [];
                 for (let row = 0; row < teamsPerCol; row++) {
-                    // Header line (no padding)
-                    const headerLine = colBlocks.map(col => col[row]?.[0] || '').join('  ');
+                    // Header line (tab separator)
+                    const headerLine = colBlocks.map(col => col[row]?.[0] || '').join('\t');
                     lines.push(headerLine);
-                    // Player lines (max 5 per team, no padding)
+                    // Player lines (max 5 per team, tab separator)
                     for (let p = 0; p < 5; p++) {
-                        const playerLine = colBlocks.map(col => (col[row]?.[1]?.split('\n')[p] || '')).join('  ');
+                        const playerLine = colBlocks.map(col => (col[row]?.[1]?.split('\n')[p] || '')).join('\t');
                         lines.push(playerLine);
                     }
                     // Blank line between rows
