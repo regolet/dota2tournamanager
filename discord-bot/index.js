@@ -614,6 +614,63 @@ client.on('interactionCreate', async interaction => {
                         creatorId: userId // Store the creator's Discord ID
                     };
 
+                    // Create channels for each team
+                    try {
+                        const guild = interaction.guild;
+                        if (guild) {
+                            for (let i = 0; i < result.teams.length; i++) {
+                                const teamNumber = i + 1;
+                                const voiceChannelName = `Team ${teamNumber}`;
+                                const textChannelName = `team-${teamNumber}`;
+                                
+                                // Check if voice channel already exists
+                                const existingVoiceChannel = guild.channels.cache.find(
+                                    channel => channel.type === 2 && channel.name === voiceChannelName
+                                );
+                                
+                                // Check if text channel already exists
+                                const existingTextChannel = guild.channels.cache.find(
+                                    channel => channel.type === 0 && channel.name === textChannelName
+                                );
+                                
+                                // Create voice channel if it doesn't exist
+                                if (!existingVoiceChannel) {
+                                    try {
+                                        await guild.channels.create({
+                                            name: voiceChannelName,
+                                            type: 2, // Voice channel
+                                            reason: `Auto-created for ${playersData.sessionTitle || 'Tournament'} teams`
+                                        });
+                                        console.log(`✅ Created voice channel: ${voiceChannelName}`);
+                                    } catch (voiceError) {
+                                        console.error(`❌ Failed to create voice channel ${voiceChannelName}:`, voiceError);
+                                    }
+                                } else {
+                                    console.log(`⏭️ Voice channel ${voiceChannelName} already exists, skipping`);
+                                }
+                                
+                                // Create text channel if it doesn't exist
+                                if (!existingTextChannel) {
+                                    try {
+                                        await guild.channels.create({
+                                            name: textChannelName,
+                                            type: 0, // Text channel
+                                            reason: `Auto-created for ${playersData.sessionTitle || 'Tournament'} teams`
+                                        });
+                                        console.log(`✅ Created text channel: ${textChannelName}`);
+                                    } catch (textError) {
+                                        console.error(`❌ Failed to create text channel ${textChannelName}:`, textError);
+                                    }
+                                } else {
+                                    console.log(`⏭️ Text channel ${textChannelName} already exists, skipping`);
+                                }
+                            }
+                        }
+                    } catch (channelError) {
+                        console.error('❌ Error creating team channels:', channelError);
+                        // Don't fail the entire operation if channel creation fails
+                    }
+
                     // Send the embed to the teams channel as a public announcement
                     await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow], files);
                     // Also reply to the user for confirmation
