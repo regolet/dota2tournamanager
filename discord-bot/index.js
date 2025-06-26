@@ -622,12 +622,6 @@ client.on('interactionCreate', async interaction => {
                         files
                     });
                     delete global.generateTeamsSelections[userId];
-                } else {
-                    // Acknowledge the selection and prompt for the others
-                    await interaction.reply({
-                        content: 'Selection saved! Please select the remaining options to proceed.',
-                        ephemeral: true
-                    });
                 }
             } catch (error) {
                 console.error('Error in team generation selection:', error);
