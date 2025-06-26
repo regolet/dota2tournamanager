@@ -296,6 +296,24 @@ client.on('interactionCreate', async interaction => {
                 };
                 // Send the bracket embed to the bracket channel as a public announcement
                 await sendAnnouncement(client, '1387453843394007120', bracketEmbed);
+                
+                // Create button to move players to their team channels
+                const movePlayersButton = new ButtonBuilder()
+                    .setCustomId(`move_players_to_teams_${teamSetId}`)
+                    .setLabel('Move Players to Team Channels')
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji('👥');
+
+                const moveButtonRow = new ActionRowBuilder().addComponents(movePlayersButton);
+                
+                // Send move players button
+                await sendAnnouncement(client, '1387453843394007120', {
+                    color: 0x0099ff,
+                    title: '👥 Move Players to Teams',
+                    description: 'Click the button below to automatically move players to their designated team voice channels.',
+                    timestamp: new Date().toISOString()
+                }, [moveButtonRow]);
+                
                 // Also reply to the user for confirmation
                 await interaction.editReply({
                     content: '✅ Teams saved and tournament bracket created! Announcement posted in the bracket channel.',
@@ -315,6 +333,214 @@ client.on('interactionCreate', async interaction => {
                 } catch (replyError) {
                     console.error('Failed to send error reply:', replyError);
                 }
+            }
+            return;
+        }
+
+        // Move players to team channels button
+        if (interaction.customId.startsWith('move_players_to_teams_')) {
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                
+                const teamSetId = interaction.customId.replace('move_players_to_teams_', '');
+                
+                // Fetch the teams data from the database
+                const teamsResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/teams?teamSetId=${teamSetId}`);
+                const teamsData = await teamsResponse.json();
+                
+                if (!teamsData.success || !teamsData.teams) {
+                    await interaction.editReply('❌ Failed to fetch teams data.');
+                    return;
+                }
+                
+                const guild = interaction.guild;
+                if (!guild) {
+                    await interaction.editReply('❌ Guild not found.');
+                    return;
+                }
+                
+                let movedCount = 0;
+                let notInVoiceCount = 0;
+                let errorCount = 0;
+                const moveResults = [];
+                
+                // Process each team
+                for (const team of teamsData.teams) {
+                    const teamNumber = team.teamNumber;
+                    const voiceChannelName = `Team ${teamNumber}`;
+                    
+                    // Find the team voice channel
+                    const voiceChannel = guild.channels.cache.find(
+                        channel => channel.type === 2 && channel.name === voiceChannelName
+                    );
+                    
+                    if (!voiceChannel) {
+                        moveResults.push(`❌ Voice channel "${voiceChannelName}" not found`);
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    // Move each player in the team
+                    for (const player of team.players) {
+                        try {
+                            // Find the Discord member by their Discord ID
+                            const member = await guild.members.fetch(player.discordId || player.id);
+                            
+                            if (!member) {
+                                moveResults.push(`❌ Could not find Discord member for ${player.name}`);
+                                errorCount++;
+                                continue;
+                            }
+                            
+                            // Check if member is in a voice channel
+                            if (!member.voice.channel) {
+                                moveResults.push(`⏭️ ${player.name} is not in a voice channel`);
+                                notInVoiceCount++;
+                                continue;
+                            }
+                            
+                            // Move the member to the team voice channel
+                            await member.voice.setChannel(voiceChannel);
+                            moveResults.push(`✅ Moved ${player.name} to ${voiceChannelName}`);
+                            movedCount++;
+                            
+                        } catch (memberError) {
+                            console.error(`Error moving player ${player.name}:`, memberError);
+                            moveResults.push(`❌ Failed to move ${player.name}: ${memberError.message}`);
+                            errorCount++;
+                        }
+                    }
+                }
+                
+                // Create result embed
+                const resultEmbed = {
+                    color: movedCount > 0 ? 0x00ff00 : 0xff9900,
+                    title: '👥 Player Movement Results',
+                    description: `**Moved:** ${movedCount} players\n**Not in voice:** ${notInVoiceCount} players\n**Errors:** ${errorCount} players`,
+                    fields: [
+                        {
+                            name: '📋 Movement Details',
+                            value: moveResults.slice(0, 10).join('\n') + (moveResults.length > 10 ? `\n... and ${moveResults.length - 10} more` : ''),
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Players not in voice channels will need to join manually'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                
+                await interaction.editReply({ embeds: [resultEmbed] });
+                
+            } catch (error) {
+                console.error('Error moving players to teams:', error);
+                await interaction.editReply('❌ An error occurred while moving players to team channels.');
+            }
+            return;
+        }
+
+        // Move specific team to their channel button
+        if (interaction.customId.startsWith('move_team_')) {
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                
+                const parts = interaction.customId.split('_');
+                const teamNumber = parseInt(parts[2]);
+                const tournamentId = parts[3];
+                
+                // Get the teams data from the stored global data
+                const userId = interaction.user.id;
+                const teamsData = global.generatedTeamsData?.[userId];
+                
+                if (!teamsData) {
+                    await interaction.editReply('❌ No teams data found. Please generate teams again.');
+                    return;
+                }
+                
+                const guild = interaction.guild;
+                if (!guild) {
+                    await interaction.editReply('❌ Guild not found.');
+                    return;
+                }
+                
+                // Find the specific team
+                const team = teamsData.teams[teamNumber - 1];
+                if (!team) {
+                    await interaction.editReply(`❌ Team ${teamNumber} not found.`);
+                    return;
+                }
+                
+                const voiceChannelName = `Team ${teamNumber}`;
+                
+                // Find the team voice channel
+                const voiceChannel = guild.channels.cache.find(
+                    channel => channel.type === 2 && channel.name === voiceChannelName
+                );
+                
+                if (!voiceChannel) {
+                    await interaction.editReply(`❌ Voice channel "${voiceChannelName}" not found.`);
+                    return;
+                }
+                
+                let movedCount = 0;
+                let notInVoiceCount = 0;
+                let errorCount = 0;
+                const moveResults = [];
+                
+                // Move each player in the team
+                for (const player of team) {
+                    try {
+                        // Find the Discord member by their Discord ID
+                        const member = await guild.members.fetch(player.discordId || player.id);
+                        
+                        if (!member) {
+                            moveResults.push(`❌ Could not find Discord member for ${player.name}`);
+                            errorCount++;
+                            continue;
+                        }
+                        
+                        // Check if member is in a voice channel
+                        if (!member.voice.channel) {
+                            moveResults.push(`⏭️ ${player.name} is not in a voice channel`);
+                            notInVoiceCount++;
+                            continue;
+                        }
+                        
+                        // Move the member to the team voice channel
+                        await member.voice.setChannel(voiceChannel);
+                        moveResults.push(`✅ Moved ${player.name} to ${voiceChannelName}`);
+                        movedCount++;
+                        
+                    } catch (memberError) {
+                        console.error(`Error moving player ${player.name}:`, memberError);
+                        moveResults.push(`❌ Failed to move ${player.name}: ${memberError.message}`);
+                        errorCount++;
+                    }
+                }
+                
+                // Create result embed
+                const resultEmbed = {
+                    color: movedCount > 0 ? 0x00ff00 : 0xff9900,
+                    title: `👥 Team ${teamNumber} Movement Results`,
+                    description: `**Moved:** ${movedCount} players\n**Not in voice:** ${notInVoiceCount} players\n**Errors:** ${errorCount} players`,
+                    fields: [
+                        {
+                            name: '📋 Movement Details',
+                            value: moveResults.join('\n'),
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Players not in voice channels will need to join manually'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                
+                await interaction.editReply({ embeds: [resultEmbed] });
+                
+            } catch (error) {
+                console.error('Error moving team to channel:', error);
+                await interaction.editReply('❌ An error occurred while moving team to their channel.');
             }
             return;
         }
@@ -602,6 +828,25 @@ client.on('interactionCreate', async interaction => {
 
                     const buttonRow = new ActionRowBuilder().addComponents(saveButton);
 
+                    // Create individual team move buttons
+                    const teamMoveButtons = [];
+                    for (let i = 0; i < result.teams.length; i++) {
+                        const teamNumber = i + 1;
+                        const teamButton = new ButtonBuilder()
+                            .setCustomId(`move_team_${teamNumber}_${selection.tournament}`)
+                            .setLabel(`Move Team ${teamNumber}`)
+                            .setStyle(ButtonStyle.Secondary)
+                            .setEmoji('👥');
+                        teamMoveButtons.push(teamButton);
+                    }
+                    
+                    // Split buttons into rows (max 5 buttons per row)
+                    const teamButtonRows = [];
+                    for (let i = 0; i < teamMoveButtons.length; i += 5) {
+                        const row = new ActionRowBuilder().addComponents(teamMoveButtons.slice(i, i + 5));
+                        teamButtonRows.push(row);
+                    }
+
                     // Store the generated teams data for later use
                     if (!global.generatedTeamsData) global.generatedTeamsData = {};
                     global.generatedTeamsData[userId] = {
@@ -650,7 +895,7 @@ client.on('interactionCreate', async interaction => {
                     }
 
                     // Send the embed to the teams channel as a public announcement
-                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow], files);
+                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow, ...teamButtonRows], files);
                     // Also reply to the user for confirmation
                     await interaction.editReply({
                         content: '✅ Teams generated and posted in the teams channel!',
