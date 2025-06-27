@@ -1287,11 +1287,8 @@ function displayBalancedTeams() {
                                         <h6 class="mb-0 fw-bold">${escapeHtml(team.name)}</h6>
                                     </div>
                                     <div class="col text-end">
-                                        <span class="badge bg-light text-dark me-1">
-                                            Avg MMR: ${Math.round(team.totalMmr / team.players.length)}
-                                        </span>
                                         <span class="badge bg-light text-dark">
-                                            Total: ${team.totalMmr}
+                                            Avg MMR: ${Math.round(team.totalMmr / team.players.length)}
                                         </span>
                                     </div>
                                 </div>
