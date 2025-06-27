@@ -617,8 +617,9 @@ client.on('interactionCreate', async interaction => {
                     const buttonRow = new ActionRowBuilder().addComponents(saveButton);
 
                     // Replace team move buttons with a single button
+                    const teamSetId = `teamset_${Date.now()}`;
                     const moveMeButton = new ButtonBuilder()
-                        .setCustomId(`move_me_${selection.tournament}`)
+                        .setCustomId(`move_me_${teamSetId}`)
                         .setLabel('Move Me to My Team Channel')
                         .setStyle(ButtonStyle.Secondary)
                         .setEmoji('👥');
@@ -626,7 +627,7 @@ client.on('interactionCreate', async interaction => {
 
                     // Store the generated teams data for later use
                     if (!global.generatedTeamsData) global.generatedTeamsData = {};
-                    global.generatedTeamsData[selection.tournament] = {
+                    global.generatedTeamsData[teamSetId] = {
                         teams: result.teams,
                         reserves: result.reserves,
                         tournament: selection.tournament,
@@ -904,9 +905,9 @@ client.on('interactionCreate', async interaction => {
     // Move team button handler (replace old handler)
     if (interaction.isButton() && interaction.customId.startsWith('move_me_')) {
         await interaction.deferReply({ ephemeral: true });
-        const tournamentId = interaction.customId.replace('move_me_', '');
+        const teamSetId = interaction.customId.replace('move_me_', '');
         const userId = interaction.user.id;
-        const teamsData = global.generatedTeamsData[tournamentId];
+        const teamsData = global.generatedTeamsData[teamSetId];
         if (!teamsData) {
             await interaction.editReply('❌ Team data not found.');
             return;
