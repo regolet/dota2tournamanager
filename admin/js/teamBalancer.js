@@ -1679,6 +1679,8 @@ function syncSessionSelectorToState() {
     const selector = document.getElementById('team-balancer-session-selector');
     if (selector && state.currentSessionId) {
         selector.value = state.currentSessionId;
+        // Ensure state is always in sync with the dropdown
+        state.currentSessionId = selector.value;
     }
 }
 
