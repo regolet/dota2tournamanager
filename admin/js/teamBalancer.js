@@ -102,6 +102,12 @@ function cleanupTeamBalancer() {
     // Clear any custom event listeners
     window.removeEventListener('registrationUpdated', window.teamBalancerRegistrationListener);
     
+    // Remove the delegated event listener
+    if (window.teamBalancerDelegatedListenerAdded) {
+        document.removeEventListener('click', teamBalancerDelegatedClickHandler);
+        window.teamBalancerDelegatedListenerAdded = false;
+    }
+    
     console.log('Team balancer cleanup completed');
 }
 
@@ -284,9 +290,35 @@ function addDeleteButtonToBalancerSelector() {
     }
 }
 
-/**
- * Setup team balancer event listeners
- */
+// Define the handler at the top-level scope so it can be added/removed
+function teamBalancerDelegatedClickHandler(e) {
+    // Team management buttons
+    if (e.target.closest('#load-teams-btn')) {
+        showLoadTeamsModal();
+    } else if (e.target.closest('#save-teams-btn')) {
+        saveTeams();
+    } else if (e.target.closest('#export-teams-btn')) {
+        exportTeams();
+    } else if (e.target.closest('#clear-teams-btn')) {
+        clearTeams();
+    } else if (e.target.closest('#load-players-from-teams-btn')) {
+        loadPlayersFromTeams();
+    }
+    // Player list buttons
+    if (e.target.closest('.remove-player')) {
+        const button = e.target.closest('.remove-player');
+        const playerId = button.getAttribute('data-id');
+        const playerIndex = parseInt(button.getAttribute('data-index'));
+        removePlayerFromList(playerId, playerIndex);
+    }
+    // Reserved list buttons
+    if (e.target.closest('.restore-player')) {
+        const button = e.target.closest('.restore-player');
+        const playerIndex = parseInt(button.getAttribute('data-index'));
+        restorePlayerFromReserved(playerIndex);
+    }
+}
+
 function setupTeamBalancerEventListeners() {
     // Session selector change
     const sessionSelector = document.getElementById('team-balancer-session-selector');
@@ -296,43 +328,16 @@ function setupTeamBalancerEventListeners() {
             await loadPlayersForBalancer();
         });
     }
-
     // Refresh sessions button
     const refreshSessionsBtn = document.getElementById('refresh-balancer-sessions');
     if (refreshSessionsBtn) {
         refreshSessionsBtn.addEventListener('click', loadRegistrationSessions);
     }
-
-    // Use a single, reliable delegated event listener for all dynamic buttons
-    document.addEventListener('click', function(e) {
-        // Team management buttons
-        if (e.target.closest('#load-teams-btn')) {
-            showLoadTeamsModal();
-        } else if (e.target.closest('#save-teams-btn')) {
-            saveTeams();
-        } else if (e.target.closest('#export-teams-btn')) {
-            exportTeams();
-        } else if (e.target.closest('#clear-teams-btn')) {
-            clearTeams();
-        } else if (e.target.closest('#load-players-from-teams-btn')) {
-            loadPlayersFromTeams();
-        }
-
-        // Player list buttons
-        if (e.target.closest('.remove-player')) {
-            const button = e.target.closest('.remove-player');
-            const playerId = button.getAttribute('data-id');
-            const playerIndex = parseInt(button.getAttribute('data-index'));
-            removePlayerFromList(playerId, playerIndex);
-        }
-
-        // Reserved list buttons
-        if (e.target.closest('.restore-player')) {
-            const button = e.target.closest('.restore-player');
-            const playerIndex = parseInt(button.getAttribute('data-index'));
-            restorePlayerFromReserved(playerIndex);
-        }
-    });
+    // Add the delegated event listener only once
+    if (!window.teamBalancerDelegatedListenerAdded) {
+        document.addEventListener('click', teamBalancerDelegatedClickHandler);
+        window.teamBalancerDelegatedListenerAdded = true;
+    }
 }
 
 /**
