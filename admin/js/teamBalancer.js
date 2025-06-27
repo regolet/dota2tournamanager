@@ -635,11 +635,12 @@ async function loadSelectedTeams(teamSetId) {
         }
 
         // 1. Update session
-        state.currentSessionId = teamSet.registrationSessionId;
-        const sessionSelector = document.getElementById('team-balancer-session-selector');
-        if (sessionSelector) {
-            sessionSelector.value = state.currentSessionId;
+        const sessionExists = state.registrationSessions.some(s => s.sessionId === teamSet.registrationSessionId);
+        if (!sessionExists) {
+            await loadRegistrationSessions();
         }
+        state.currentSessionId = teamSet.registrationSessionId;
+        syncSessionSelectorToState();
 
         // 2. Load all players for that session
         await loadPlayersForBalancer();
@@ -663,8 +664,6 @@ async function loadSelectedTeams(teamSetId) {
         displayBalancedTeams();
         
         window.showNotification(`Successfully loaded "${teamSet.title}".`, 'success');
-
-        syncSessionSelectorToState();
 
     } catch (error) {
         console.error('Error loading team set:', error);
