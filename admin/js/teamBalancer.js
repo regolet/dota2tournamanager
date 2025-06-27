@@ -652,8 +652,8 @@ async function loadSelectedTeams(teamSetId) {
         const playersInTeams = state.balancedTeams.flatMap(team => team.players);
         const playerInTeamsIds = new Set(playersInTeams.map(p => p.id));
 
+        state.availablePlayers = allPlayers.filter(p => playerInTeamsIds.has(p.id));
         state.reservedPlayers = allPlayers.filter(p => !playerInTeamsIds.has(p.id));
-        state.availablePlayers = []; // All players are either in teams or reserved
 
         // 5. Refresh all displays
         displayPlayersForBalancer(state.availablePlayers);
