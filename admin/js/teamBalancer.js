@@ -1301,16 +1301,14 @@ function displayBalancedTeams() {
                                     <table class="table table-sm table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
                                         <thead class="table-light">
                                             <tr>
-                                                <th class="fw-semibold" style="width: 50%;">Player</th>
-                                                <th class="fw-semibold text-center" style="width: 25%;">Dota 2 ID</th>
-                                                <th class="fw-semibold text-end" style="width: 25%;">MMR</th>
+                                                <th class="fw-semibold" style="width: 70%;">Player</th>
+                                                <th class="fw-semibold text-end" style="width: 30%;">MMR</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             ${team.players.map((player, playerIndex) => `
                                                 <tr class="${playerIndex % 2 === 0 ? 'table-light' : ''}">
                                                     <td class="fw-bold text-primary">${escapeHtml(player.name)}</td>
-                                                    <td class="text-center font-monospace small">${player.dota2id || 'N/A'}</td>
                                                     <td class="text-end">
                                                         <span class="badge bg-primary">${player.peakmmr || 0}</span>
                                                     </td>
