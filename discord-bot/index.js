@@ -946,6 +946,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
         // Check if member is in a voice channel
+        console.log('DEBUG: member.voice.channel =', member.voice.channel);
         if (!member.voice.channel) {
             await interaction.editReply('❌ You must be in a voice channel to be moved.');
             return;
