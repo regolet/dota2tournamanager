@@ -250,6 +250,8 @@ function updateSessionSelector() {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
         }
     }
+
+    syncSessionSelectorToState();
 }
 
 /**
@@ -661,6 +663,8 @@ async function loadSelectedTeams(teamSetId) {
         displayBalancedTeams();
         
         window.showNotification(`Successfully loaded "${teamSet.title}".`, 'success');
+
+        syncSessionSelectorToState();
 
     } catch (error) {
         console.error('Error loading team set:', error);
@@ -1668,6 +1672,14 @@ async function deleteTournamentSession(sessionId, buttonElement) {
         window.showNotification(error.message, 'error');
         buttonElement.disabled = false;
         buttonElement.innerHTML = '<i class="bi bi-trash"></i>';
+    }
+}
+
+// Utility function to sync dropdown to state
+function syncSessionSelectorToState() {
+    const selector = document.getElementById('team-balancer-session-selector');
+    if (selector && state.currentSessionId) {
+        selector.value = state.currentSessionId;
     }
 }
 
