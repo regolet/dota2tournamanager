@@ -603,24 +603,13 @@ client.on('interactionCreate', async interaction => {
 
                     const buttonRow = new ActionRowBuilder().addComponents(saveButton);
 
-                    // Create individual team move buttons
-                    const teamMoveButtons = [];
-                    for (let i = 0; i < result.teams.length; i++) {
-                        const teamNumber = i + 1;
-                        const teamButton = new ButtonBuilder()
-                            .setCustomId(`move_team_${teamNumber}_${selection.tournament}`)
-                            .setLabel(`Move Me to Team ${teamNumber} Channel`)
-                            .setStyle(ButtonStyle.Secondary)
-                            .setEmoji('👥');
-                        teamMoveButtons.push(teamButton);
-                    }
-                    
-                    // Split buttons into rows (max 5 buttons per row)
-                    const teamButtonRows = [];
-                    for (let i = 0; i < teamMoveButtons.length; i += 5) {
-                        const row = new ActionRowBuilder().addComponents(teamMoveButtons.slice(i, i + 5));
-                        teamButtonRows.push(row);
-                    }
+                    // Replace team move buttons with a single button
+                    const moveMeButton = new ButtonBuilder()
+                        .setCustomId(`move_me_${selection.tournament}`)
+                        .setLabel('Move Me to My Team Channel')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('👥');
+                    const moveMeButtonRow = new ActionRowBuilder().addComponents(moveMeButton);
 
                     // Store the generated teams data for later use
                     if (!global.generatedTeamsData) global.generatedTeamsData = {};
@@ -670,7 +659,7 @@ client.on('interactionCreate', async interaction => {
                     }
 
                     // Send the embed to the teams channel as a public announcement
-                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow, ...teamButtonRows], files);
+                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow, moveMeButtonRow], files);
                     // Also reply to the user for confirmation
                     await interaction.editReply({
                         content: '✅ Teams generated and posted in the teams channel!',
@@ -886,27 +875,28 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
-    // Move team button handler
-    if (interaction.isButton() && interaction.customId.startsWith('move_team_')) {
+    // Move team button handler (replace old handler)
+    if (interaction.isButton() && interaction.customId.startsWith('move_me_')) {
         await interaction.deferReply({ ephemeral: true });
-        const parts = interaction.customId.split('_');
-        const teamNumber = parseInt(parts[2]);
-        const tournamentId = parts[3];
+        const tournamentId = interaction.customId.replace('move_me_', '');
         const userId = interaction.user.id;
         const teamsData = global.generatedTeamsData[tournamentId];
         if (!teamsData) {
             await interaction.editReply('❌ Team data not found.');
             return;
         }
-        const team = teamsData.teams[teamNumber - 1];
-        if (!team) {
-            await interaction.editReply('❌ Team not found.');
-            return;
+        // Find the team the user is in
+        let foundTeam = null;
+        let teamNumber = null;
+        for (let i = 0; i < teamsData.teams.length; i++) {
+            if (teamsData.teams[i].some(player => (player.discordId || player.id) === userId)) {
+                foundTeam = teamsData.teams[i];
+                teamNumber = i + 1;
+                break;
+            }
         }
-        // Check if the user is a registered and present member of this team
-        const isParticipant = team.some(player => (player.discordId || player.id) === userId);
-        if (!isParticipant) {
-            await interaction.editReply('❌ You are not a participant of this team.');
+        if (!foundTeam) {
+            await interaction.editReply('❌ You are not a participant in this tournament.');
             return;
         }
         // Move the user to the correct voice channel
