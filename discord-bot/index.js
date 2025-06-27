@@ -624,7 +624,7 @@ client.on('interactionCreate', async interaction => {
 
                     // Store the generated teams data for later use
                     if (!global.generatedTeamsData) global.generatedTeamsData = {};
-                    global.generatedTeamsData[userId] = {
+                    global.generatedTeamsData[selection.tournament] = {
                         teams: result.teams,
                         reserves: result.reserves,
                         tournament: selection.tournament,
@@ -893,14 +893,7 @@ client.on('interactionCreate', async interaction => {
         const teamNumber = parseInt(parts[2]);
         const tournamentId = parts[3];
         const userId = interaction.user.id;
-        // Find the generated teams data for this tournament (search all users, since the message may be public)
-        let teamsData = null;
-        for (const key in global.generatedTeamsData) {
-            if (global.generatedTeamsData[key].tournament === tournamentId) {
-                teamsData = global.generatedTeamsData[key];
-                break;
-            }
-        }
+        const teamsData = global.generatedTeamsData[tournamentId];
         if (!teamsData) {
             await interaction.editReply('❌ Team data not found.');
             return;
