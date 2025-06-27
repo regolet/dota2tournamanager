@@ -885,6 +885,71 @@ client.on('interactionCreate', async interaction => {
         }
         return;
     }
+
+    // Move team button handler
+    if (interaction.isButton() && interaction.customId.startsWith('move_team_')) {
+        await interaction.deferReply({ ephemeral: true });
+        const parts = interaction.customId.split('_');
+        const teamNumber = parseInt(parts[2]);
+        const tournamentId = parts[3];
+        const userId = interaction.user.id;
+        // Find the generated teams data for this tournament (search all users, since the message may be public)
+        let teamsData = null;
+        for (const key in global.generatedTeamsData) {
+            if (global.generatedTeamsData[key].tournament === tournamentId) {
+                teamsData = global.generatedTeamsData[key];
+                break;
+            }
+        }
+        if (!teamsData) {
+            await interaction.editReply('❌ Team data not found.');
+            return;
+        }
+        const team = teamsData.teams[teamNumber - 1];
+        if (!team) {
+            await interaction.editReply('❌ Team not found.');
+            return;
+        }
+        // Check if the user is a registered and present member of this team
+        const isParticipant = team.some(player => (player.discordId || player.id) === userId);
+        if (!isParticipant) {
+            await interaction.editReply('❌ You are not a participant of this team.');
+            return;
+        }
+        // Move the user to the correct voice channel
+        const guild = interaction.guild;
+        if (!guild) {
+            await interaction.editReply('❌ Guild not found.');
+            return;
+        }
+        const voiceChannelName = `Team ${teamNumber}`;
+        const voiceChannel = guild.channels.cache.find(
+            channel => channel.type === 2 && channel.name === voiceChannelName
+        );
+        if (!voiceChannel) {
+            await interaction.editReply(`❌ Voice channel "${voiceChannelName}" not found.`);
+            return;
+        }
+        // Fetch the member
+        const member = await guild.members.fetch(userId);
+        if (!member) {
+            await interaction.editReply('❌ Could not find your Discord member.');
+            return;
+        }
+        // Check if member is in a voice channel
+        if (!member.voice.channel) {
+            await interaction.editReply('❌ You must be in a voice channel to be moved.');
+            return;
+        }
+        // Move the member
+        try {
+            await member.voice.setChannel(voiceChannel);
+            await interaction.editReply(`✅ You have been moved to ${voiceChannelName}.`);
+        } catch (err) {
+            await interaction.editReply(`❌ Failed to move you: ${err.message}`);
+        }
+        return;
+    }
 });
 
 // Basic message handler for testing
@@ -1167,69 +1232,4 @@ client.sendAnnouncement = sendAnnouncement;
 // Utility function to check if a string is a valid Discord snowflake
 function isValidSnowflake(id) {
     return typeof id === 'string' && /^\d{17,19}$/.test(id);
-}
-
-// Update button handler
-if (interaction.isButton() && interaction.customId.startsWith('move_team_')) {
-    await interaction.deferReply({ ephemeral: true });
-    const parts = interaction.customId.split('_');
-    const teamNumber = parseInt(parts[2]);
-    const tournamentId = parts[3];
-    const userId = interaction.user.id;
-    // Find the generated teams data for this tournament (search all users, since the message may be public)
-    let teamsData = null;
-    for (const key in global.generatedTeamsData) {
-        if (global.generatedTeamsData[key].tournament === tournamentId) {
-            teamsData = global.generatedTeamsData[key];
-            break;
-        }
-    }
-    if (!teamsData) {
-        await interaction.editReply('❌ Team data not found.');
-        return;
-    }
-    const team = teamsData.teams[teamNumber - 1];
-    if (!team) {
-        await interaction.editReply('❌ Team not found.');
-        return;
-    }
-    // Check if the user is a registered and present member of this team
-    const isParticipant = team.some(player => (player.discordId || player.id) === userId);
-    if (!isParticipant) {
-        await interaction.editReply('❌ You are not a participant of this team.');
-        return;
-    }
-    // Move the user to the correct voice channel
-    const guild = interaction.guild;
-    if (!guild) {
-        await interaction.editReply('❌ Guild not found.');
-        return;
-    }
-    const voiceChannelName = `Team ${teamNumber}`;
-    const voiceChannel = guild.channels.cache.find(
-        channel => channel.type === 2 && channel.name === voiceChannelName
-    );
-    if (!voiceChannel) {
-        await interaction.editReply(`❌ Voice channel "${voiceChannelName}" not found.`);
-        return;
-    }
-    // Fetch the member
-    const member = await guild.members.fetch(userId);
-    if (!member) {
-        await interaction.editReply('❌ Could not find your Discord member.');
-        return;
-    }
-    // Check if member is in a voice channel
-    if (!member.voice.channel) {
-        await interaction.editReply('❌ You must be in a voice channel to be moved.');
-        return;
-    }
-    // Move the member
-    try {
-        await member.voice.setChannel(voiceChannel);
-        await interaction.editReply(`✅ You have been moved to ${voiceChannelName}.`);
-    } catch (err) {
-        await interaction.editReply(`❌ Failed to move you: ${err.message}`);
-    }
-    return;
 } 
