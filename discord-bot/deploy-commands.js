@@ -79,6 +79,10 @@ const commands = [
     {
         name: 'generate_teams',
         description: 'Generate balanced teams for a tournament (present players only)'
+    },
+    {
+        name: 'remove_teamchannel',
+        description: 'Remove all team voice channels (Team 1, Team 2, etc.)',
     }
 ];
 

@@ -1,12 +1,8 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
   name: 'remove_teamchannel',
   description: 'Remove all team voice channels (Team 1, Team 2, etc.)',
-  data: new SlashCommandBuilder()
-    .setName('remove_teamchannel')
-    .setDescription('Remove all team voice channels (Team 1, Team 2, etc.)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
   async execute(interaction) {
     if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
       await interaction.reply({ content: '❌ You do not have permission to use this command.', ephemeral: true });
