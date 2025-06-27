@@ -1677,9 +1677,8 @@ async function deleteTournamentSession(sessionId, buttonElement) {
 // Utility function to sync dropdown to state
 function syncSessionSelectorToState() {
     const selector = document.getElementById('team-balancer-session-selector');
-    if (selector && state.currentSessionId) {
-        selector.value = state.currentSessionId;
-        // Ensure state is always in sync with the dropdown
+    if (selector) {
+        // Always sync state to the dropdown value, even if it's empty
         state.currentSessionId = selector.value;
     }
 }
