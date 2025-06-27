@@ -563,6 +563,19 @@ client.on('interactionCreate', async interaction => {
                             delete global.generateTeamsSelections[userId];
                             return;
                     }
+                    // Enrich each player in teams and reserves with discordId
+                    const discordIdMap = {};
+                    for (const p of presentPlayers) {
+                        if (p.name && p.discordid) discordIdMap[p.name] = p.discordid;
+                    }
+                    result.teams = result.teams.map(team => team.map(player => ({
+                        ...player,
+                        discordId: player.discordId || player.discordid || discordIdMap[player.name] || null
+                    })));
+                    result.reserves = result.reserves.map(player => ({
+                        ...player,
+                        discordId: player.discordId || player.discordid || discordIdMap[player.name] || null
+                    }));
                     // Build each team as a separate code block
                     const teamBlocks = result.teams.map((team, i) => {
                         const avgMmr = Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1));
@@ -828,6 +841,19 @@ client.on('interactionCreate', async interaction => {
                     await interaction.editReply('❌ Invalid balance type.');
                     return;
             }
+            // Enrich each player in teams and reserves with discordId
+            const discordIdMap = {};
+            for (const p of presentPlayers) {
+                if (p.name && p.discordid) discordIdMap[p.name] = p.discordid;
+            }
+            result.teams = result.teams.map(team => team.map(player => ({
+                ...player,
+                discordId: player.discordId || player.discordid || discordIdMap[player.name] || null
+            })));
+            result.reserves = result.reserves.map(player => ({
+                ...player,
+                discordId: player.discordId || player.discordid || discordIdMap[player.name] || null
+            }));
             // Build each team as a separate code block
             const teamBlocks = result.teams.map((team, i) => {
                 const avgMmr = Math.round(team.reduce((sum, p) => sum + (p.peakmmr || 0), 0) / (team.length || 1));
