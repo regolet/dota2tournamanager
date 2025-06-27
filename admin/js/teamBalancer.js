@@ -238,6 +238,9 @@ function updateSessionSelector() {
     if (previouslySelected && sortedSessions.some(s => s.sessionId === previouslySelected)) {
         selector.value = previouslySelected;
         state.currentSessionId = previouslySelected;
+    } else if (state.currentSessionId && sortedSessions.some(s => s.sessionId === state.currentSessionId)) {
+        // Always restore to state.currentSessionId if possible
+        selector.value = state.currentSessionId;
     } else if (sortedSessions.length > 0) {
         const latestSession = sortedSessions[0];
         selector.value = latestSession.sessionId;
