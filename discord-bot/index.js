@@ -12,7 +12,8 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessageReactions
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildVoiceStates
     ]
 });
 
@@ -126,9 +127,8 @@ client.on('interactionCreate', async interaction => {
 
         // Save teams and create tournament bracket button
         if (interaction.customId.startsWith('save_teams_')) {
-            const userId = interaction.user.id;
-            const teamsData = global.generatedTeamsData?.[userId];
-            
+            const teamSetId = interaction.customId.replace('save_teams_', '');
+            const teamsData = global.generatedTeamsData?.[teamSetId];
             if (!teamsData) {
                 try {
                     await interaction.reply({ 
@@ -155,6 +155,7 @@ client.on('interactionCreate', async interaction => {
                 
                 // Format teams for saving to database
                 const formattedTeams = teamsData.teams.map((team, index) => ({
+                    id: `team_${index + 1}`,
                     teamNumber: index + 1,
                     name: `Team ${index + 1}`,
                     players: team.map(player => ({
@@ -247,6 +248,9 @@ client.on('interactionCreate', async interaction => {
                     });
                 }
 
+                console.log('Saving teams to webapp:', JSON.stringify(formattedTeams, null, 2));
+                console.log('Bracket data to webapp:', JSON.stringify(tournamentData, null, 2));
+
                 // Save teams to database
                 const saveResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/save-teams-discord`, {
                     method: 'POST',
@@ -304,7 +308,7 @@ client.on('interactionCreate', async interaction => {
                 });
 
                 // Clean up stored data
-                delete global.generatedTeamsData[userId];
+                delete global.generatedTeamsData[teamSetId];
 
             } catch (error) {
                 console.error('Error saving teams and creating tournament:', error);
@@ -313,6 +317,85 @@ client.on('interactionCreate', async interaction => {
                         content: `❌ Error: ${error.message}`, 
                         ephemeral: true 
                     });
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+            }
+            return;
+        }
+
+        // Handle button interactions for advancing bracket winners
+        if (interaction.customId.startsWith('bracket_win_')) {
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                // Parse customId: bracket_win_{tournamentId}_{round}_{matchId}_{winnerTeamId}
+                const parts = interaction.customId.split('_');
+                const tournamentId = parts[2];
+                const roundNum = parseInt(parts[3], 10);
+                const matchId = parts[4];
+                const winnerTeamId = parts.slice(5).join('_');
+                // Fetch the tournament data
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/tournaments?id=${tournamentId}`);
+                const tournament = await response.json();
+                const bracket = tournament.tournament_data || tournament;
+                if (!bracket || !bracket.rounds) {
+                    await interaction.editReply('❌ Bracket data not found.');
+                    return;
+                }
+                // Find the round and match
+                const round = bracket.rounds.find(r => r.round === roundNum);
+                if (!round) {
+                    await interaction.editReply('❌ Round not found.');
+                    return;
+                }
+                const match = round.matches.find(m => m.id === matchId);
+                if (!match) {
+                    await interaction.editReply('❌ Match not found.');
+                    return;
+                }
+                // Set the winner
+                match.winner = match.team1 && match.team1.id === winnerTeamId ? match.team1 : match.team2;
+                match.status = 'completed';
+                // Advance winner to next round if possible
+                const nextRound = bracket.rounds.find(r => r.round === roundNum + 1);
+                if (nextRound) {
+                    // Find the first match in next round with an empty slot
+                    for (const nextMatch of nextRound.matches) {
+                        if (!nextMatch.team1) {
+                            nextMatch.team1 = match.winner;
+                            break;
+                        } else if (!nextMatch.team2) {
+                            nextMatch.team2 = match.winner;
+                            break;
+                        }
+                    }
+                    // If all matches filled, set next round status to 'ready'
+                    if (nextRound.matches.every(m => m.team1 && m.team2)) {
+                        nextRound.status = 'ready';
+                    }
+                } else {
+                    // If no next round, tournament is complete
+                    bracket.status = 'completed';
+                }
+                // Update the tournament in the webapp
+                const updateRes = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/tournaments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: tournamentId,
+                        team_set_id: tournament.team_set_id,
+                        tournament_data: bracket
+                    })
+                });
+                if (!updateRes.ok) {
+                    await interaction.editReply('❌ Failed to update bracket in the webapp.');
+                    return;
+                }
+                await interaction.editReply('✅ Winner advanced! Bracket updated. Please re-run /bracket_update to refresh the matches.');
+            } catch (error) {
+                console.error('[bracket_update] Error advancing winner:', error);
+                try {
+                    await interaction.editReply('❌ Failed to advance winner.');
                 } catch (replyError) {
                     console.error('Failed to send error reply:', replyError);
                 }
@@ -607,17 +690,16 @@ client.on('interactionCreate', async interaction => {
                         };
                     }
 
+                    // Create a unique teamSetId before creating the buttons
+                    const teamSetId = `teamset_${Date.now()}`;
                     // Create button to save teams and create tournament bracket
                     const saveButton = new ButtonBuilder()
-                        .setCustomId(`save_teams_${selection.tournament}_${selection.balance}_${selection.teamcount}`)
+                        .setCustomId(`save_teams_${teamSetId}`)
                         .setLabel('Save & Proceed to Tournament Bracket')
                         .setStyle(ButtonStyle.Success)
                         .setEmoji('🏆');
-
                     const buttonRow = new ActionRowBuilder().addComponents(saveButton);
-
-                    // Replace team move buttons with a single button
-                    const teamSetId = `teamset_${Date.now()}`;
+                    // Move Me button (already correct)
                     const moveMeButton = new ButtonBuilder()
                         .setCustomId(`move_me_${teamSetId}`)
                         .setLabel('Move Me to My Team Channel')
@@ -695,6 +777,62 @@ client.on('interactionCreate', async interaction => {
                             ephemeral: true 
                         });
                     }
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+            }
+            return;
+        }
+
+        // Bracket update tournament selection
+        if (interaction.customId === 'bracket_update_tournament_select') {
+            const tournamentId = interaction.values[0];
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                // Fetch the selected tournament's bracket data
+                const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/tournaments?id=${tournamentId}`);
+                if (!response.ok) {
+                    await interaction.editReply('❌ Failed to fetch tournament bracket data.');
+                    return;
+                }
+                const tournament = await response.json();
+                // Use tournament.tournament_data for bracket info
+                const bracket = tournament.tournament_data || tournament;
+                if (!bracket || !bracket.rounds || bracket.rounds.length === 0) {
+                    await interaction.editReply('❌ No bracket data found for this tournament.');
+                    return;
+                }
+                // Find the current round (first with status 'ready' or 'in_progress', fallback to last round)
+                let currentRound = bracket.rounds.find(r => r.status === 'ready' || r.status === 'in_progress');
+                if (!currentRound) currentRound = bracket.rounds[bracket.rounds.length - 1];
+                if (!currentRound || !currentRound.matches || currentRound.matches.length === 0) {
+                    await interaction.editReply('❌ No matches found for the current round.');
+                    return;
+                }
+                // Build buttons for each match
+                const matchRows = [];
+                for (const match of currentRound.matches) {
+                    if (!match.team1 || !match.team2) continue; // skip byes
+                    const row = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`bracket_win_${tournamentId}_${currentRound.round}_${match.id}_${match.team1.id}`)
+                            .setLabel(match.team1.name)
+                            .setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder()
+                            .setCustomId(`bracket_win_${tournamentId}_${currentRound.round}_${match.id}_${match.team2.id}`)
+                            .setLabel(match.team2.name)
+                            .setStyle(ButtonStyle.Secondary)
+                    );
+                    matchRows.push(row);
+                }
+                await interaction.editReply({
+                    content: `**${bracket.name}**\nCurrent Round: ${currentRound.name || currentRound.round}\nSelect the winner for each match:`,
+                    components: matchRows
+                });
+            } catch (error) {
+                console.error('[bracket_update] Error handling tournament select:', error);
+                try {
+                    await interaction.editReply('❌ Failed to load bracket matches.');
                 } catch (replyError) {
                     console.error('Failed to send error reply:', replyError);
                 }

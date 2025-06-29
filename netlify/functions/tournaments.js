@@ -105,9 +105,18 @@ export async function handler(event, context) {
                 // Public: fetch a specific tournament by ID (no session required)
                 const tournament = await getTournament(tournamentId);
                 if (tournament) {
+                    // Parse tournament_data if it's a string
+                    let parsedTournament = { ...tournament };
+                    if (parsedTournament.tournament_data && typeof parsedTournament.tournament_data === 'string') {
+                        try {
+                            parsedTournament.tournament_data = JSON.parse(parsedTournament.tournament_data);
+                        } catch (e) {
+                            console.error('Error parsing tournament_data:', e);
+                        }
+                    }
                     return {
                         statusCode: 200,
-                        body: JSON.stringify(tournament),
+                        body: JSON.stringify(parsedTournament),
                         headers
                     };
                 } else {

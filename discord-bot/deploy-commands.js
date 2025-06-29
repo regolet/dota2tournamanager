@@ -29,6 +29,16 @@ const commands = [
     {
         name: 'remove_teamchannel',
         description: 'Remove all team voice channels (Team 1, Team 2, etc.)',
+    },
+    {
+        name: 'setup_bot',
+        description: 'Setup tournament channels and permissions for this server',
+        default_member_permissions: 8 // Administrator only
+    },
+    {
+        name: 'bracket_update',
+        description: 'Update the current tournament bracket (admin/creator only)',
+        default_member_permissions: 8 // Administrator only
     }
 ];
 
