@@ -31,6 +31,11 @@ const commands = [
         description: 'Remove all team voice channels (Team 1, Team 2, etc.)',
     },
     {
+        name: 'menu',
+        description: 'Show the admin control panel with quick action buttons',
+        default_member_permissions: 8 // Administrator only
+    },
+    {
         name: 'setup_bot',
         description: 'Setup tournament channels and permissions for this server',
         default_member_permissions: 8 // Administrator only
@@ -68,12 +73,14 @@ const commands = [
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
+const guildId = '1388898207215648908'; // updated to your actual server ID
+
 (async () => {
     try {
         console.log('Started refreshing application (/) commands.');
 
         await rest.put(
-            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+            Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
             { body: commands },
         );
 

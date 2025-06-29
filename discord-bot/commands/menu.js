@@ -1,6 +1,9 @@
-const { PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('menu')
+    .setDescription('Show the admin control panel with quick action buttons'),
   name: 'menu',
   description: 'Show the admin control panel with quick action buttons',
   async execute(interaction) {
