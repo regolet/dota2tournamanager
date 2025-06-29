@@ -4,22 +4,31 @@ A Discord bot for managing tournaments, teams, brackets, and more!
 
 ---
 
+## 🚀 Quick Bot Invite
+
+- **[Invite the Tournament Bot with full admin permissions](https://discord.com/oauth2/authorize?client_id=1387059600930639992&scope=bot+applications.commands&permissions=8&guild_id=1388898207215648908)**
+  - This link grants the bot **Administrator** (all) permissions for full functionality.
+  - You can adjust permissions as needed in your server settings after inviting.
+
+---
+
 ## 🚀 Installation & Setup Guide (for a New Server)
 
 ### 1. **Invite the Bot to Your Server**
-- Go to the [Discord Developer Portal](https://discord.com/developers/applications) and select your bot.
-- Under **OAuth2 > URL Generator**:
-  - Select `bot` and `applications.commands` scopes.
-  - Under "Bot Permissions", select:
-    - Manage Channels
-    - View Channels
-    - Send Messages
-    - Manage Roles (if needed)
-    - Move Members
-    - Read Message History
-  - Copy the generated URL, open it in your browser, and invite the bot to your server.
+- Use the invite link above, or generate your own from the [Discord Developer Portal](https://discord.com/developers/applications).
+- Make sure to select:
+  - `bot` and `applications.commands` scopes
+  - Permissions: **Administrator** (all permissions)
 
-### 2. **Clone and Install the Bot**
+### 2. **Register and Reflect Slash Commands**
+- **After making any changes to your commands or adding new ones, always run:**
+  ```bash
+  node deploy-commands.js
+  node discord-bot/index.js
+  ```
+- This will register your slash commands with Discord and start the bot so the commands appear in your server.
+
+### 3. **Clone and Install the Bot**
 ```bash
 # Clone the repository
 https://github.com/regolet/dota2tournamanager.git
@@ -29,19 +38,13 @@ cd dota2tournamanager/discord-bot
 npm install
 ```
 
-### 3. **Configure Environment Variables**
+### 4. **Configure Environment Variables**
 - Create a `.env` file in the `discord-bot` directory:
 ```
 DISCORD_TOKEN=your-bot-token-here
 WEBAPP_URL=https://your-webapp-url
 ```
 - Replace with your actual bot token and webapp URL.
-
-### 4. **Register Slash Commands**
-```bash
-node deploy-commands.js
-```
-- This will register all slash commands for your server.
 
 ### 5. **Run the Bot**
 ```bash
