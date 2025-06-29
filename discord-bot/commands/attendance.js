@@ -1,5 +1,6 @@
 const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const fetch = require('node-fetch');
+const { getGuildSessionId } = require('../index');
 
 module.exports = {
   name: 'attendance',
@@ -20,7 +21,10 @@ module.exports = {
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
-        signal: controller.signal
+        signal: controller.signal,
+        headers: {
+          'x-session-id': getGuildSessionId(interaction.guildId)
+        }
       });
       
       clearTimeout(timeoutId);

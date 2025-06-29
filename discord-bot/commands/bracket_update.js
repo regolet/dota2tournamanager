@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, PermissionFlagsBits } = require('discord.js');
 const fetch = require('node-fetch');
+const { getGuildSessionId } = require('../index');
 
 module.exports = {
     name: 'bracket_update',
@@ -23,7 +24,7 @@ module.exports = {
         try {
             const response = await fetch(apiUrl, {
                 headers: {
-                    'x-session-id': process.env.WEBAPP_SESSION_ID || ''
+                    'x-session-id': getGuildSessionId(interaction.guildId)
                 }
             });
             console.log('Tournaments API response status:', response.status);

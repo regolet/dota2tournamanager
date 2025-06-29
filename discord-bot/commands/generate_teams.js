@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fetch = require('node-fetch');
 const teamBalancer = require('../teamBalancer');
+const { getGuildSessionId } = require('../index');
 
 const BALANCE_TYPES = [
   { value: 'highRanked', label: 'High Ranked Balance' },
@@ -26,7 +27,11 @@ module.exports = {
       await interaction.deferReply({ ephemeral: true });
       
       // Fetch tournaments
-      const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
+      const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
+        headers: {
+          'x-session-id': getGuildSessionId(interaction.guildId)
+        }
+      });
       const data = await response.json();
       if (!data.success || !Array.isArray(data.sessions) || data.sessions.length === 0) {
         await interaction.editReply('❌ No tournaments found.');
