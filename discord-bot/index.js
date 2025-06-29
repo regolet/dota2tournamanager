@@ -838,10 +838,11 @@ client.on('interactionCreate', async interaction => {
                     }
                     bracketText += '\n';
                 }
-                // Build buttons for each match in the current round
+                // Build buttons for each match in the current round (only if no winner)
                 const matchRows = [];
                 for (const match of currentRound.matches) {
                     if (!match.team1 || !match.team2) continue; // skip byes
+                    if (match.winner) continue; // skip matches with a winner
                     // Debug log for IDs
                     console.log('[BRACKET BUTTONS] match.id:', match.id, 'team1.id:', match.team1.id, 'team2.id:', match.team2.id);
                     const row = new ActionRowBuilder().addComponents(
