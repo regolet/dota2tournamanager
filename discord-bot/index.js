@@ -27,6 +27,23 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 // Ensure global.lastAttendanceMessages is initialized
 if (!global.lastAttendanceMessages) global.lastAttendanceMessages = {};
 
+// Session management for per-guild sessions
+const SESSION_FILE = path.join(__dirname, 'guild_sessions.json');
+function loadSessions() {
+    try {
+        if (fs.existsSync(SESSION_FILE)) {
+            return JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.error('Failed to load session file:', e);
+    }
+    return {};
+}
+function getGuildSessionId(guildId) {
+    const sessions = loadSessions();
+    return sessions[guildId] || '';
+}
+
 for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
@@ -330,10 +347,21 @@ client.on('interactionCreate', async interaction => {
                 await interaction.deferReply({ ephemeral: true });
                 // Parse customId: bracket_win_{tournamentId}_{round}_{matchId}_{winnerTeamId}
                 const parts = interaction.customId.split('_');
-                const tournamentId = parts[2];
-                const roundNum = parseInt(parts[3], 10);
-                const matchId = parts[4];
-                const winnerTeamId = parts.slice(5).join('_');
+                // Find the index of 'win'
+                const idx = parts.indexOf('win');
+                // tournamentId may contain underscores, so join idx+1 and idx+2
+                const tournamentId = parts.slice(idx + 1, idx + 3).join('_');
+                const roundNum = parseInt(parts[idx + 3], 10);
+                // matchId may contain underscores, so join until 'team' is found
+                let matchId = '';
+                let i = idx + 4;
+                while (i < parts.length && !parts[i].startsWith('team')) {
+                    matchId += (matchId ? '_' : '') + parts[i];
+                    i++;
+                }
+                const winnerTeamId = parts.slice(i).join('_');
+                // Debug log for IDs
+                console.log('[BRACKET WIN BUTTON] tournamentId:', tournamentId, 'roundNum:', roundNum, 'matchId:', matchId, 'winnerTeamId:', winnerTeamId);
                 // Fetch the tournament data
                 const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/tournaments?id=${tournamentId}`);
                 const tournament = await response.json();
@@ -380,7 +408,10 @@ client.on('interactionCreate', async interaction => {
                 // Update the tournament in the webapp
                 const updateRes = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/tournaments`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-session-id': getGuildSessionId(interaction.guildId)
+                    },
                     body: JSON.stringify({
                         id: tournamentId,
                         team_set_id: tournament.team_set_id,
@@ -388,7 +419,9 @@ client.on('interactionCreate', async interaction => {
                     })
                 });
                 if (!updateRes.ok) {
-                    await interaction.editReply('❌ Failed to update bracket in the webapp.');
+                    const errorText = await updateRes.text();
+                    console.error('[BRACKET UPDATE ERROR]', updateRes.status, errorText);
+                    await interaction.editReply(`❌ Failed to update bracket in the webapp.\n${errorText}`);
                     return;
                 }
                 await interaction.editReply('✅ Winner advanced! Bracket updated. Please re-run /bracket_update to refresh the matches.');
@@ -809,10 +842,12 @@ client.on('interactionCreate', async interaction => {
                     await interaction.editReply('❌ No matches found for the current round.');
                     return;
                 }
-                // Build buttons for each match
+                // Build buttons for each match using exact IDs from bracket data
                 const matchRows = [];
                 for (const match of currentRound.matches) {
                     if (!match.team1 || !match.team2) continue; // skip byes
+                    // Debug log for IDs
+                    console.log('[BRACKET BUTTONS] match.id:', match.id, 'team1.id:', match.team1.id, 'team2.id:', match.team2.id);
                     const row = new ActionRowBuilder().addComponents(
                         new ButtonBuilder()
                             .setCustomId(`bracket_win_${tournamentId}_${currentRound.round}_${match.id}_${match.team1.id}`)
@@ -1141,7 +1176,7 @@ client.on('messageCreate', async message => {
         // Fetch tournaments from API
         const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
             headers: {
-                'x-session-id': process.env.WEBAPP_SESSION_ID || ''
+                'x-session-id': getGuildSessionId(message.guild.id)
             }
         });
         const data = await response.json();
@@ -1166,7 +1201,7 @@ client.on('messageCreate', async message => {
         // Fetch tournaments from API
         const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
             headers: {
-                'x-session-id': process.env.WEBAPP_SESSION_ID || ''
+                'x-session-id': getGuildSessionId(message.guild.id)
             }
         });
         const data = await response.json();

@@ -39,6 +39,25 @@ const commands = [
         name: 'bracket_update',
         description: 'Update the current tournament bracket (admin/creator only)',
         default_member_permissions: 8 // Administrator only
+    },
+    {
+        name: 'login',
+        description: 'Log in to the webapp as an admin (per guild session)',
+        options: [
+            {
+                name: 'username',
+                description: 'Webapp admin username',
+                type: 3, // STRING
+                required: true
+            },
+            {
+                name: 'password',
+                description: 'Webapp admin password',
+                type: 3, // STRING (Discord does not support password type, so use string)
+                required: true
+            }
+        ],
+        default_member_permissions: 8 // Administrator only
     }
 ];
 
