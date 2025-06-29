@@ -1,6 +1,85 @@
 # Tournament Discord Bot
 
-A Discord bot for managing tournament registrations and team coordination.
+A Discord bot for managing tournaments, teams, brackets, and more!
+
+---
+
+## 🚀 Installation & Setup Guide (for a New Server)
+
+### 1. **Invite the Bot to Your Server**
+- Go to the [Discord Developer Portal](https://discord.com/developers/applications) and select your bot.
+- Under **OAuth2 > URL Generator**:
+  - Select `bot` and `applications.commands` scopes.
+  - Under "Bot Permissions", select:
+    - Manage Channels
+    - View Channels
+    - Send Messages
+    - Manage Roles (if needed)
+    - Move Members
+    - Read Message History
+  - Copy the generated URL, open it in your browser, and invite the bot to your server.
+
+### 2. **Clone and Install the Bot**
+```bash
+# Clone the repository
+https://github.com/regolet/dota2tournamanager.git
+cd dota2tournamanager/discord-bot
+
+# Install dependencies
+npm install
+```
+
+### 3. **Configure Environment Variables**
+- Create a `.env` file in the `discord-bot` directory:
+```
+DISCORD_TOKEN=your-bot-token-here
+WEBAPP_URL=https://your-webapp-url
+```
+- Replace with your actual bot token and webapp URL.
+
+### 4. **Register Slash Commands**
+```bash
+node deploy-commands.js
+```
+- This will register all slash commands for your server.
+
+### 5. **Run the Bot**
+```bash
+node index.js
+```
+- The bot should now be online in your server.
+
+### 6. **Automated Server Setup**
+- As an admin, run the `/setup_bot` command in your server.
+  - This will automatically:
+    - Create all required tournament channels (including `tournament-results`)
+    - Organize them under a "Tournament" category
+    - Set up permissions (admins can post, everyone can view, commands is admin-only)
+    - Save channel IDs for your server
+- You will see a summary of all actions taken.
+
+### 7. **Ready to Use!**
+- Use the admin panel, slash commands, and all tournament features as described in this README.
+
+---
+
+## 🛠️ Features
+- Tournament registration, attendance, team generation, bracket management, and more
+- Admin control panel with quick action buttons
+- Automated channel/category/permission setup
+- Persistent team data for multi-admin and multi-guild support
+- Robust error handling and cleanup commands
+
+---
+
+## 💡 Tips
+- If you want to run the bot 24/7, use a VPS, cloud server, or a service like Railway, Replit, or Heroku.
+- You can re-run `/setup_bot` anytime to fix channels/permissions.
+- Use `/cleanup_teams` to manually clear old team data.
+
+---
+
+For more details, see the rest of this README or contact the maintainer.
 
 ## 🚀 Quick Setup
 
