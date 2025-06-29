@@ -342,11 +342,13 @@ client.on('interactionCreate', async interaction => {
                     },
                     timestamp: new Date().toISOString()
                 };
-                // Before sending to tournament-bracket channel
+                // Bracket channel logic
                 try {
-                    const bracketChannelId = '1387453843394007120';
-                    const bracketChannel = await client.channels.fetch(bracketChannelId);
-                    if (bracketChannel && bracketChannel.isTextBased()) {
+                    const bracketChannelName = 'tournament-bracket';
+                    const bracketChannel = interaction.guild.channels.cache.find(
+                        c => c.name === bracketChannelName && c.isTextBased && c.isTextBased()
+                    );
+                    if (bracketChannel) {
                         const messages = await bracketChannel.messages.fetch({ limit: 50 });
                         const botMessages = messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('Tournament Bracket Created!'));
                         for (const msg of botMessages.values()) {
@@ -357,7 +359,7 @@ client.on('interactionCreate', async interaction => {
                     console.error('Failed to delete previous bracket messages:', err);
                 }
                 // Send the bracket embed to the bracket channel as a public announcement
-                await sendAnnouncement(client, '1387453843394007120', bracketEmbed);
+                await sendAnnouncement(client, 'tournament-bracket', bracketEmbed, [], [], interaction.guild);
                 
                 // Also post Move Me button to the bracket channel
                 const moveMeButton = new ButtonBuilder()
@@ -366,11 +368,11 @@ client.on('interactionCreate', async interaction => {
                     .setStyle(ButtonStyle.Secondary)
                     .setEmoji('👥');
                 const moveMeButtonRow = new ActionRowBuilder().addComponents(moveMeButton);
-                await sendAnnouncement(client, '1387453843394007120', {
+                await sendAnnouncement(client, 'tournament-bracket', {
                     color: 0x0099ff,
                     title: 'Teams are finalized! Move to your team channel:',
                     description: 'Click the button below to be moved to your assigned team voice channel.'
-                }, [moveMeButtonRow]);
+                }, [moveMeButtonRow], [], interaction.guild);
 
                 // Also reply to the user for confirmation
                 await interaction.editReply({
@@ -498,7 +500,7 @@ client.on('interactionCreate', async interaction => {
 
                 // Post updated results to #tournament-results channel
                 try {
-                    const resultsChannelId = '1388838121239482419'; // #tournament-results channel ID
+                    const resultsChannelName = 'tournament-results';
                     let resultsText = `**${bracket.name}**\n`;
                     for (const round of bracket.rounds) {
                         resultsText += `__**${round.name || 'Round ' + round.round}**__\n`;
@@ -516,7 +518,7 @@ client.on('interactionCreate', async interaction => {
                         description: resultsText,
                         timestamp: new Date().toISOString()
                     };
-                    await sendAnnouncement(client, resultsChannelId, resultsEmbed);
+                    await sendAnnouncement(client, resultsChannelName, resultsEmbed, [], [], interaction.guild);
 
                     // Post the result of this match
                     const winnerName = match.winner ? match.winner.name : 'Unknown';
@@ -525,7 +527,9 @@ client.on('interactionCreate', async interaction => {
                         loserName = (match.team1.id === winnerTeamId) ? match.team2.name : match.team1.name;
                     }
                     const resultMsg = `🎯 Result\n${winnerName} defeated ${loserName}`;
-                    const resultsChannel = await client.channels.fetch(resultsChannelId);
+                    const resultsChannel = interaction.guild.channels.cache.find(
+                        c => c.name === resultsChannelName && c.isTextBased && c.isTextBased()
+                    );
                     if (resultsChannel) {
                         await resultsChannel.send({ content: resultMsg });
 
@@ -603,13 +607,15 @@ client.on('interactionCreate', async interaction => {
                     },
                     timestamp: new Date().toISOString()
                 };
-                const attendanceMsg = await sendAnnouncement(client, '1387298566858477648', attendanceEmbed);
+                const attendanceMsg = await sendAnnouncement(client, 'tournament-attendance', attendanceEmbed, [], [], interaction.guild);
                 global.lastAttendanceMessages[sessionId] = {
-                    channelId: '1387298566858477648',
+                    channelName: 'tournament-attendance',
                     messageId: attendanceMsg ? attendanceMsg.id : null
                 };
                 // Fetch the channel to get the message URL for confirmation
-                const attendanceChannel = await client.channels.fetch('1387298566858477648');
+                const attendanceChannel = interaction.guild.channels.cache.find(
+                    c => c.name === 'tournament-attendance' && c.isTextBased && c.isTextBased()
+                );
                 const messages = await attendanceChannel.messages.fetch({ limit: 1 });
                 const attendanceMessage = messages.first();
                 if (attendanceMessage) {
@@ -706,9 +712,11 @@ client.on('interactionCreate', async interaction => {
                         inline: false
                     });
                 }
-                await sendAnnouncement(client, '1387298566858477648', summaryEmbed);
+                await sendAnnouncement(client, 'tournament-attendance', summaryEmbed);
                 // Fetch the channel to get the message URL for confirmation
-                const attendanceChannel = await client.channels.fetch('1387298566858477648');
+                const attendanceChannel = interaction.guild.channels.cache.find(
+                    c => c.name === 'tournament-attendance' && c.isTextBased && c.isTextBased()
+                );
                 const messages = await attendanceChannel.messages.fetch({ limit: 1 });
                 const summaryMessage = messages.first();
                 if (summaryMessage) {
@@ -719,12 +727,16 @@ client.on('interactionCreate', async interaction => {
 
                 // When closing attendance, before posting summary:
                 const lastMsg = global.lastAttendanceMessages[sessionId];
-                if (lastMsg && lastMsg.channelId && lastMsg.messageId) {
+                if (lastMsg && lastMsg.channelName && lastMsg.messageId) {
                     try {
-                        const channel = await client.channels.fetch(lastMsg.channelId);
-                        const message = await channel.messages.fetch(lastMsg.messageId);
-                        if (message) await message.delete();
-                        delete global.lastAttendanceMessages[sessionId];
+                        const channel = interaction.guild.channels.cache.find(
+                            c => c.name === lastMsg.channelName && c.isTextBased && c.isTextBased()
+                        );
+                        if (channel) {
+                            const message = await channel.messages.fetch(lastMsg.messageId);
+                            if (message) await message.delete();
+                            delete global.lastAttendanceMessages[sessionId];
+                        }
                     } catch (err) {
                         console.error('Failed to delete previous attendance message:', err);
                     }
@@ -909,11 +921,13 @@ client.on('interactionCreate', async interaction => {
                         // Don't fail the entire operation if channel creation fails
                     }
 
-                    // Before sending to tournament-teams channel
+                    // Teams channel logic
                     try {
-                        const teamsChannelId = '1387454177743208609';
-                        const teamsChannel = await client.channels.fetch(teamsChannelId);
-                        if (teamsChannel && teamsChannel.isTextBased()) {
+                        const teamsChannelName = 'tournament-teams';
+                        const teamsChannel = interaction.guild.channels.cache.find(
+                            c => c.name === teamsChannelName && c.isTextBased && c.isTextBased()
+                        );
+                        if (teamsChannel) {
                             const messages = await teamsChannel.messages.fetch({ limit: 50 });
                             const botMessages = messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('Balanced Teams'));
                             for (const msg of botMessages.values()) {
@@ -925,7 +939,7 @@ client.on('interactionCreate', async interaction => {
                     }
 
                     // Send the embed to the teams channel as a public announcement
-                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow], files);
+                    await sendAnnouncement(client, 'tournament-teams', embed, [buttonRow], files, interaction.guild);
                     // Also reply to the user for confirmation
                     await interaction.editReply({
                         content: '✅ Teams generated and posted in the teams channel!',
@@ -1553,18 +1567,30 @@ process.on('unhandledRejection', error => {
 client.login(process.env.DISCORD_TOKEN);
 
 // Utility function to send announcements to specific channels
-async function sendAnnouncement(client, channelId, embed, components = [], files = []) {
+async function sendAnnouncement(client, channelName, embed, components = [], files = [], guild = null) {
     try {
-        const channel = await client.channels.fetch(channelId);
+        // If guild is not provided, try to get it from the client (first available)
+        if (!guild) {
+            if (client.guilds && client.guilds.cache.size > 0) {
+                guild = client.guilds.cache.first();
+            } else {
+                console.error('No guild available to find channel by name.');
+                return null;
+            }
+        }
+        // Find the channel by name (text channel only)
+        const channel = guild.channels.cache.find(
+            c => c.name === channelName && c.isTextBased && c.isTextBased()
+        );
         if (channel) {
             const sentMsg = await channel.send({ embeds: [embed], components, files });
             return sentMsg;
         } else {
-            console.error(`Announcement channel ${channelId} not found!`);
+            console.error(`Announcement channel '${channelName}' not found!`);
             return null;
         }
     } catch (err) {
-        console.error(`Error sending announcement to channel ${channelId}:`, err);
+        console.error(`Error sending announcement to channel '${channelName}':`, err);
         return null;
     }
 }

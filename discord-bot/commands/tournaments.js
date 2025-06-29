@@ -36,10 +36,12 @@ module.exports = {
 
             if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
                 // Remove previous tournament messages in the registration channel
-                const regChannelId = '1387298687214161940';
+                const regChannelName = 'tournament-registration';
                 try {
-                    const regChannel = await interaction.client.channels.fetch(regChannelId);
-                    if (regChannel && regChannel.isTextBased()) {
+                    const regChannel = interaction.guild.channels.cache.find(
+                        c => c.name === regChannelName && c.isTextBased && c.isTextBased()
+                    );
+                    if (regChannel) {
                         const messages = await regChannel.messages.fetch({ limit: 50 });
                         const botMessages = messages.filter(m => m.author.id === interaction.client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('🏆 Available Tournaments'));
                         for (const msg of botMessages.values()) {
@@ -82,11 +84,13 @@ module.exports = {
                     await interaction.editReply({ embeds: [embed], components: rows });
                     // Announce in registration channel using the shared utility
                     if (interaction.client.sendAnnouncement) {
-                        await interaction.client.sendAnnouncement(interaction.client, '1387298687214161940', embed, rows);
+                        await interaction.client.sendAnnouncement(interaction.client, regChannelName, embed, rows, [], interaction.guild);
                     } else {
                         // fallback if not attached to client
                         try {
-                            const regChannel = await interaction.client.channels.fetch('1387298687214161940');
+                            const regChannel = interaction.guild.channels.cache.find(
+                                c => c.name === regChannelName && c.isTextBased && c.isTextBased()
+                            );
                             if (regChannel) {
                                 await regChannel.send({ embeds: [embed], components: rows });
                             } else {
