@@ -44,12 +44,30 @@ export async function handler(event, context) {
             try {
                 const clientData = JSON.parse(event.body);
                 console.log('Received tournament data:', JSON.stringify(clientData, null, 2));
-                
+
+                // Fetch the existing tournament if it exists
+                let existingTournament = null;
+                if (clientData.id) {
+                    existingTournament = await getTournament(clientData.id);
+                }
+                let mergedTournament = {};
+                if (existingTournament) {
+                    // Merge all fields, but update tournament_data and team_set_id
+                    mergedTournament = {
+                        ...existingTournament,
+                        ...clientData,
+                        tournament_data: clientData.tournament_data || existingTournament.tournament_data,
+                        team_set_id: clientData.team_set_id || existingTournament.team_set_id
+                    };
+                } else {
+                    mergedTournament = clientData;
+                }
+
                 const dbPayload = {
-                    id: clientData.id,
-                    admin_user_id: adminUserId,
-                    team_set_id: clientData.team_set_id,
-                    tournament_data: clientData // Pass the entire client object as the data
+                    id: mergedTournament.id,
+                    admin_user_id: mergedTournament.admin_user_id || adminUserId,
+                    team_set_id: mergedTournament.team_set_id,
+                    tournament_data: mergedTournament.tournament_data
                 };
 
                 console.log('Saving tournament with payload:', JSON.stringify(dbPayload, null, 2));
