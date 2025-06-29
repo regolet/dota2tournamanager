@@ -84,22 +84,7 @@ export async function handler(event, context) {
             const tournamentId = event.queryStringParameters?.id;
             
             if (tournamentId) {
-                // For fetching a specific tournament, require session
-                if (!sessionId) {
-                    return {
-                        statusCode: 401,
-                        body: JSON.stringify({ message: 'Invalid or expired session' }),
-                        headers
-                    };
-                }
-                const session = await validateSession(sessionId);
-                if (!session.valid) {
-                    return {
-                        statusCode: 401,
-                        body: JSON.stringify({ message: 'Invalid or expired session' }),
-                        headers
-                    };
-                }
+                // Public: fetch a specific tournament by ID (no session required)
                 const tournament = await getTournament(tournamentId);
                 if (tournament) {
                     return {
