@@ -24,7 +24,7 @@ async function requireValidSession(interaction) {
     const guildId = interaction.guildId;
     const sessionId = getGuildSessionId(guildId);
     if (!sessionId) {
-        await interaction.reply({ content: '❌ No valid session found for this server. Please use `/login` to authenticate.', ephemeral: true });
+        await interaction.reply({ content: '❌ No valid session found for this server. Please use `/login` to authenticate.', flags: 64 });
         return false;
     }
     try {
@@ -33,13 +33,13 @@ async function requireValidSession(interaction) {
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-            await interaction.reply({ content: '❌ Session is invalid or expired. Please use `/login` to authenticate.', ephemeral: true });
+            await interaction.reply({ content: '❌ Session is invalid or expired. Please use `/login` to authenticate.', flags: 64 });
             return false;
         }
         return true;
     } catch (err) {
         console.error('Error validating session:', err);
-        await interaction.reply({ content: '❌ Failed to validate session. Please try again later.', ephemeral: true });
+        await interaction.reply({ content: '❌ Failed to validate session. Please try again later.', flags: 64 });
         return false;
     }
 }

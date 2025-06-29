@@ -67,7 +67,7 @@ client.on('interactionCreate', async interaction => {
                 try {
                     await interaction.reply({
                         content: 'There was an error while executing this command!',
-                        ephemeral: true
+                        flags: 64
                     });
                 } catch (replyError) {
                     console.error('Failed to send error reply:', replyError);
@@ -79,6 +79,39 @@ client.on('interactionCreate', async interaction => {
     
     // Handle button interactions
     if (interaction.isButton()) {
+
+        // Admin Control Panel buttons
+        const menuCommandMap = {
+            menu_generate_teams: 'generate_teams',
+            menu_attendance: 'attendance',
+            menu_bracket_update: 'bracket_update',
+            menu_register_tournament: 'tournaments',
+            menu_close_attendance: 'closeattendance',
+            menu_remove_teamchannel: 'remove_teamchannel',
+            menu_login: 'login',
+            menu_logout: 'logout'
+        };
+        if (menuCommandMap[interaction.customId]) {
+            const commandName = menuCommandMap[interaction.customId];
+            const command = client.commands.get(commandName);
+            if (!command) {
+                await interaction.reply({ content: `❌ Command \`${commandName}\` not found.`, flags: 64 });
+                return;
+            }
+            try {
+                // Do NOT defer reply here; let the command handle it
+                await command.execute(interaction);
+            } catch (err) {
+                console.error(`Error executing menu button for ${commandName}:`, err);
+                try {
+                    await interaction.reply({ content: `❌ Failed to execute \`${commandName}\`: ${err.message}`, flags: 64 });
+                } catch (editErr) {
+                    console.error('Failed to send error reply:', editErr);
+                }
+            }
+            return;
+        }
+        
         // Register tournament button
         if (interaction.customId.startsWith('register_tournament_')) {
             const sessionId = interaction.customId.replace('register_tournament_', '');
@@ -118,7 +151,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId.startsWith('teams_tournament_')) {
             const sessionId = interaction.customId.replace('teams_tournament_', '');
             try {
-                await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, ephemeral: true });
+                await interaction.reply({ content: `You selected to view teams for tournament with sessionId: ${sessionId}`, flags: 64 });
             } catch (error) {
                 console.error('Error replying to teams button:', error);
             }
@@ -129,12 +162,25 @@ client.on('interactionCreate', async interaction => {
         // Save teams and create tournament bracket button
         if (interaction.customId.startsWith('save_teams_')) {
             const teamSetId = interaction.customId.replace('save_teams_', '');
-            const teamsData = global.generatedTeamsData?.[teamSetId];
+            let teamsData = global.generatedTeamsData?.[teamSetId];
+            // Try to load from file if not in memory
+            if (!teamsData) {
+                try {
+                    const teamsDir = path.join(__dirname, 'teams');
+                    const filePath = path.join(teamsDir, `${teamSetId}.json`);
+                    if (fs.existsSync(filePath)) {
+                        teamsData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                        global.generatedTeamsData[teamSetId] = teamsData; // Restore to memory for this session
+                    }
+                } catch (err) {
+                    console.error('Failed to load teams data from file:', err);
+                }
+            }
             if (!teamsData) {
                 try {
                     await interaction.reply({ 
                         content: '❌ No teams data found. Please generate teams again.', 
-                        ephemeral: true 
+                        flags: 64 
                     });
                 } catch (replyError) {
                     console.error('Failed to send error reply:', replyError);
@@ -143,13 +189,13 @@ client.on('interactionCreate', async interaction => {
             }
 
             try {
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.deferReply({ flags: 64 });
                 
                 // Restrict button usage to the creator/admin
                 if (teamsData.creatorId && interaction.user.id !== teamsData.creatorId) {
                     await interaction.editReply({
                         content: '❌ Only the admin/creator who generated the teams can proceed to the tournament bracket.',
-                        ephemeral: true
+                        flags: 64
                     });
                     return;
                 }
@@ -249,9 +295,6 @@ client.on('interactionCreate', async interaction => {
                     });
                 }
 
-                console.log('Saving teams to webapp:', JSON.stringify(formattedTeams, null, 2));
-                console.log('Bracket data to webapp:', JSON.stringify(tournamentData, null, 2));
-
                 // Save teams to database
                 const saveResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/save-teams-discord`, {
                     method: 'POST',
@@ -299,24 +342,67 @@ client.on('interactionCreate', async interaction => {
                     },
                     timestamp: new Date().toISOString()
                 };
+                // Before sending to tournament-bracket channel
+                try {
+                    const bracketChannelId = '1387453843394007120';
+                    const bracketChannel = await client.channels.fetch(bracketChannelId);
+                    if (bracketChannel && bracketChannel.isTextBased()) {
+                        const messages = await bracketChannel.messages.fetch({ limit: 50 });
+                        const botMessages = messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('Tournament Bracket Created!'));
+                        for (const msg of botMessages.values()) {
+                            try { await msg.delete(); } catch (e) { /* ignore */ }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to delete previous bracket messages:', err);
+                }
                 // Send the bracket embed to the bracket channel as a public announcement
                 await sendAnnouncement(client, '1387453843394007120', bracketEmbed);
                 
+                // Also post Move Me button to the bracket channel
+                const moveMeButton = new ButtonBuilder()
+                    .setCustomId(`move_me_${teamSetId}`)
+                    .setLabel('Move Me to My Team Channel')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('👥');
+                const moveMeButtonRow = new ActionRowBuilder().addComponents(moveMeButton);
+                await sendAnnouncement(client, '1387453843394007120', {
+                    color: 0x0099ff,
+                    title: 'Teams are finalized! Move to your team channel:',
+                    description: 'Click the button below to be moved to your assigned team voice channel.'
+                }, [moveMeButtonRow]);
+
                 // Also reply to the user for confirmation
                 await interaction.editReply({
                     content: '✅ Teams saved and tournament bracket created! Announcement posted in the bracket channel.',
-                    ephemeral: true
+                    flags: 64
                 });
 
-                // Clean up stored data
-                delete global.generatedTeamsData[teamSetId];
+                // After writing the file (after bracket creation)
+                try {
+                    const teamsDir = path.join(__dirname, 'teams');
+                    if (!fs.existsSync(teamsDir)) fs.mkdirSync(teamsDir);
+                    const filePath = path.join(teamsDir, `${teamSetId}.json`);
+                    fs.writeFileSync(filePath, JSON.stringify({
+                        teams: teamsData.teams,
+                        reserves: teamsData.reserves,
+                        tournament: teamsData.tournament,
+                        balance: teamsData.balance,
+                        teamcount: teamsData.teamcount,
+                        sessionTitle: teamsData.sessionTitle,
+                        creatorId: teamsData.creatorId
+                    }, null, 2));
+                    console.log(`[DEBUG] Wrote team data file: ${filePath}`);
+                } catch (err) {
+                    console.error('Failed to persist teams data:', err);
+                }
 
             } catch (error) {
                 console.error('Error saving teams and creating tournament:', error);
                 try {
                     await interaction.editReply({ 
                         content: `❌ Error: ${error.message}`, 
-                        ephemeral: true 
+                        flags: 64 
                     });
                 } catch (replyError) {
                     console.error('Failed to send error reply:', replyError);
@@ -328,7 +414,7 @@ client.on('interactionCreate', async interaction => {
         // Handle button interactions for advancing bracket winners
         if (interaction.customId.startsWith('bracket_win_')) {
             try {
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.deferReply({ flags: 64 });
                 // Parse customId: bracket_win_{tournamentId}_{round}_{matchId}_{winnerTeamId}
                 const parts = interaction.customId.split('_');
                 // Find the index of 'win'
@@ -409,6 +495,56 @@ client.on('interactionCreate', async interaction => {
                     return;
                 }
                 await interaction.editReply('✅ Winner advanced! Bracket updated. Please re-run /bracket_update to refresh the matches.');
+
+                // Post updated results to #tournament-results channel
+                try {
+                    const resultsChannelId = '1388838121239482419'; // #tournament-results channel ID
+                    let resultsText = `**${bracket.name}**\n`;
+                    for (const round of bracket.rounds) {
+                        resultsText += `__**${round.name || 'Round ' + round.round}**__\n`;
+                        for (const m of round.matches) {
+                            const t1 = m.team1 ? m.team1.name : 'TBD';
+                            const t2 = m.team2 ? m.team2.name : 'TBD';
+                            const winner = m.winner ? ` 🏆 ${m.winner.name}` : '';
+                            resultsText += `• ${t1} vs ${t2}${winner}\n`;
+                        }
+                        resultsText += '\n';
+                    }
+                    const resultsEmbed = {
+                        color: 0x00ff00,
+                        title: `${bracket.name} - Bracket Update`,
+                        description: resultsText,
+                        timestamp: new Date().toISOString()
+                    };
+                    await sendAnnouncement(client, resultsChannelId, resultsEmbed);
+
+                    // Post the result of this match
+                    const winnerName = match.winner ? match.winner.name : 'Unknown';
+                    let loserName = 'Unknown';
+                    if (match.team1 && match.team2) {
+                        loserName = (match.team1.id === winnerTeamId) ? match.team2.name : match.team1.name;
+                    }
+                    const resultMsg = `🎯 Result\n${winnerName} defeated ${loserName}`;
+                    const resultsChannel = await client.channels.fetch(resultsChannelId);
+                    if (resultsChannel) {
+                        await resultsChannel.send({ content: resultMsg });
+
+                        // Check if finals has a winner and congratulate
+                        const finalRound = bracket.rounds[bracket.rounds.length - 1];
+                        if (finalRound && finalRound.matches && finalRound.matches.length > 0) {
+                            const finalMatch = finalRound.matches[0];
+                            if (finalMatch.winner && finalMatch.winner.players && finalMatch.status === 'completed') {
+                                const teamName = finalMatch.winner.name;
+                                // Mention all players if they have discordId, else just show name
+                                const playerMentions = finalMatch.winner.players.map(p => p.discordId ? `<@${p.discordId}>` : p.name).join(' ');
+                                const congratsMsg = `🏆 Congratulations to **${teamName}** for winning the tournament!\n🎉 Players: ${playerMentions}`;
+                                await resultsChannel.send({ content: congratsMsg });
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to post results to #tournament-results:', err);
+                }
             } catch (error) {
                 console.error('[bracket_update] Error advancing winner:', error);
                 try {
@@ -427,7 +563,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'attendance_tournament_select') {
             const sessionId = interaction.values[0];
             try {
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.deferReply({ flags: 64 });
 
                 // Fetch all tournaments to get the title
                 const sessionsResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
@@ -497,7 +633,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'closeattendance_tournament_select') {
             const sessionId = interaction.values[0];
             try {
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.deferReply({ flags: 64 });
                 // Fetch all tournaments to get the title
                 const sessionsResponse = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
                 const sessionsData = await sessionsResponse.json();
@@ -624,12 +760,13 @@ client.on('interactionCreate', async interaction => {
                 // If all three are selected, proceed
                 const selection = global.generateTeamsSelections[userId];
                 if (selection.tournament && selection.balance && selection.teamcount) {
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ flags: 64 });
                     // Fetch present players for the selected tournament
                     const playersRes = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/players?sessionId=${selection.tournament}`);
                     const playersData = await playersRes.json();
                     if (!playersData.success) {
                         await interaction.editReply('❌ Failed to fetch players.');
+                        delete global.generateTeamsSelections[userId];
                         return;
                     }
                     const presentPlayers = (playersData.players || []).filter(p => p.present);
@@ -716,13 +853,6 @@ client.on('interactionCreate', async interaction => {
                         .setStyle(ButtonStyle.Success)
                         .setEmoji('🏆');
                     const buttonRow = new ActionRowBuilder().addComponents(saveButton);
-                    // Move Me button (already correct)
-                    const moveMeButton = new ButtonBuilder()
-                        .setCustomId(`move_me_${teamSetId}`)
-                        .setLabel('Move Me to My Team Channel')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('👥');
-                    const moveMeButtonRow = new ActionRowBuilder().addComponents(moveMeButton);
 
                     // Store the generated teams data for later use
                     if (!global.generatedTeamsData) global.generatedTeamsData = {};
@@ -735,6 +865,14 @@ client.on('interactionCreate', async interaction => {
                         sessionTitle: playersData.sessionTitle,
                         creatorId: userId // Store the creator's Discord ID
                     };
+                    // Persist to file
+                    try {
+                        const teamsDir = path.join(__dirname, 'teams');
+                        if (!fs.existsSync(teamsDir)) fs.mkdirSync(teamsDir);
+                        fs.writeFileSync(path.join(teamsDir, `${teamSetId}.json`), JSON.stringify(global.generatedTeamsData[teamSetId], null, 2));
+                    } catch (err) {
+                        console.error('Failed to persist teams data:', err);
+                    }
 
                     // Create channels for each team
                     try {
@@ -771,8 +909,23 @@ client.on('interactionCreate', async interaction => {
                         // Don't fail the entire operation if channel creation fails
                     }
 
+                    // Before sending to tournament-teams channel
+                    try {
+                        const teamsChannelId = '1387454177743208609';
+                        const teamsChannel = await client.channels.fetch(teamsChannelId);
+                        if (teamsChannel && teamsChannel.isTextBased()) {
+                            const messages = await teamsChannel.messages.fetch({ limit: 50 });
+                            const botMessages = messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('Balanced Teams'));
+                            for (const msg of botMessages.values()) {
+                                try { await msg.delete(); } catch (e) { /* ignore */ }
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to delete previous team messages:', err);
+                    }
+
                     // Send the embed to the teams channel as a public announcement
-                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow, moveMeButtonRow], files);
+                    await sendAnnouncement(client, '1387454177743208609', embed, [buttonRow], files);
                     // Also reply to the user for confirmation
                     await interaction.editReply({
                         content: '✅ Teams generated and posted in the teams channel!',
@@ -791,7 +944,7 @@ client.on('interactionCreate', async interaction => {
                     } else {
                         await interaction.reply({ 
                             content: '❌ An error occurred while processing your selection. Please try again.', 
-                            ephemeral: true 
+                            flags: 64 
                         });
                     }
                 } catch (replyError) {
@@ -805,7 +958,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'bracket_update_tournament_select') {
             const tournamentId = interaction.values[0];
             try {
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.deferReply({ flags: 64 });
                 // Fetch the selected tournament's bracket data
                 const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/tournaments?id=${tournamentId}`);
                 if (!response.ok) {
@@ -828,6 +981,7 @@ client.on('interactionCreate', async interaction => {
                 }
                 // Build a summary of all rounds
                 let bracketText = '';
+                const matchRows = [];
                 for (const round of bracket.rounds) {
                     bracketText += `__**${round.name || 'Round ' + round.round}**__\n`;
                     for (const match of round.matches) {
@@ -835,27 +989,22 @@ client.on('interactionCreate', async interaction => {
                         const t2 = match.team2 ? match.team2.name : 'TBD';
                         const winner = match.winner ? ` 🏆 ${match.winner.name}` : '';
                         bracketText += `• ${t1} vs ${t2}${winner}\n`;
+                        // For all rounds: add winner buttons for undecided matches with both teams
+                        if (match.team1 && match.team2 && !match.winner) {
+                            const row = new ActionRowBuilder().addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId(`bracket_win_${tournamentId}_${round.round}_${match.id}_${match.team1.id}`)
+                                    .setLabel(match.team1.name)
+                                    .setStyle(ButtonStyle.Primary),
+                                new ButtonBuilder()
+                                    .setCustomId(`bracket_win_${tournamentId}_${round.round}_${match.id}_${match.team2.id}`)
+                                    .setLabel(match.team2.name)
+                                    .setStyle(ButtonStyle.Secondary)
+                            );
+                            matchRows.push(row);
+                        }
                     }
                     bracketText += '\n';
-                }
-                // Build buttons for each match in the current round (only if no winner)
-                const matchRows = [];
-                for (const match of currentRound.matches) {
-                    if (!match.team1 || !match.team2) continue; // skip byes
-                    if (match.winner) continue; // skip matches with a winner
-                    // Debug log for IDs
-                    console.log('[BRACKET BUTTONS] match.id:', match.id, 'team1.id:', match.team1.id, 'team2.id:', match.team2.id);
-                    const row = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(`bracket_win_${tournamentId}_${currentRound.round}_${match.id}_${match.team1.id}`)
-                            .setLabel(match.team1.name)
-                            .setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder()
-                            .setCustomId(`bracket_win_${tournamentId}_${currentRound.round}_${match.id}_${match.team2.id}`)
-                            .setLabel(match.team2.name)
-                            .setStyle(ButtonStyle.Secondary)
-                    );
-                    matchRows.push(row);
                 }
                 await interaction.editReply({
                     content: `**${bracket.name}**\n${bracketText}\nCurrent Round: ${currentRound.name || currentRound.round}\nSelect the winner for each match:`,
@@ -885,7 +1034,7 @@ client.on('interactionCreate', async interaction => {
         
         try {
             // Defer reply immediately to prevent timeout
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 });
             console.log(`[modal] Deferred reply for ${playerName}`);
             
             // Register player through the add-player API endpoint
@@ -910,7 +1059,7 @@ client.on('interactionCreate', async interaction => {
             if (response.ok && data.success) {
                 await interaction.editReply({
                     content: `✅ Registration successful! You have been registered for the tournament.\n\n**Player Info:**\n• Name: ${playerName}\n• Dota 2 ID: ${dota2id}\n• MMR: ${mmr}\n• Tournament: ${sessionId}`,
-                    ephemeral: true
+                    flags: 64
                 });
                 console.log(`[modal] Registration successful for ${playerName}`);
             } else {
@@ -918,7 +1067,7 @@ client.on('interactionCreate', async interaction => {
                 const errorMessage = data.message || 'Unknown error occurred';
                 await interaction.editReply({
                     content: `❌ Registration failed: ${errorMessage}`,
-                    ephemeral: true
+                    flags: 64
                 });
                 console.log(`[modal] Registration failed for ${playerName}: ${errorMessage}`);
             }
@@ -930,7 +1079,7 @@ client.on('interactionCreate', async interaction => {
                 try {
                     await interaction.editReply({
                         content: '❌ Failed to register. Please try again later.',
-                        ephemeral: true
+                        flags: 64
                     });
                     console.log('[modal] Sent error reply via editReply');
                 } catch (editError) {
@@ -940,7 +1089,7 @@ client.on('interactionCreate', async interaction => {
                 try {
                     await interaction.reply({
                         content: '❌ Failed to register. Please try again later.',
-                        ephemeral: true
+                        flags: 64
                     });
                     console.log('[modal] Sent error reply via reply');
                 } catch (replyError) {
@@ -960,7 +1109,7 @@ client.on('interactionCreate', async interaction => {
         const validBalanceTypes = ['highRanked', 'perfectMmr', 'highLowShuffle', 'random'];
         let teamCount = parseInt(teamCountStr, 10);
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         // Validate inputs
         if (!tournamentId) {
@@ -1074,10 +1223,23 @@ client.on('interactionCreate', async interaction => {
 
     // Move team button handler (replace old handler)
     if (interaction.isButton() && interaction.customId.startsWith('move_me_')) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
         const teamSetId = interaction.customId.replace('move_me_', '');
         const userId = interaction.user.id;
-        const teamsData = global.generatedTeamsData[teamSetId];
+        let teamsData = undefined;
+        // Always load from file
+        try {
+            const teamsDir = path.join(__dirname, 'teams');
+            const filePath = path.join(teamsDir, `${teamSetId}.json`);
+            console.log(`[DEBUG] Attempting to load team data file: ${filePath}`);
+            console.log(`[DEBUG] teamSetId from button: ${teamSetId}`);
+            console.log(`[DEBUG] File exists: ${fs.existsSync(filePath)}`);
+            if (fs.existsSync(filePath)) {
+                teamsData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            }
+        } catch (err) {
+            console.error('Failed to load teams data from file:', err);
+        }
         if (!teamsData) {
             await interaction.editReply('❌ Team data not found.');
             return;

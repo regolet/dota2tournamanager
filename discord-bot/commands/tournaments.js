@@ -14,22 +14,18 @@ module.exports = {
 
         try {
             // Fetch tournaments from your webapp with timeout
-            console.log('[tournaments] Fetching tournaments from API:', `${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
-            
+            // console.log('[tournaments] Fetching tournaments from API:', `${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`);
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-            
             const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
                 signal: controller.signal
             });
-            
             clearTimeout(timeoutId);
-            console.log('[tournaments] API response status:', response.status);
-            
+            // console.log('[tournaments] API response status:', response.status);
             let data = {};
             try {
                 data = await response.json();
-                console.log('[tournaments] API response data:', data);
+                // console.log('[tournaments] API response data:', data);
             } catch (jsonErr) {
                 console.error('[tournaments] Error parsing API response JSON:', jsonErr);
                 if (interaction.deferred) {
@@ -39,6 +35,21 @@ module.exports = {
             }
 
             if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
+                // Remove previous tournament messages in the registration channel
+                const regChannelId = '1387298687214161940';
+                try {
+                    const regChannel = await interaction.client.channels.fetch(regChannelId);
+                    if (regChannel && regChannel.isTextBased()) {
+                        const messages = await regChannel.messages.fetch({ limit: 50 });
+                        const botMessages = messages.filter(m => m.author.id === interaction.client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('🏆 Available Tournaments'));
+                        for (const msg of botMessages.values()) {
+                            try { await msg.delete(); } catch (e) { /* ignore */ }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to delete previous tournament messages:', err);
+                }
+
                 const embed = {
                     color: 0x00ff00,
                     title: '🏆 Available Tournaments',

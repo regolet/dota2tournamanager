@@ -1,0 +1,530 @@
+{
+  "teams": [
+    [
+      {
+        "id": "player_temp_38",
+        "name": "TempPlayer38",
+        "dota2id": "100000038",
+        "peakmmr": 6700,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_13",
+        "name": "TempPlayer13",
+        "dota2id": "100000013",
+        "peakmmr": 4200,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_21",
+        "name": "TempPlayer21",
+        "dota2id": "100000021",
+        "peakmmr": 5000,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_8",
+        "name": "TempPlayer8",
+        "dota2id": "100000008",
+        "peakmmr": 3700,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_12",
+        "name": "TempPlayer12",
+        "dota2id": "100000012",
+        "peakmmr": 4100,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ],
+    [
+      {
+        "id": "player_temp_18",
+        "name": "TempPlayer18",
+        "dota2id": "100000018",
+        "peakmmr": 4700,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_30",
+        "name": "TempPlayer30",
+        "dota2id": "100000030",
+        "peakmmr": 5900,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_14",
+        "name": "TempPlayer14",
+        "dota2id": "100000014",
+        "peakmmr": 4300,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_26",
+        "name": "TempPlayer26",
+        "dota2id": "100000026",
+        "peakmmr": 5500,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_5",
+        "name": "TempPlayer5",
+        "dota2id": "100000005",
+        "peakmmr": 3400,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ],
+    [
+      {
+        "id": "player_temp_28",
+        "name": "TempPlayer28",
+        "dota2id": "100000028",
+        "peakmmr": 5700,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_32",
+        "name": "TempPlayer32",
+        "dota2id": "100000032",
+        "peakmmr": 6100,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_23",
+        "name": "TempPlayer23",
+        "dota2id": "100000023",
+        "peakmmr": 5200,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_29",
+        "name": "TempPlayer29",
+        "dota2id": "100000029",
+        "peakmmr": 5800,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_31",
+        "name": "TempPlayer31",
+        "dota2id": "100000031",
+        "peakmmr": 6000,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ],
+    [
+      {
+        "id": "player_temp_17",
+        "name": "TempPlayer17",
+        "dota2id": "100000017",
+        "peakmmr": 4600,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_33",
+        "name": "TempPlayer33",
+        "dota2id": "100000033",
+        "peakmmr": 6200,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_1750863964964_346",
+        "name": "regzpro",
+        "dota2id": "176166671",
+        "peakmmr": 1500,
+        "ipAddress": "124.105.59.225",
+        "registrationDate": "2025-06-25T15:06:04.267Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": "882628768403968000",
+        "present": true,
+        "discordId": "882628768403968000"
+      },
+      {
+        "id": "player_temp_19",
+        "name": "TempPlayer19",
+        "dota2id": "100000019",
+        "peakmmr": 4800,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_37",
+        "name": "TempPlayer37",
+        "dota2id": "100000037",
+        "peakmmr": 6600,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ],
+    [
+      {
+        "id": "player_temp_3",
+        "name": "TempPlayer3",
+        "dota2id": "100000003",
+        "peakmmr": 3200,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_15",
+        "name": "TempPlayer15",
+        "dota2id": "100000015",
+        "peakmmr": 4400,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_9",
+        "name": "TempPlayer9",
+        "dota2id": "100000009",
+        "peakmmr": 3800,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_34",
+        "name": "TempPlayer34",
+        "dota2id": "100000034",
+        "peakmmr": 6300,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_16",
+        "name": "TempPlayer16",
+        "dota2id": "100000016",
+        "peakmmr": 4500,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ],
+    [
+      {
+        "id": "player_temp_20",
+        "name": "TempPlayer20",
+        "dota2id": "100000020",
+        "peakmmr": 4900,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_7",
+        "name": "TempPlayer7",
+        "dota2id": "100000007",
+        "peakmmr": 3600,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_1",
+        "name": "TempPlayer1",
+        "dota2id": "100000001",
+        "peakmmr": 3000,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_1750869222259_72",
+        "name": "thdm_savvy",
+        "dota2id": "188950022",
+        "peakmmr": 6500,
+        "ipAddress": "124.105.59.225",
+        "registrationDate": "2025-06-25T16:33:41.301Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": "1141759263287546048",
+        "present": true,
+        "discordId": "1141759263287546048"
+      },
+      {
+        "id": "player_temp_36",
+        "name": "TempPlayer36",
+        "dota2id": "100000036",
+        "peakmmr": 6500,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ],
+    [
+      {
+        "id": "player_temp_25",
+        "name": "TempPlayer25",
+        "dota2id": "100000025",
+        "peakmmr": 5400,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_6",
+        "name": "TempPlayer6",
+        "dota2id": "100000006",
+        "peakmmr": 3500,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_35",
+        "name": "TempPlayer35",
+        "dota2id": "100000035",
+        "peakmmr": 6400,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_11",
+        "name": "TempPlayer11",
+        "dota2id": "100000011",
+        "peakmmr": 4000,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_39",
+        "name": "TempPlayer39",
+        "dota2id": "100000039",
+        "peakmmr": 6800,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ],
+    [
+      {
+        "id": "player_temp_24",
+        "name": "TempPlayer24",
+        "dota2id": "100000024",
+        "peakmmr": 5300,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_4",
+        "name": "TempPlayer4",
+        "dota2id": "100000004",
+        "peakmmr": 3300,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T08:18:50.492Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_40",
+        "name": "TempPlayer40",
+        "dota2id": "100000040",
+        "peakmmr": 6900,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_22",
+        "name": "TempPlayer22",
+        "dota2id": "100000022",
+        "peakmmr": 5100,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      },
+      {
+        "id": "player_temp_27",
+        "name": "TempPlayer27",
+        "dota2id": "100000027",
+        "peakmmr": 5600,
+        "ipAddress": null,
+        "registrationDate": "2025-06-25T16:56:49.486Z",
+        "registrationSessionId": "reg_1750773822337_od1byc4uv",
+        "discordid": null,
+        "present": true,
+        "discordId": null
+      }
+    ]
+  ],
+  "reserves": [
+    {
+      "id": "player_temp_10",
+      "name": "TempPlayer10",
+      "dota2id": "100000010",
+      "peakmmr": 3900,
+      "ipAddress": null,
+      "registrationDate": "2025-06-25T08:18:50.492Z",
+      "registrationSessionId": "reg_1750773822337_od1byc4uv",
+      "discordid": null,
+      "present": true,
+      "discordId": null
+    },
+    {
+      "id": "player_temp_2",
+      "name": "TempPlayer2",
+      "dota2id": "100000002",
+      "peakmmr": 3100,
+      "ipAddress": null,
+      "registrationDate": "2025-06-25T08:18:50.492Z",
+      "registrationSessionId": "reg_1750773822337_od1byc4uv",
+      "discordid": null,
+      "present": true,
+      "discordId": null
+    }
+  ],
+  "tournament": "reg_1750773822337_od1byc4uv",
+  "balance": "random",
+  "teamcount": 8,
+  "creatorId": "882628768403968000"
+}

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, InteractionResponseType } = require('discord.js');
 const fetch = require('node-fetch');
 const teamBalancer = require('../teamBalancer');
 const { getGuildSessionId, requireValidSession } = require('../sessionUtil');
@@ -23,9 +23,16 @@ module.exports = {
     .setName('generate_teams')
     .setDescription('Generate balanced teams for a tournament (present players only).'),
   async execute(interaction) {
-    if (!(await requireValidSession(interaction))) return;
     try {
-      await interaction.deferReply({ ephemeral: true });
+      // Validate session first
+      if (!(await requireValidSession(interaction))) {
+        return;
+      }
+
+      // Defer reply only if not already deferred or replied
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: 64 }); // 64 = ephemeral flag
+      }
       
       // Fetch tournaments
       const response = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/registration-sessions`, {
@@ -33,11 +40,18 @@ module.exports = {
           'x-session-id': getGuildSessionId(interaction.guildId)
         }
       });
+
+      if (!response.ok) {
+        await interaction.editReply('❌ Failed to fetch tournaments. Please try again.');
+        return;
+      }
+
       const data = await response.json();
       if (!data.success || !Array.isArray(data.sessions) || data.sessions.length === 0) {
         await interaction.editReply('❌ No tournaments found.');
         return;
       }
+
       const activeSessions = data.sessions.filter(s => s.isActive);
       if (activeSessions.length === 0) {
         await interaction.editReply('❌ No active tournaments found.');
@@ -79,10 +93,23 @@ module.exports = {
 
     } catch (error) {
       console.error('Error in generate_teams command:', error);
-      try {
-        await interaction.editReply('❌ An error occurred while loading tournaments. Please try again.');
-      } catch (replyError) {
-        console.error('Failed to send error reply:', replyError);
+      
+      // Check if interaction is still valid and can be replied to
+      if (interaction.deferred && !interaction.replied) {
+        try {
+          await interaction.editReply('❌ An error occurred while loading tournaments. Please try again.');
+        } catch (replyError) {
+          console.error('Failed to send error reply via editReply:', replyError);
+        }
+      } else if (!interaction.deferred && !interaction.replied) {
+        try {
+          await interaction.reply({ 
+            content: '❌ An error occurred while loading tournaments. Please try again.',
+            flags: 64 // ephemeral flag
+          });
+        } catch (replyError) {
+          console.error('Failed to send error reply via reply:', replyError);
+        }
       }
     }
   }
