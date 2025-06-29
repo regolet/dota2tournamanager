@@ -826,7 +826,19 @@ client.on('interactionCreate', async interaction => {
                     await interaction.editReply('❌ No matches found for the current round.');
                     return;
                 }
-                // Build buttons for each match using exact IDs from bracket data
+                // Build a summary of all rounds
+                let bracketText = '';
+                for (const round of bracket.rounds) {
+                    bracketText += `__**${round.name || 'Round ' + round.round}**__\n`;
+                    for (const match of round.matches) {
+                        const t1 = match.team1 ? match.team1.name : 'TBD';
+                        const t2 = match.team2 ? match.team2.name : 'TBD';
+                        const winner = match.winner ? ` 🏆 ${match.winner.name}` : '';
+                        bracketText += `• ${t1} vs ${t2}${winner}\n`;
+                    }
+                    bracketText += '\n';
+                }
+                // Build buttons for each match in the current round
                 const matchRows = [];
                 for (const match of currentRound.matches) {
                     if (!match.team1 || !match.team2) continue; // skip byes
@@ -845,7 +857,7 @@ client.on('interactionCreate', async interaction => {
                     matchRows.push(row);
                 }
                 await interaction.editReply({
-                    content: `**${bracket.name}**\nCurrent Round: ${currentRound.name || currentRound.round}\nSelect the winner for each match:`,
+                    content: `**${bracket.name}**\n${bracketText}\nCurrent Round: ${currentRound.name || currentRound.round}\nSelect the winner for each match:`,
                     components: matchRows
                 });
             } catch (error) {
