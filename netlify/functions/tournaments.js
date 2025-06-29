@@ -21,26 +21,26 @@ export async function handler(event, context) {
 
     try {
         const sessionId = event.headers['x-session-id'];
-        if (!sessionId) {
-            return {
-                statusCode: 401,
-                body: JSON.stringify({ message: 'Invalid or expired session' }),
-                headers
-            };
-        }
-
-        const session = await validateSession(sessionId);
-        if (!session.valid) {
-            return {
-                statusCode: 401,
-                body: JSON.stringify({ message: 'Invalid or expired session' }),
-                headers
-            };
-        }
-
-        const { userId: adminUserId, role: adminRole } = session;
 
         if (event.httpMethod === 'POST') {
+            // Require session for POST
+            if (!sessionId) {
+                return {
+                    statusCode: 401,
+                    body: JSON.stringify({ message: 'Invalid or expired session' }),
+                    headers
+                };
+            }
+            const session = await validateSession(sessionId);
+            if (!session.valid) {
+                return {
+                    statusCode: 401,
+                    body: JSON.stringify({ message: 'Invalid or expired session' }),
+                    headers
+                };
+            }
+            const { userId: adminUserId, role: adminRole } = session;
+
             try {
                 const clientData = JSON.parse(event.body);
                 console.log('Received tournament data:', JSON.stringify(clientData, null, 2));
@@ -83,7 +83,6 @@ export async function handler(event, context) {
         if (event.httpMethod === 'GET') {
             const tournamentId = event.queryStringParameters?.id;
             
-            // Allow public GET access to the tournaments list (no session required)
             if (tournamentId) {
                 // For fetching a specific tournament, require session
                 if (!sessionId) {
@@ -162,6 +161,24 @@ export async function handler(event, context) {
         }
 
         if (event.httpMethod === 'DELETE') {
+            // Require session for DELETE
+            if (!sessionId) {
+                return {
+                    statusCode: 401,
+                    body: JSON.stringify({ message: 'Invalid or expired session' }),
+                    headers
+                };
+            }
+            const session = await validateSession(sessionId);
+            if (!session.valid) {
+                return {
+                    statusCode: 401,
+                    body: JSON.stringify({ message: 'Invalid or expired session' }),
+                    headers
+                };
+            }
+            const { userId: adminUserId, role: adminRole } = session;
+
             const tournamentId = event.queryStringParameters?.id;
             if (!tournamentId) {
                 return {
