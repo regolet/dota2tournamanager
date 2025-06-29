@@ -58,6 +58,11 @@ const commands = [
             }
         ],
         default_member_permissions: 8 // Administrator only
+    },
+    {
+        name: 'logout',
+        description: 'Log out and remove the stored session for this server',
+        default_member_permissions: 8 // Administrator only
     }
 ];
 
