@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');
+require('dotenv').config();
 const SESSION_FILE = path.join(__dirname, 'guild_sessions.json');
 
 function loadSessions() {
@@ -18,4 +20,28 @@ function getGuildSessionId(guildId) {
     return sessions[guildId] || '';
 }
 
-module.exports = { loadSessions, getGuildSessionId }; 
+async function requireValidSession(interaction) {
+    const guildId = interaction.guildId;
+    const sessionId = getGuildSessionId(guildId);
+    if (!sessionId) {
+        await interaction.reply({ content: '❌ No valid session found for this server. Please use `/login` to authenticate.', ephemeral: true });
+        return false;
+    }
+    try {
+        const res = await fetch(`${process.env.WEBAPP_URL}/.netlify/functions/check-session`, {
+            headers: { 'x-session-id': sessionId }
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            await interaction.reply({ content: '❌ Session is invalid or expired. Please use `/login` to authenticate.', ephemeral: true });
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('Error validating session:', err);
+        await interaction.reply({ content: '❌ Failed to validate session. Please try again later.', ephemeral: true });
+        return false;
+    }
+}
+
+module.exports = { loadSessions, getGuildSessionId, requireValidSession }; 

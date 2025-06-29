@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, PermissionFlagsBits } = require('discord.js');
 const fetch = require('node-fetch');
-const { getGuildSessionId } = require('../sessionUtil');
+const { getGuildSessionId, requireValidSession } = require('../sessionUtil');
 
 module.exports = {
     name: 'bracket_update',
@@ -10,6 +10,7 @@ module.exports = {
         .setDescription('Update the current tournament bracket (admin/creator only)')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     async execute(interaction) {
+        if (!(await requireValidSession(interaction))) return;
         // Only allow admins/creators
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
             await interaction.reply({ content: '❌ Only admins can use this command.', ephemeral: true });

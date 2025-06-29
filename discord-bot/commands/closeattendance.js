@@ -1,11 +1,12 @@
 const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const fetch = require('node-fetch');
-const { getGuildSessionId } = require('../sessionUtil');
+const { getGuildSessionId, requireValidSession } = require('../sessionUtil');
 
 module.exports = {
   name: 'closeattendance',
   description: 'Close attendance for a tournament session',
   async execute(interaction) {
+    if (!(await requireValidSession(interaction))) return;
     try {
       await interaction.deferReply({ ephemeral: true });
     } catch (error) {
