@@ -83,8 +83,24 @@ export async function handler(event, context) {
         if (event.httpMethod === 'GET') {
             const tournamentId = event.queryStringParameters?.id;
             
-            // If ID is provided, get a specific tournament
+            // Allow public GET access to the tournaments list (no session required)
             if (tournamentId) {
+                // For fetching a specific tournament, require session
+                if (!sessionId) {
+                    return {
+                        statusCode: 401,
+                        body: JSON.stringify({ message: 'Invalid or expired session' }),
+                        headers
+                    };
+                }
+                const session = await validateSession(sessionId);
+                if (!session.valid) {
+                    return {
+                        statusCode: 401,
+                        body: JSON.stringify({ message: 'Invalid or expired session' }),
+                        headers
+                    };
+                }
                 const tournament = await getTournament(tournamentId);
                 if (tournament) {
                     return {
@@ -100,19 +116,13 @@ export async function handler(event, context) {
                     };
                 }
             } else {
-                // If no ID, get the list of tournaments based on user role
-                const targetUserId = adminRole === 'superadmin' ? null : adminUserId;
-                
+                // Public: get the list of tournaments (no session required)
                 try {
-                    const tournaments = await getTournaments(targetUserId);
-                    
-                    // Manually format the date and extract tournament name safely
+                    const tournaments = await getTournaments(null); // null = all tournaments
                     const formattedTournaments = tournaments.map(t => {
                         let tournamentName = null;
                         let tournamentData = t.tournament_data;
-
                         if (tournamentData) {
-                            // It might be a string if coming from some DB clients, or already an object
                             if (typeof tournamentData === 'string') {
                                 try {
                                     tournamentData = JSON.parse(tournamentData);
@@ -121,25 +131,20 @@ export async function handler(event, context) {
                                     tournamentData = null;
                                 }
                             }
-                            // Check if it's a non-null object with a name property
                             if (tournamentData && typeof tournamentData === 'object' && tournamentData.name) {
                                 tournamentName = tournamentData.name;
                             }
                         }
-
                         let createdAt = t.created_at;
                         if (createdAt && typeof createdAt === 'string') {
-                            // Convert to ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ' by replacing space and adding Z
                             createdAt = new Date(createdAt.replace(' ', 'T') + 'Z');
                         }
-                        
                         return {
                             id: t.id,
                             name: tournamentName,
                             created_at: createdAt && !isNaN(createdAt) ? createdAt.toISOString() : null,
                         };
                     });
-
                     return {
                         statusCode: 200,
                         body: JSON.stringify(formattedTournaments),
