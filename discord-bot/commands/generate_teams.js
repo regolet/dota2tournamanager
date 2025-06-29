@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fetch = require('node-fetch');
 const teamBalancer = require('../teamBalancer');
-const { getGuildSessionId } = require('../index');
+const { getGuildSessionId } = require('../sessionUtil');
 
 const BALANCE_TYPES = [
   { value: 'highRanked', label: 'High Ranked Balance' },

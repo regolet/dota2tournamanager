@@ -1,6 +1,6 @@
 const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const fetch = require('node-fetch');
-const { getGuildSessionId } = require('../index');
+const { getGuildSessionId } = require('../sessionUtil');
 
 module.exports = {
   name: 'attendance',

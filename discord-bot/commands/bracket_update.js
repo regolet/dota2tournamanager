@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, PermissionFlagsBits } = require('discord.js');
 const fetch = require('node-fetch');
-const { getGuildSessionId } = require('../index');
+const { getGuildSessionId } = require('../sessionUtil');
 
 module.exports = {
     name: 'bracket_update',
