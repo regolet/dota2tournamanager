@@ -33,6 +33,9 @@ async function loadWebhooks() {
       webhookTypes.forEach(({ type, input }) => {
         const wh = data.webhooks.find(w => w.type === type);
         document.getElementById(input).value = wh ? wh.url : '';
+        // Also store template in a global for editing
+        if (!window.discordTemplates) window.discordTemplates = {};
+        window.discordTemplates[type] = wh && wh.template ? wh.template : defaultTemplates[type];
       });
       showDiscordNotification('Webhook configuration loaded successfully', 'success');
     } else {
@@ -59,6 +62,9 @@ async function saveWebhook(type, inputId) {
     return;
   }
   
+  // Get template from global (or default)
+  const template = window.discordTemplates && window.discordTemplates[type] ? window.discordTemplates[type] : defaultTemplates[type];
+  
   try {
     showDiscordNotification('Saving webhook...', 'info');
     
@@ -68,7 +74,7 @@ async function saveWebhook(type, inputId) {
         'Content-Type': 'application/json', 
         'x-session-id': localStorage.getItem('adminSessionId') 
       },
-      body: JSON.stringify({ type, url })
+      body: JSON.stringify({ type, url, template })
     });
     
     if (!res.ok) {
@@ -217,19 +223,26 @@ function initDiscord() {
   document.getElementById('edit-template-updates').addEventListener('click', () => openEditTemplateModal('updates'));
 
   // Save template
-  document.getElementById('edit-template-form').addEventListener('submit', function(e) {
+  document.getElementById('edit-template-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const type = document.getElementById('edit-template-type').value;
     const content = document.getElementById('edit-template-content').value;
-    setTemplate(type, content);
+    window.discordTemplates[type] = content;
+    // Save both URL and template
+    const inputId = webhookTypes.find(w => w.type === type).input;
+    await saveWebhook(type, inputId);
     showDiscordNotification('Template saved!', 'success');
     bootstrap.Modal.getInstance(document.getElementById('editTemplateModal')).hide();
   });
 
   // Reset to default
-  document.getElementById('reset-template-btn').addEventListener('click', function() {
+  document.getElementById('reset-template-btn').addEventListener('click', async function() {
     const type = document.getElementById('edit-template-type').value;
     document.getElementById('edit-template-content').value = defaultTemplates[type];
+    window.discordTemplates[type] = defaultTemplates[type];
+    // Save both URL and template
+    const inputId = webhookTypes.find(w => w.type === type).input;
+    await saveWebhook(type, inputId);
     showDiscordNotification('Template reset to default.', 'info');
   });
 
@@ -266,22 +279,11 @@ const defaultTemplates = {
   updates: `**{tournament_name} - {format} - Bracket Update**\n\n*First Round*\n{first_round}\n\n*Semi-Final*\n{semi_final}\n\n*Final*\n{final}\n\nResult\n{result}\n\n🎉 Congratulations to {winner}!\nPlayers: {winner_players}`
 };
 
-// Utility to get/set template in localStorage
-function getTemplate(type) {
-  return localStorage.getItem(`discord_template_${type}`) || defaultTemplates[type];
-}
-function setTemplate(type, value) {
-  localStorage.setItem(`discord_template_${type}`, value);
-}
-function resetTemplate(type) {
-  localStorage.removeItem(`discord_template_${type}`);
-}
-
 // Modal logic
 function openEditTemplateModal(type) {
   const modal = new bootstrap.Modal(document.getElementById('editTemplateModal'));
   document.getElementById('edit-template-type').value = type;
-  document.getElementById('edit-template-content').value = getTemplate(type);
+  document.getElementById('edit-template-content').value = window.discordTemplates && window.discordTemplates[type] ? window.discordTemplates[type] : defaultTemplates[type];
   // Set modal title
   const label = {
     registration: 'Registration Link',

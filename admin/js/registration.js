@@ -740,18 +740,17 @@ async function initRegistration() {
                 window.utils.showNotification('No Discord webhooks found for your account.', 'warning');
                 return;
             }
-            // Find registration webhook
+            // Find registration webhook and template
             const webhookObj = data.webhooks.find(w => w.type === 'registration');
             const webhookUrl = webhookObj ? webhookObj.url : '';
+            const template = webhookObj && webhookObj.template ? webhookObj.template : (
+                window.defaultTemplates ? window.defaultTemplates.registration :
+                `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`
+            );
             if (!webhookUrl) {
                 window.utils.showNotification('No Discord webhook URL set for registration. Please configure it in the Discord tab.', 'warning');
                 return;
             }
-            // Get template from localStorage (as before)
-            const defaultTemplates = window.defaultTemplates || {
-                registration: `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`
-            };
-            const template = localStorage.getItem('discord_template_registration') || defaultTemplates.registration;
             // Fill template
             const message = template
                 .replace('{tournament_name}', session.title)
