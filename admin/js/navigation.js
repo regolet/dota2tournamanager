@@ -51,7 +51,8 @@ function getOriginalIconForTab(tabId) {
         'random-picker-tab': 'bi bi-shuffle me-2',
         'player-list-tab': 'bi bi-list-ul me-1',
         'registration-tab': 'bi bi-clipboard2-check me-1',
-        'masterlist-tab': 'bi bi-shield-check me-1'
+        'masterlist-tab': 'bi bi-shield-check me-1',
+        'discord-tab': 'bi bi-discord me-2'
     };
     return iconMap[tabId] || 'bi bi-circle me-2';
 }
@@ -122,6 +123,9 @@ async function enableActiveTabAfterInit() {
                     break;
                 case 'masterlist-tab':
                     loadResult = await loadMasterlist();
+                    break;
+                case 'discord-tab':
+                    loadResult = await loadDiscord();
                     break;
                 default:
                     // Unknown tab, fallback to team balancer
@@ -1465,3 +1469,37 @@ function showAddEditUserAlert(message, type) {
 // Make functions globally available
 window.editUser = editUser;
 window.deleteUser = deleteUser;
+
+/**
+ * Load Discord content
+ */
+async function loadDiscord() {
+    try {
+        updateActiveTab('discord-tab');
+        
+        // Show the Discord webhooks section that's already in the HTML
+        const container = document.getElementById('main-content');
+        const discordSection = document.getElementById('discord-webhooks-section');
+        
+        if (discordSection) {
+            // Hide all other content and show Discord section
+            container.innerHTML = '';
+            discordSection.classList.remove('d-none');
+            
+            // Load the Discord JavaScript module for functionality
+            const result = await loadJavaScriptModule('discord.js');
+            
+            // Initialize Discord functionality
+            if (result && window.initDiscord) {
+                window.initDiscord();
+            }
+            
+            return result;
+        } else {
+            throw new Error('Discord section not found in HTML');
+        }
+    } catch (error) {
+        console.error('Error loading Discord:', error);
+        return false;
+    }
+}

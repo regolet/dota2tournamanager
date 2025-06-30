@@ -70,17 +70,30 @@ function testWebhook(inputId) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Tab navigation
-  document.getElementById('discord-tab').addEventListener('click', () => {
-    document.querySelectorAll('main > .container > .row > .col-12 > div').forEach(div => div.classList.add('d-none'));
-    document.getElementById('discord-webhooks-section').classList.remove('d-none');
-    loadWebhooks();
-  });
-  // Button handlers
+// Initialize Discord webhook management
+function initDiscord() {
+  console.log('Initializing Discord webhook management...');
+  
+  // Load existing webhooks
+  loadWebhooks();
+  
+  // Set up button handlers
   webhookTypes.forEach(({ type, input, save, del, test }) => {
-    document.getElementById(save).addEventListener('click', () => saveWebhook(type, input));
-    document.getElementById(del).addEventListener('click', () => deleteWebhook(type, input));
-    document.getElementById(test).addEventListener('click', () => testWebhook(input));
+    const saveBtn = document.getElementById(save);
+    const delBtn = document.getElementById(del);
+    const testBtn = document.getElementById(test);
+    
+    if (saveBtn) saveBtn.addEventListener('click', () => saveWebhook(type, input));
+    if (delBtn) delBtn.addEventListener('click', () => deleteWebhook(type, input));
+    if (testBtn) testBtn.addEventListener('click', () => testWebhook(input));
   });
-}); 
+  
+  return true;
+}
+
+// Export for module system
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { initDiscord };
+} else {
+  window.initDiscord = initDiscord;
+} 
