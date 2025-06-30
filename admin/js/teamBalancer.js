@@ -945,6 +945,12 @@ function displayBalancedTeams() {
     // Update DOM immediately without delay
     teamsContainer.innerHTML = teamsHtml;
     
+    // Re-attach Save button event listener after rendering
+    const saveTeamsBtn = document.getElementById('save-teams-btn');
+    if (saveTeamsBtn) {
+        saveTeamsBtn.addEventListener('click', saveTeams);
+    }
+    
     // Note: Event listeners are handled by event delegation in setupTeamBalancerEventListeners
 }
 
