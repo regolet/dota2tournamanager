@@ -235,6 +235,66 @@ function cleanupDiscord() {
   }
 }
 
+// Default templates for each webhook type
+const defaultTemplates = {
+  registration: `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`,
+  teams: `**Balanced Teams ({team_count} teams, {players_per_team} per team)**\nBalance type: *{balance_type}*\nTotal present: {player_count}\nPlayers in teams: {players_in_teams}\nReserves: {reserve_count}\n\n{team_list}`,
+  bracket: `🏆 **Tournament Bracket Created!**\n**Tournament:** {tournament_name} - {format}\n**Teams:** {team_count}\n**Rounds:** {round_count}\n\n📋 **First Round Matches**\n{first_round_matches}\n\nTournament bracket saved to database` ,
+  updates: `**{tournament_name} - {format} - Bracket Update**\n\n*First Round*\n{first_round}\n\n*Semi-Final*\n{semi_final}\n\n*Final*\n{final}\n\nResult\n{result}\n\n🎉 Congratulations to {winner}!\nPlayers: {winner_players}`
+};
+
+// Utility to get/set template in localStorage
+function getTemplate(type) {
+  return localStorage.getItem(`discord_template_${type}`) || defaultTemplates[type];
+}
+function setTemplate(type, value) {
+  localStorage.setItem(`discord_template_${type}`, value);
+}
+function resetTemplate(type) {
+  localStorage.removeItem(`discord_template_${type}`);
+}
+
+// Modal logic
+function openEditTemplateModal(type) {
+  const modal = new bootstrap.Modal(document.getElementById('editTemplateModal'));
+  document.getElementById('edit-template-type').value = type;
+  document.getElementById('edit-template-content').value = getTemplate(type);
+  // Set modal title
+  const label = {
+    registration: 'Registration Link',
+    teams: 'Teams',
+    bracket: 'Bracket',
+    updates: 'Bracket Updates'
+  }[type] || 'Template';
+  document.getElementById('editTemplateModalLabel').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Discord Message Template: <span class="text-primary">${label}</span>`;
+  modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Edit Template button handlers
+  document.getElementById('edit-template-registration').addEventListener('click', () => openEditTemplateModal('registration'));
+  document.getElementById('edit-template-teams').addEventListener('click', () => openEditTemplateModal('teams'));
+  document.getElementById('edit-template-bracket').addEventListener('click', () => openEditTemplateModal('bracket'));
+  document.getElementById('edit-template-updates').addEventListener('click', () => openEditTemplateModal('updates'));
+
+  // Save template
+  document.getElementById('edit-template-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const type = document.getElementById('edit-template-type').value;
+    const content = document.getElementById('edit-template-content').value;
+    setTemplate(type, content);
+    showDiscordNotification('Template saved!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('editTemplateModal')).hide();
+  });
+
+  // Reset to default
+  document.getElementById('reset-template-btn').addEventListener('click', function() {
+    const type = document.getElementById('edit-template-type').value;
+    document.getElementById('edit-template-content').value = defaultTemplates[type];
+    showDiscordNotification('Template reset to default.', 'info');
+  });
+});
+
 // Export for module system
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { initDiscord, cleanupDiscord };
