@@ -950,6 +950,11 @@ function displayBalancedTeams() {
     if (saveTeamsBtn) {
         saveTeamsBtn.addEventListener('click', saveTeams);
     }
+    // Re-attach Load button event listener after rendering
+    const loadTeamsBtn = document.getElementById('load-teams-btn');
+    if (loadTeamsBtn) {
+        loadTeamsBtn.addEventListener('click', loadTeams);
+    }
     
     // Note: Event listeners are handled by event delegation in setupTeamBalancerEventListeners
 }
@@ -1299,6 +1304,37 @@ function syncSessionSelectorToState() {
     if (selector) {
         // Always sync state to the dropdown value, even if it's empty
         window.teamBalancerData.currentSessionId = selector.value;
+    }
+}
+
+// Load teams from saved configurations
+async function loadTeams() {
+    if (window.isTeamBalancerLoading) return;
+    window.isTeamBalancerLoading = true;
+    try {
+        const response = await fetchWithAuth('/.netlify/functions/teams');
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.teamSets) || data.teamSets.length === 0) {
+            window.showNotification('No saved teams found.', 'warning');
+            return;
+        }
+        // Simple prompt for selection (replace with modal for better UX)
+        const titles = data.teamSets.map((set, i) => `${i + 1}: ${set.title}`).join('\n');
+        const choice = prompt(`Select a team set to load (enter number):\n${titles}`);
+        const idx = parseInt(choice) - 1;
+        if (isNaN(idx) || idx < 0 || idx >= data.teamSets.length) {
+            window.showNotification('Invalid selection.', 'warning');
+            return;
+        }
+        const selected = data.teamSets[idx];
+        window.teamBalancerData.balancedTeams = selected.teams;
+        displayBalancedTeams(window.teamBalancerData.balancedTeams);
+        window.showNotification('Teams loaded from saved configuration.', 'success');
+    } catch (error) {
+        console.error('Error loading teams:', error);
+        window.showNotification('Error loading saved teams.', 'error');
+    } finally {
+        window.isTeamBalancerLoading = false;
     }
 }
 
