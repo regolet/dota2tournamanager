@@ -103,7 +103,8 @@ function getModuleKeyFromFunctionName(functionName) {
         'initRandomPicker': 'module_randompicker',
         'initPlayerList': 'module_playerList',
         'initRegistration': 'module_registration',
-        'initMasterlist': 'module_masterlist'
+        'initMasterlist': 'module_masterlist',
+        'initDiscord': 'module_discord'
     };
     
     return mapping[functionName] || null;

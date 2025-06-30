@@ -91,9 +91,32 @@ function initDiscord() {
   return true;
 }
 
+// Cleanup function for Discord module
+function cleanupDiscord() {
+  console.log('Cleaning up Discord webhook management...');
+  
+  // Remove event listeners
+  webhookTypes.forEach(({ type, input, save, del, test }) => {
+    const saveBtn = document.getElementById(save);
+    const delBtn = document.getElementById(del);
+    const testBtn = document.getElementById(test);
+    
+    if (saveBtn) saveBtn.replaceWith(saveBtn.cloneNode(true));
+    if (delBtn) delBtn.replaceWith(delBtn.cloneNode(true));
+    if (testBtn) testBtn.replaceWith(testBtn.cloneNode(true));
+  });
+  
+  // Clear status
+  const statusDiv = document.getElementById('discord-webhooks-status');
+  if (statusDiv) {
+    statusDiv.innerHTML = '';
+  }
+}
+
 // Export for module system
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { initDiscord };
+  module.exports = { initDiscord, cleanupDiscord };
 } else {
   window.initDiscord = initDiscord;
+  window.cleanupDiscord = cleanupDiscord;
 } 
