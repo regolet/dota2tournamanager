@@ -34,7 +34,7 @@ async function loadWebhooks() {
         const wh = data.webhooks.find(w => w.type === type);
         document.getElementById(input).value = wh ? wh.url : '';
         if (!window.discordTemplates) window.discordTemplates = {};
-        window.discordTemplates[type] = wh && wh.template ? wh.template : defaultTemplates[type];
+        window.discordTemplates[type] = wh && wh.template ? wh.template : '';
       });
       showDiscordNotification('Webhook configuration loaded successfully', 'success');
     } else {
@@ -61,8 +61,10 @@ async function saveWebhook(type, inputId) {
     return;
   }
   
-  // Get template from global (or default)
-  const template = window.discordTemplates && window.discordTemplates[type] ? window.discordTemplates[type] : defaultTemplates[type];
+  // Only use the template from window.discordTemplates[type], no fallback
+  const template = (window.discordTemplates && window.discordTemplates[type])
+    ? window.discordTemplates[type]
+    : '';
   
   try {
     showDiscordNotification('Saving webhook...', 'info');
@@ -237,8 +239,8 @@ function initDiscord() {
   // Reset to default
   document.getElementById('reset-template-btn').addEventListener('click', async function() {
     const type = document.getElementById('edit-template-type').value;
-    document.getElementById('edit-template-content').value = defaultTemplates[type];
-    window.discordTemplates[type] = defaultTemplates[type];
+    document.getElementById('edit-template-content').value = '';
+    window.discordTemplates[type] = '';
     // Save both URL and template
     const inputId = webhookTypes.find(w => w.type === type).input;
     await saveWebhook(type, inputId);
@@ -282,7 +284,11 @@ const defaultTemplates = {
 function openEditTemplateModal(type) {
   const modal = new bootstrap.Modal(document.getElementById('editTemplateModal'));
   document.getElementById('edit-template-type').value = type;
-  document.getElementById('edit-template-content').value = window.discordTemplates && window.discordTemplates[type] ? window.discordTemplates[type] : defaultTemplates[type];
+  // Only use the value from window.discordTemplates[type], no fallback
+  document.getElementById('edit-template-content').value =
+    window.discordTemplates && window.discordTemplates[type]
+      ? window.discordTemplates[type]
+      : '';
   // Set modal title
   const label = {
     registration: 'Registration Link',
