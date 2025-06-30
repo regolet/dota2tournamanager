@@ -813,6 +813,7 @@ async function initializeModule(moduleFileName) {
                 break;
                 
             case 'randompicker':
+            case 'randomPicker':
                 if (typeof window.initRandomPicker === 'function') {
                     console.log('🚀 Navigation: Calling initRandomPicker...');
                     await window.initRandomPicker();
