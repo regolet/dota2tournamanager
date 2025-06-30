@@ -411,30 +411,14 @@ async function loadRegistration() {
  */
 async function loadTournamentBracket() {
     updateActiveTab('tournament-bracket-tab');
-    
-    try {
-        // Use the new module loading system with guards
-        await loadJavaScriptModule('js/tournamentBrackets.js');
-        
-        // Load the HTML content
-        const container = document.getElementById('main-content');
-        if (container) {
-            const response = await fetch('tournament-bracket.html');
-            if (response.ok) {
-                container.innerHTML = await response.text();
-            } else {
-                throw new Error(`Failed to load tournament-bracket.html: ${response.statusText}`);
-            }
-        }
-        
-        // Note: refreshTournamentBracketData is not needed here as the module
-        // already loads data during initialization via initTournamentBrackets
-        
-        return true;
-    } catch (error) {
-        console.error('Error loading tournament bracket:', error);
-        return false;
-    }
+    const result = await window.adminApp.loadAndInitModule({
+        htmlFile: 'tournament-bracket.html',
+        jsFile: 'js/tournamentBrackets.js',
+        contentContainer: 'main-content',
+        initFunction: 'initTournamentBrackets',
+        cleanupFunction: 'cleanupTournamentBrackets'
+    });
+    return result;
 }
 
 /**

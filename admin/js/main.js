@@ -43,24 +43,26 @@ async function loadAndInitModule({ htmlFile, jsFile, contentContainer, initFunct
             window.activeModule.cleanup();
         }
 
-        // 3. Dynamically load the JavaScript module
-        if (jsFile) {
-            await loadJavaScriptModule(jsFile);
-        }
-
-        // 4. Load the HTML content
+        // 3. Load the HTML content FIRST
         const response = await fetch(htmlFile);
         if (!response.ok) {
             throw new Error(`Failed to load ${htmlFile}: ${response.statusText}`);
         }
         container.innerHTML = await response.text();
 
-        // 5. Initialize the new module
-        if (typeof window[initFunction] === 'function') {
-            await window[initFunction]();
-        } else {
-            console.warn(`Initialization function ${initFunction} not found.`);
+        // 4. Dynamically load the JavaScript module using the new system with guards
+        if (jsFile) {
+            // Use the new module loading system from navigation.js
+            if (typeof window.loadJavaScriptModule === 'function') {
+                await window.loadJavaScriptModule(jsFile);
+            } else {
+                // Fallback to old system
+                await loadJavaScriptModule(jsFile);
+            }
         }
+
+        // 5. Initialize the new module (this will be handled by the new system)
+        // The new system automatically calls the init function, so we don't need to call it here
 
         // 6. Set the active module for cleanup later
         window.activeModule = {
