@@ -1,146 +1,148 @@
-<section id="discord-webhooks-section" class="mb-5 px-3" style="min-height: calc(100vh - 300px); display: flex; flex-direction: column;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 mb-0">
-            <i class="bi bi-discord me-2"></i>Discord Webhook Management
-        </h2>
-    </div>
+<section id="discord-webhooks-section" class="mb-5" style="min-height: calc(100vh - 300px); display: flex; flex-direction: column;">
+    <div class="container-fluid px-4 px-lg-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h3 mb-0">
+                <i class="bi bi-discord me-2"></i>Discord Webhook Management
+            </h2>
+        </div>
 
-    <div class="row g-4 flex-grow-1">
-        <!-- Main Content Column -->
-        <div class="col-12 col-lg-8 mx-auto">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
-                    <h3 class="h5 mb-0 text-primary">
-                        <i class="bi bi-link-45deg me-2"></i>Webhook Configuration
-                    </h3>
-                    <p class="text-muted small mb-0 mt-1">Configure Discord webhooks for different types of announcements</p>
-                </div>
-                <div class="card-body">
-                    <form id="discord-webhooks-form">
-                        <div class="mb-4">
-                            <label for="webhook-registration" class="form-label fw-semibold">
-                                <i class="bi bi-person-plus me-2 text-success"></i>Registration Announcements
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-discord"></i>
-                                </span>
-                                <input type="url" class="form-control" id="webhook-registration" placeholder="Paste Discord webhook URL for registration announcements...">
-                                <button type="button" class="btn btn-outline-success" id="save-webhook-registration">
-                                    <i class="bi bi-check-lg me-1"></i>Save
-                                </button>
-                                <button type="button" class="btn btn-outline-danger" id="delete-webhook-registration">
-                                    <i class="bi bi-trash me-1"></i>Delete
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="test-webhook-registration">
-                                    <i class="bi bi-send me-1"></i>Test
-                                </button>
-                            </div>
-                            <div class="form-text">Used for announcing new player registrations</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="webhook-teams" class="form-label fw-semibold">
-                                <i class="bi bi-people-fill me-2 text-primary"></i>Teams Announcements
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-discord"></i>
-                                </span>
-                                <input type="url" class="form-control" id="webhook-teams" placeholder="Paste Discord webhook URL for team announcements...">
-                                <button type="button" class="btn btn-outline-success" id="save-webhook-teams">
-                                    <i class="bi bi-check-lg me-1"></i>Save
-                                </button>
-                                <button type="button" class="btn btn-outline-danger" id="delete-webhook-teams">
-                                    <i class="bi bi-trash me-1"></i>Delete
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="test-webhook-teams">
-                                    <i class="bi bi-send me-1"></i>Test
-                                </button>
-                            </div>
-                            <div class="form-text">Used for announcing generated teams</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="webhook-bracket" class="form-label fw-semibold">
-                                <i class="bi bi-trophy me-2 text-warning"></i>Bracket Announcements
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-discord"></i>
-                                </span>
-                                <input type="url" class="form-control" id="webhook-bracket" placeholder="Paste Discord webhook URL for bracket announcements...">
-                                <button type="button" class="btn btn-outline-success" id="save-webhook-bracket">
-                                    <i class="bi bi-check-lg me-1"></i>Save
-                                </button>
-                                <button type="button" class="btn btn-outline-danger" id="delete-webhook-bracket">
-                                    <i class="bi bi-trash me-1"></i>Delete
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="test-webhook-bracket">
-                                    <i class="bi bi-send me-1"></i>Test
-                                </button>
-                            </div>
-                            <div class="form-text">Used for announcing tournament bracket creation</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="webhook-updates" class="form-label fw-semibold">
-                                <i class="bi bi-arrow-clockwise me-2 text-info"></i>Bracket Updates
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-discord"></i>
-                                </span>
-                                <input type="url" class="form-control" id="webhook-updates" placeholder="Paste Discord webhook URL for bracket updates...">
-                                <button type="button" class="btn btn-outline-success" id="save-webhook-updates">
-                                    <i class="bi bi-check-lg me-1"></i>Save
-                                </button>
-                                <button type="button" class="btn btn-outline-danger" id="delete-webhook-updates">
-                                    <i class="bi bi-trash me-1"></i>Delete
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="test-webhook-updates">
-                                    <i class="bi bi-send me-1"></i>Test
-                                </button>
-                            </div>
-                            <div class="form-text">Used for announcing bracket progress updates</div>
-                        </div>
-                    </form>
-                    
-                    <!-- Status Display Area -->
-                    <div id="discord-webhooks-status" class="mt-4"></div>
-                </div>
-            </div>
-            
-            <!-- Help Section -->
-            <div class="card border-0 shadow-sm mt-4">
-                <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
-                    <h3 class="h5 mb-0 text-primary">
-                        <i class="bi bi-question-circle me-2"></i>How to Set Up Discord Webhooks
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <h6 class="fw-semibold">Step 1: Create a Discord Channel</h6>
-                            <ol class="small text-muted">
-                                <li>Open your Discord server</li>
-                                <li>Create a new channel for announcements</li>
-                                <li>Right-click the channel and select "Edit Channel"</li>
-                            </ol>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="fw-semibold">Step 2: Get the Webhook URL</h6>
-                            <ol class="small text-muted">
-                                <li>Go to "Integrations" in channel settings</li>
-                                <li>Click "Create Webhook"</li>
-                                <li>Copy the webhook URL</li>
-                                <li>Paste it in the field above</li>
-                            </ol>
-                        </div>
+        <div class="row g-4 flex-grow-1">
+            <!-- Main Content Column -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
+                        <h3 class="h5 mb-0 text-primary">
+                            <i class="bi bi-link-45deg me-2"></i>Webhook Configuration
+                        </h3>
+                        <p class="text-muted small mb-0 mt-1">Configure Discord webhooks for different types of announcements</p>
                     </div>
-                    <div class="alert alert-info mt-3 mb-0">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>Tip:</strong> You can use the same webhook URL for multiple types of announcements, or create separate channels for different types of notifications.
+                    <div class="card-body">
+                        <form id="discord-webhooks-form">
+                            <div class="mb-4">
+                                <label for="webhook-registration" class="form-label fw-semibold">
+                                    <i class="bi bi-person-plus me-2 text-success"></i>Registration Announcements
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-discord"></i>
+                                    </span>
+                                    <input type="url" class="form-control" id="webhook-registration" placeholder="Paste Discord webhook URL for registration announcements...">
+                                    <button type="button" class="btn btn-outline-success" id="save-webhook-registration">
+                                        <i class="bi bi-check-lg me-1"></i>Save
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" id="delete-webhook-registration">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="test-webhook-registration">
+                                        <i class="bi bi-send me-1"></i>Test
+                                    </button>
+                                </div>
+                                <div class="form-text">Used for announcing new player registrations</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="webhook-teams" class="form-label fw-semibold">
+                                    <i class="bi bi-people-fill me-2 text-primary"></i>Teams Announcements
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-discord"></i>
+                                    </span>
+                                    <input type="url" class="form-control" id="webhook-teams" placeholder="Paste Discord webhook URL for team announcements...">
+                                    <button type="button" class="btn btn-outline-success" id="save-webhook-teams">
+                                        <i class="bi bi-check-lg me-1"></i>Save
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" id="delete-webhook-teams">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="test-webhook-teams">
+                                        <i class="bi bi-send me-1"></i>Test
+                                    </button>
+                                </div>
+                                <div class="form-text">Used for announcing generated teams</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="webhook-bracket" class="form-label fw-semibold">
+                                    <i class="bi bi-trophy me-2 text-warning"></i>Bracket Announcements
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-discord"></i>
+                                    </span>
+                                    <input type="url" class="form-control" id="webhook-bracket" placeholder="Paste Discord webhook URL for bracket announcements...">
+                                    <button type="button" class="btn btn-outline-success" id="save-webhook-bracket">
+                                        <i class="bi bi-check-lg me-1"></i>Save
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" id="delete-webhook-bracket">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="test-webhook-bracket">
+                                        <i class="bi bi-send me-1"></i>Test
+                                    </button>
+                                </div>
+                                <div class="form-text">Used for announcing tournament bracket creation</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="webhook-updates" class="form-label fw-semibold">
+                                    <i class="bi bi-arrow-clockwise me-2 text-info"></i>Bracket Updates
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-discord"></i>
+                                    </span>
+                                    <input type="url" class="form-control" id="webhook-updates" placeholder="Paste Discord webhook URL for bracket updates...">
+                                    <button type="button" class="btn btn-outline-success" id="save-webhook-updates">
+                                        <i class="bi bi-check-lg me-1"></i>Save
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" id="delete-webhook-updates">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="test-webhook-updates">
+                                        <i class="bi bi-send me-1"></i>Test
+                                    </button>
+                                </div>
+                                <div class="form-text">Used for announcing bracket progress updates</div>
+                            </div>
+                        </form>
+                        
+                        <!-- Status Display Area -->
+                        <div id="discord-webhooks-status" class="mt-4"></div>
+                    </div>
+                </div>
+                
+                <!-- Help Section -->
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-2">
+                        <h3 class="h5 mb-0 text-primary">
+                            <i class="bi bi-question-circle me-2"></i>How to Set Up Discord Webhooks
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <h6 class="fw-semibold">Step 1: Create a Discord Channel</h6>
+                                <ol class="small text-muted">
+                                    <li>Open your Discord server</li>
+                                    <li>Create a new channel for announcements</li>
+                                    <li>Right-click the channel and select "Edit Channel"</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-semibold">Step 2: Get the Webhook URL</h6>
+                                <ol class="small text-muted">
+                                    <li>Go to "Integrations" in channel settings</li>
+                                    <li>Click "Create Webhook"</li>
+                                    <li>Copy the webhook URL</li>
+                                    <li>Paste it in the field above</li>
+                                </ol>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Tip:</strong> You can use the same webhook URL for multiple types of announcements, or create separate channels for different types of notifications.
+                        </div>
                     </div>
                 </div>
             </div>
