@@ -116,6 +116,8 @@ async function initRegistration() {
                     reopenSession(sessionId, sessionTitle);
                 } else if (target.classList.contains('delete-session')) {
                     deleteSession(sessionId, sessionTitle);
+                } else if (target.classList.contains('send-discord-message')) {
+                    sendDiscordRegistrationMessage(sessionId);
                 }
             });
         }
@@ -287,6 +289,9 @@ async function initRegistration() {
                         </button>
                         <button class="btn btn-outline-secondary open-session-link" data-session-id="${session.sessionId}" title="Open Link">
                             <i class="bi bi-box-arrow-up-right"></i>
+                        </button>
+                        <button class="btn btn-outline-discord send-discord-message" data-session-id="${session.sessionId}" title="Send to Discord">
+                            <i class="bi bi-discord"></i>
                         </button>
                         ${canModify ? `
                             <button class="btn btn-outline-info edit-session" data-session-id="${session.sessionId}" title="Edit">
@@ -712,5 +717,52 @@ async function initRegistration() {
     window.initRegistration = initRegistration;
     window.resetRegistrationModule = resetRegistrationModule;
     window.notifyPlayerListsToRefresh = notifyPlayerListsToRefresh;
+    
+    // Add the sendDiscordRegistrationMessage function at module scope
+    async function sendDiscordRegistrationMessage(sessionId) {
+        try {
+            // Find the session data
+            const session = state.registrationSessions.find(s => s.sessionId === sessionId);
+            if (!session) {
+                window.utils.showNotification('Registration session not found.', 'error');
+                return;
+            }
+            // Get webhook URL and template from localStorage (or fallback to default)
+            const webhookUrl = localStorage.getItem('webhook-registration') || '';
+            if (!webhookUrl) {
+                window.utils.showNotification('No Discord webhook URL set for registration. Please configure it in the Discord tab.', 'warning');
+                return;
+            }
+            // Get template
+            const defaultTemplates = window.defaultTemplates || {
+                registration: `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`
+            };
+            const template = localStorage.getItem('discord_template_registration') || defaultTemplates.registration;
+            // Fill template
+            const message = template
+                .replace('{tournament_name}', session.title)
+                .replace('{player_count}', `${session.playerCount}/${session.maxPlayers}`)
+                .replace('{created_date}', formatDate(session.createdAt))
+                .replace('{tournament_id}', session.sessionId);
+            // Send to Discord webhook
+            const res = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: message,
+                    username: 'Tournament Manager',
+                    avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png'
+                })
+            });
+            if (res.ok) {
+                window.utils.showNotification('Registration link sent to Discord!', 'success');
+            } else {
+                const errorText = await res.text();
+                window.utils.showNotification('Failed to send to Discord. ' + errorText, 'error');
+            }
+        } catch (error) {
+            window.utils.showNotification('Error sending to Discord: ' + error.message, 'error');
+        }
+    }
     
 })(); 
