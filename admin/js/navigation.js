@@ -411,17 +411,32 @@ async function loadRegistration() {
  */
 async function loadTournamentBracket() {
     updateActiveTab('tournament-bracket-tab');
-    const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'tournament-bracket.html',
-        jsFile: 'js/tournamentBrackets.js',
-        contentContainer: 'main-content',
-        initFunction: 'initTournamentBrackets',
-        cleanupFunction: 'cleanupTournamentBrackets'
-    });
-    if (typeof window.refreshTournamentBracketData === 'function') {
-        window.refreshTournamentBracketData();
+    
+    try {
+        // Use the new module loading system with guards
+        await loadJavaScriptModule('js/tournamentBrackets.js');
+        
+        // Load the HTML content
+        const container = document.getElementById('main-content');
+        if (container) {
+            const response = await fetch('tournament-bracket.html');
+            if (response.ok) {
+                container.innerHTML = await response.text();
+            } else {
+                throw new Error(`Failed to load tournament-bracket.html: ${response.statusText}`);
+            }
+        }
+        
+        // Refresh data if function exists
+        if (typeof window.refreshTournamentBracketData === 'function') {
+            window.refreshTournamentBracketData();
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error loading tournament bracket:', error);
+        return false;
     }
-    return result;
 }
 
 /**
