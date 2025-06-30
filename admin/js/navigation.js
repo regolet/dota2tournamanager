@@ -628,6 +628,7 @@ function initNavigation() {
     const playerListTab = document.getElementById('player-list-tab');
     const registrationTab = document.getElementById('registration-tab');
     const masterlistTab = document.getElementById('masterlist-tab');
+    const discordTab = document.getElementById('discord-tab');
     
     if (teamBalancerTab) {
         teamBalancerTab.addEventListener('click', async function(e) {
@@ -680,6 +681,19 @@ function initNavigation() {
             navigationState.userHasInteracted = true;
             try {
                 await loadMasterlist();
+                showWelcomeNotificationOnce();
+            } catch (error) {
+                // Silent error handling
+            }
+        });
+    }
+    
+    if (discordTab) {
+        discordTab.addEventListener('click', async function(e) {
+            e.preventDefault();
+            navigationState.userHasInteracted = true;
+            try {
+                await loadDiscord();
                 showWelcomeNotificationOnce();
             } catch (error) {
                 // Silent error handling
@@ -882,8 +896,22 @@ async function initializeModule(moduleFileName) {
                 }
                 break;
                 
+            case 'discord':
+                if (typeof window.initDiscord === 'function') {
+                    console.log('🚀 Navigation: Calling initDiscord...');
+                    await window.initDiscord();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initDiscord';
+                    window[moduleKey].lastInitTime = now;
+                    console.log('✅ Navigation: Discord initialized');
+                } else {
+                    console.error('❌ Navigation: initDiscord function not found');
+                }
+                break;
+                
             default:
-                console.warn('⚠️ Navigation: No specific initialization for module:', moduleFileName);
+                console.log('🚀 Navigation: No specific initialization for module:', moduleFileName);
+                break;
         }
     } catch (error) {
         console.error('❌ Navigation: Error initializing module:', moduleFileName, error);
