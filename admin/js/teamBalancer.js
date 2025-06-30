@@ -45,14 +45,28 @@ function fetchWithAuth(url, options = {}) {
  */
 async function initTeamBalancer() {
     try {
+        // Prevent redundant initialization
+        if (isTeamBalancerInitialized) {
+            console.log('Team Balancer: Already initialized, skipping...');
+            return;
+        }
+        
+        console.log('Team Balancer: Starting initialization...');
+        
         await createTeamBalancerSessionSelector();
         await loadRegistrationSessions();
         setupTeamBalancerEventListeners();
         setupBalancerButtons();
         setupTeamBalancerRegistrationListener();
+        
+        // Mark as initialized
+        isTeamBalancerInitialized = true;
+        
         if (typeof window.enableOnlyNavigationTab === 'function') {
             window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
         }
+        
+        console.log('Team Balancer: Initialization completed successfully');
     } catch (error) {
         console.error('Error initializing team balancer:', error);
         window.showNotification('Failed to initialize team balancer', 'error');
@@ -66,6 +80,8 @@ async function initTeamBalancer() {
  * Cleanup function for team balancer when switching tabs
  */
 function cleanupTeamBalancer() {
+    console.log('Team Balancer: Starting cleanup...');
+    
     // Reset the initialization flag to allow re-initialization
     isTeamBalancerInitialized = false;
     
@@ -108,7 +124,7 @@ function cleanupTeamBalancer() {
         window.teamBalancerDelegatedListenerAdded = false;
     }
     
-    console.log('Team balancer cleanup completed');
+    console.log('Team Balancer: Cleanup completed');
 }
 
 /**

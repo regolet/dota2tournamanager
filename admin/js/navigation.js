@@ -737,6 +737,15 @@ async function loadJavaScriptModule(jsPath) {
     try {
         console.log('📦 Navigation: Loading JavaScript module:', jsPath);
         
+        // Check if module is already loaded and initialized
+        const moduleFileName = jsPath.split('/').pop().replace('.js', '');
+        const moduleKey = `module_${moduleFileName}`;
+        
+        if (window[moduleKey] && window[moduleKey].isInitialized) {
+            console.log('📦 Navigation: Module already initialized:', moduleFileName);
+            return;
+        }
+        
         // Remove any existing script tags for this module (force reload)
         const existingScripts = document.querySelectorAll(`script[src*="${jsPath.split('/').pop()}"]`);
         existingScripts.forEach(script => {
@@ -771,7 +780,6 @@ async function loadJavaScriptModule(jsPath) {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Call the appropriate initialization function based on the module
-        const moduleFileName = jsPath.split('/').pop().replace('.js', '');
         console.log('📦 Navigation: Initializing module:', moduleFileName);
         await initializeModule(moduleFileName);
         
@@ -782,17 +790,37 @@ async function loadJavaScriptModule(jsPath) {
 }
 
 /**
- * Initialize the appropriate module after loading
+ * Initialize the appropriate module after loading with guards
  */
 async function initializeModule(moduleFileName) {
     try {
         console.log('🚀 Navigation: Starting module initialization for:', moduleFileName);
+        
+        // Create module tracking object if it doesn't exist
+        const moduleKey = `module_${moduleFileName}`;
+        if (!window[moduleKey]) {
+            window[moduleKey] = {
+                isInitialized: false,
+                initFunction: null,
+                lastInitTime: 0
+            };
+        }
+        
+        // Check if module was recently initialized (within 5 seconds)
+        const now = Date.now();
+        if (window[moduleKey].isInitialized && (now - window[moduleKey].lastInitTime) < 5000) {
+            console.log('🚀 Navigation: Module recently initialized, skipping:', moduleFileName);
+            return;
+        }
         
         switch (moduleFileName) {
             case 'teamBalancer':
                 if (typeof window.initTeamBalancer === 'function') {
                     console.log('🚀 Navigation: Calling initTeamBalancer...');
                     await window.initTeamBalancer();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initTeamBalancer';
+                    window[moduleKey].lastInitTime = now;
                     console.log('✅ Navigation: Team Balancer initialized');
                 } else {
                     console.error('❌ Navigation: initTeamBalancer function not found');
@@ -803,6 +831,9 @@ async function initializeModule(moduleFileName) {
                 if (typeof window.initRandomPicker === 'function') {
                     console.log('🚀 Navigation: Calling initRandomPicker...');
                     await window.initRandomPicker();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initRandomPicker';
+                    window[moduleKey].lastInitTime = now;
                     console.log('✅ Navigation: Random Picker initialized');
                 } else {
                     console.error('❌ Navigation: initRandomPicker function not found');
@@ -813,6 +844,9 @@ async function initializeModule(moduleFileName) {
                 if (typeof window.initPlayerList === 'function') {
                     console.log('🚀 Navigation: Calling initPlayerList...');
                     await window.initPlayerList();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initPlayerList';
+                    window[moduleKey].lastInitTime = now;
                     console.log('✅ Navigation: Player List initialized');
                 } else {
                     console.error('❌ Navigation: initPlayerList function not found');
@@ -823,6 +857,9 @@ async function initializeModule(moduleFileName) {
                 if (typeof window.initRegistration === 'function') {
                     console.log('🚀 Navigation: Calling initRegistration...');
                     await window.initRegistration();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initRegistration';
+                    window[moduleKey].lastInitTime = now;
                     console.log('✅ Navigation: Registration initialized');
                 } else {
                     console.error('❌ Navigation: initRegistration function not found');
@@ -833,6 +870,9 @@ async function initializeModule(moduleFileName) {
                 if (typeof window.initMasterlist === 'function') {
                     console.log('🚀 Navigation: Calling initMasterlist...');
                     await window.initMasterlist();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initMasterlist';
+                    window[moduleKey].lastInitTime = now;
                     console.log('✅ Navigation: Masterlist initialized');
                 } else {
                     console.error('❌ Navigation: initMasterlist function not found');
