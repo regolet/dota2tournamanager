@@ -1503,46 +1503,80 @@ window.deleteUser = deleteUser;
  */
 async function loadDiscord() {
     try {
+        console.log('🔍 Discord Debug: Starting loadDiscord function');
+        
         updateActiveTab('discord-tab');
+        
+        // Check if Discord section exists before any operations
+        const discordSection = document.getElementById('discord-webhooks-section');
+        console.log('🔍 Discord Debug: Discord section found before operations:', !!discordSection);
+        
+        if (!discordSection) {
+            console.error('🔍 Discord Debug: Discord section not found in DOM');
+            console.log('🔍 Discord Debug: Main content container children:', document.getElementById('main-content')?.children);
+            throw new Error('Discord section not found in HTML');
+        }
         
         // Show the Discord webhooks section that's already in the HTML
         const container = document.getElementById('main-content');
-        const discordSection = document.getElementById('discord-webhooks-section');
+        console.log('🔍 Discord Debug: Main content container found:', !!container);
         
-        if (discordSection) {
-            // Hide the loading content and show Discord section
-            const loadingContent = container.querySelector('.text-center.py-5.text-muted');
-            if (loadingContent) {
-                loadingContent.style.display = 'none';
-            }
-            discordSection.classList.remove('d-none');
-            
-            // Load the Discord JavaScript module directly without clearing container
-            const script = document.createElement('script');
-            script.src = 'js/discord.js?v=' + Date.now();
-            script.type = 'text/javascript';
-            
-            await new Promise((resolve, reject) => {
-                script.onload = () => {
-                    console.log('✅ Discord script loaded successfully');
-                    resolve();
-                };
-                script.onerror = (error) => {
-                    console.error('❌ Discord script load error:', error);
-                    reject(new Error('Failed to load discord.js'));
-                };
-                document.head.appendChild(script);
-            });
-            
-            // Initialize Discord functionality
-            if (window.initDiscord) {
-                window.initDiscord();
-            }
-            
-            return true;
-        } else {
-            throw new Error('Discord section not found in HTML');
+        // Hide the loading content and show Discord section
+        const loadingContent = container.querySelector('.text-center.py-5.text-muted');
+        console.log('🔍 Discord Debug: Loading content found:', !!loadingContent);
+        
+        if (loadingContent) {
+            loadingContent.style.display = 'none';
         }
+        
+        // Check Discord section again after hiding loading content
+        const discordSectionAfterHide = document.getElementById('discord-webhooks-section');
+        console.log('🔍 Discord Debug: Discord section after hiding loading:', !!discordSectionAfterHide);
+        
+        if (!discordSectionAfterHide) {
+            throw new Error('Discord section was removed after hiding loading content');
+        }
+        
+        discordSectionAfterHide.classList.remove('d-none');
+        console.log('🔍 Discord Debug: Discord section made visible');
+        
+        // Load the Discord JavaScript module directly without clearing container
+        const script = document.createElement('script');
+        script.src = 'js/discord.js?v=' + Date.now();
+        script.type = 'text/javascript';
+        
+        console.log('🔍 Discord Debug: Loading Discord script...');
+        
+        await new Promise((resolve, reject) => {
+            script.onload = () => {
+                console.log('✅ Discord script loaded successfully');
+                resolve();
+            };
+            script.onerror = (error) => {
+                console.error('❌ Discord script load error:', error);
+                reject(new Error('Failed to load discord.js'));
+            };
+            document.head.appendChild(script);
+        });
+        
+        // Check Discord section again after script load
+        const discordSectionAfterScript = document.getElementById('discord-webhooks-section');
+        console.log('🔍 Discord Debug: Discord section after script load:', !!discordSectionAfterScript);
+        
+        if (!discordSectionAfterScript) {
+            throw new Error('Discord section was removed after script load');
+        }
+        
+        // Initialize Discord functionality
+        if (window.initDiscord) {
+            console.log('🔍 Discord Debug: Calling initDiscord...');
+            window.initDiscord();
+            console.log('🔍 Discord Debug: initDiscord completed');
+        } else {
+            console.warn('🔍 Discord Debug: initDiscord function not found');
+        }
+        
+        return true;
     } catch (error) {
         console.error('Error loading Discord:', error);
         return false;
