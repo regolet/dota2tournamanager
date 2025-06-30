@@ -209,7 +209,30 @@ function initDiscord() {
       });
     }
   });
-  
+
+  // Edit Template button handlers
+  document.getElementById('edit-template-registration').addEventListener('click', () => openEditTemplateModal('registration'));
+  document.getElementById('edit-template-teams').addEventListener('click', () => openEditTemplateModal('teams'));
+  document.getElementById('edit-template-bracket').addEventListener('click', () => openEditTemplateModal('bracket'));
+  document.getElementById('edit-template-updates').addEventListener('click', () => openEditTemplateModal('updates'));
+
+  // Save template
+  document.getElementById('edit-template-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const type = document.getElementById('edit-template-type').value;
+    const content = document.getElementById('edit-template-content').value;
+    setTemplate(type, content);
+    showDiscordNotification('Template saved!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('editTemplateModal')).hide();
+  });
+
+  // Reset to default
+  document.getElementById('reset-template-btn').addEventListener('click', function() {
+    const type = document.getElementById('edit-template-type').value;
+    document.getElementById('edit-template-content').value = defaultTemplates[type];
+    showDiscordNotification('Template reset to default.', 'info');
+  });
+
   return true;
 }
 
@@ -269,31 +292,6 @@ function openEditTemplateModal(type) {
   document.getElementById('editTemplateModalLabel').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Discord Message Template: <span class="text-primary">${label}</span>`;
   modal.show();
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Edit Template button handlers
-  document.getElementById('edit-template-registration').addEventListener('click', () => openEditTemplateModal('registration'));
-  document.getElementById('edit-template-teams').addEventListener('click', () => openEditTemplateModal('teams'));
-  document.getElementById('edit-template-bracket').addEventListener('click', () => openEditTemplateModal('bracket'));
-  document.getElementById('edit-template-updates').addEventListener('click', () => openEditTemplateModal('updates'));
-
-  // Save template
-  document.getElementById('edit-template-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const type = document.getElementById('edit-template-type').value;
-    const content = document.getElementById('edit-template-content').value;
-    setTemplate(type, content);
-    showDiscordNotification('Template saved!', 'success');
-    bootstrap.Modal.getInstance(document.getElementById('editTemplateModal')).hide();
-  });
-
-  // Reset to default
-  document.getElementById('reset-template-btn').addEventListener('click', function() {
-    const type = document.getElementById('edit-template-type').value;
-    document.getElementById('edit-template-content').value = defaultTemplates[type];
-    showDiscordNotification('Template reset to default.', 'info');
-  });
-});
 
 // Export for module system
 if (typeof module !== 'undefined' && module.exports) {
