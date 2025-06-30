@@ -237,18 +237,24 @@ async function initializeDatabase() {
     // Create optimal indexes for performance
     await createBasicIndexes();
     
-    // Create discord_webhooks table for storing Discord webhook URLs
+    // Create discord_webhooks table
     await sql`
       CREATE TABLE IF NOT EXISTS discord_webhooks (
-        id SERIAL PRIMARY KEY,
         admin_user_id VARCHAR(255) NOT NULL,
-        type VARCHAR(50) NOT NULL, -- e.g., 'registration', 'teams', 'bracket', 'updates'
+        type VARCHAR(50) NOT NULL,
         url TEXT NOT NULL,
+        template TEXT,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(admin_user_id, type)
+        PRIMARY KEY (admin_user_id, type)
       )
     `;
+    // Add template column if it doesn't exist
+    try {
+      await sql`ALTER TABLE discord_webhooks ADD COLUMN IF NOT EXISTS template TEXT`;
+    } catch (error) {
+      // Ignore if already exists
+    }
     
     console.log('Database initialization completed successfully');
 
@@ -1943,17 +1949,19 @@ export async function getTournaments(adminUserId = null) {
 // Discord Webhooks CRUD
 export async function getDiscordWebhooks(adminUserId) {
   await initializeDatabase();
-  return await sql`SELECT type, url FROM discord_webhooks WHERE admin_user_id = ${adminUserId}`;
+  return await sql`SELECT type, url, template FROM discord_webhooks WHERE admin_user_id = ${adminUserId}`;
 }
 
-export async function setDiscordWebhook(adminUserId, type, url) {
+export async function setDiscordWebhook(adminUserId, type, url, template = null) {
   await initializeDatabase();
-  await sql`
-    INSERT INTO discord_webhooks (admin_user_id, type, url, created_at, updated_at)
-    VALUES (${adminUserId}, ${type}, ${url}, NOW(), NOW())
+  console.log('[setDiscordWebhook] Saving webhook:', { adminUserId, type, url, template });
+  const result = await sql`
+    INSERT INTO discord_webhooks (admin_user_id, type, url, template, created_at, updated_at)
+    VALUES (${adminUserId}, ${type}, ${url}, ${template}, NOW(), NOW())
     ON CONFLICT (admin_user_id, type)
-    DO UPDATE SET url = EXCLUDED.url, updated_at = NOW()
+    DO UPDATE SET url = EXCLUDED.url, template = EXCLUDED.template, updated_at = NOW()
   `;
+  console.log('[setDiscordWebhook] SQL result:', result);
   return true;
 }
 
