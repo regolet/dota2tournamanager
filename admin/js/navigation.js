@@ -1517,15 +1517,29 @@ async function loadDiscord() {
             }
             discordSection.classList.remove('d-none');
             
-            // Load the Discord JavaScript module for functionality
-            const result = await loadJavaScriptModule('discord.js');
+            // Load the Discord JavaScript module directly without clearing container
+            const script = document.createElement('script');
+            script.src = 'js/discord.js?v=' + Date.now();
+            script.type = 'text/javascript';
+            
+            await new Promise((resolve, reject) => {
+                script.onload = () => {
+                    console.log('✅ Discord script loaded successfully');
+                    resolve();
+                };
+                script.onerror = (error) => {
+                    console.error('❌ Discord script load error:', error);
+                    reject(new Error('Failed to load discord.js'));
+                };
+                document.head.appendChild(script);
+            });
             
             // Initialize Discord functionality
-            if (result && window.initDiscord) {
+            if (window.initDiscord) {
                 window.initDiscord();
             }
             
-            return result;
+            return true;
         } else {
             throw new Error('Discord section not found in HTML');
         }
