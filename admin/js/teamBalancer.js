@@ -1307,7 +1307,33 @@ function syncSessionSelectorToState() {
     }
 }
 
-// Load teams from saved configurations
+// Injects the load teams modal if not present
+function ensureLoadTeamsModal() {
+    if (document.getElementById('load-teams-modal')) return;
+    const modalHtml = `
+    <div class="modal fade" id="load-teams-modal" tabindex="-1" aria-labelledby="loadTeamsModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loadTeamsModalLabel">Load Saved Team Set</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="load-teams-form">
+              <div id="load-teams-list" class="list-group mb-2"></div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirm-load-teams-btn">Load</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Load teams from saved configurations using a modal
 async function loadTeams() {
     if (window.isTeamBalancerLoading) return;
     window.isTeamBalancerLoading = true;
@@ -1318,18 +1344,33 @@ async function loadTeams() {
             window.showNotification('No saved teams found.', 'warning');
             return;
         }
-        // Simple prompt for selection (replace with modal for better UX)
-        const titles = data.teamSets.map((set, i) => `${i + 1}: ${set.title}`).join('\n');
-        const choice = prompt(`Select a team set to load (enter number):\n${titles}`);
-        const idx = parseInt(choice) - 1;
-        if (isNaN(idx) || idx < 0 || idx >= data.teamSets.length) {
-            window.showNotification('Invalid selection.', 'warning');
-            return;
-        }
-        const selected = data.teamSets[idx];
-        window.teamBalancerData.balancedTeams = selected.teams;
-        displayBalancedTeams(window.teamBalancerData.balancedTeams);
-        window.showNotification('Teams loaded from saved configuration.', 'success');
+        ensureLoadTeamsModal();
+        const modalEl = document.getElementById('load-teams-modal');
+        const listEl = document.getElementById('load-teams-list');
+        listEl.innerHTML = data.teamSets.map((set, i) => `
+          <label class="list-group-item">
+            <input class="form-check-input me-1" type="radio" name="teamSetRadio" value="${i}">
+            ${set.title}
+          </label>
+        `).join('');
+        // Show modal
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+        // Confirm button handler
+        const confirmBtn = document.getElementById('confirm-load-teams-btn');
+        confirmBtn.onclick = function() {
+            const selected = listEl.querySelector('input[name="teamSetRadio"]:checked');
+            if (!selected) {
+                window.showNotification('Please select a team set to load.', 'warning');
+                return;
+            }
+            const idx = parseInt(selected.value);
+            const selectedSet = data.teamSets[idx];
+            window.teamBalancerData.balancedTeams = selectedSet.teams;
+            displayBalancedTeams(window.teamBalancerData.balancedTeams);
+            window.showNotification('Teams loaded from saved configuration.', 'success');
+            bsModal.hide();
+        };
     } catch (error) {
         console.error('Error loading teams:', error);
         window.showNotification('Error loading saved teams.', 'error');
