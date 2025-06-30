@@ -33,7 +33,6 @@ async function loadWebhooks() {
       webhookTypes.forEach(({ type, input }) => {
         const wh = data.webhooks.find(w => w.type === type);
         document.getElementById(input).value = wh ? wh.url : '';
-        // Also store template in a global for editing
         if (!window.discordTemplates) window.discordTemplates = {};
         window.discordTemplates[type] = wh && wh.template ? wh.template : defaultTemplates[type];
       });
