@@ -131,7 +131,7 @@ async function handleGet(event, adminUserId, adminRole, headers) {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(teamConfigs)
+        body: JSON.stringify({ success: true, teamSets: teamConfigs })
       };
     }
   } catch (error) {
