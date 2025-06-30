@@ -1200,7 +1200,6 @@ window.teamBalancerModule = {
     clearTeams,
     exportTeams,
     saveTeams,
-    deleteSavedTeams,
     deleteTournamentSession,
     loadPlayersFromTeams
 };
