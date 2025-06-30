@@ -125,9 +125,9 @@ function setupTeamBalancerEventListeners() {
     }
     
     // Generate teams button
-    const generateBtn = document.getElementById('generate-teams');
-    if (generateBtn) {
-        generateBtn.addEventListener('click', autoBalance);
+    const generateTeamsBtn = document.getElementById('generate-teams');
+    if (generateTeamsBtn) {
+        generateTeamsBtn.addEventListener('click', autoBalance);
     }
     
     // Clear teams button
@@ -136,22 +136,22 @@ function setupTeamBalancerEventListeners() {
         clearTeamsBtn.addEventListener('click', () => clearTeams());
     }
     
-    // Save teams button
-    const saveTeamsBtn = document.getElementById('save-teams-btn');
-    if (saveTeamsBtn) {
-        saveTeamsBtn.addEventListener('click', saveTeams);
-    }
-    
     // Export teams button
     const exportTeamsBtn = document.getElementById('export-teams');
     if (exportTeamsBtn) {
         exportTeamsBtn.addEventListener('click', exportTeams);
     }
     
-    // Load teams button
-    const loadTeamsBtn = document.getElementById('load-teams-btn');
-    if (loadTeamsBtn) {
-        loadTeamsBtn.addEventListener('click', showLoadTeamsModal);
+    // Save teams button
+    const saveTeamsBtn = document.getElementById('save-teams-btn');
+    if (saveTeamsBtn) {
+        saveTeamsBtn.addEventListener('click', saveTeams);
+    }
+    
+    // Load players from teams
+    const loadPlayersFromTeamsBtn = document.getElementById('load-players-from-teams');
+    if (loadPlayersFromTeamsBtn) {
+        loadPlayersFromTeamsBtn.addEventListener('click', loadPlayersFromTeams);
     }
     
     // Add player form
@@ -1200,7 +1200,6 @@ window.teamBalancerModule = {
     clearTeams,
     exportTeams,
     saveTeams,
-    loadSelectedTeams,
     deleteSavedTeams,
     deleteTournamentSession,
     loadPlayersFromTeams
@@ -1297,9 +1296,5 @@ function syncSessionSelectorToState() {
         window.teamBalancerData.currentSessionId = selector.value;
     }
 }
-
-// Expose showLoadTeamsModal and loadSelectedTeams globally for compatibility
-window.showLoadTeamsModal = typeof showLoadTeamsModal !== 'undefined' ? showLoadTeamsModal : function() { console.error('showLoadTeamsModal is not implemented'); };
-window.loadSelectedTeams = typeof loadSelectedTeams !== 'undefined' ? loadSelectedTeams : function() { console.error('loadSelectedTeams is not implemented'); };
 
 })();
