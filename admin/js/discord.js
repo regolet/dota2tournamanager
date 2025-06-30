@@ -33,8 +33,6 @@ async function loadWebhooks() {
       webhookTypes.forEach(({ type, input }) => {
         const wh = data.webhooks.find(w => w.type === type);
         document.getElementById(input).value = wh ? wh.url : '';
-        if (!window.discordTemplates) window.discordTemplates = {};
-        window.discordTemplates[type] = wh && wh.template ? wh.template : '';
       });
       showDiscordNotification('Webhook configuration loaded successfully', 'success');
     } else {
@@ -61,11 +59,6 @@ async function saveWebhook(type, inputId) {
     return;
   }
   
-  // Only use the template from window.discordTemplates[type], no fallback
-  const template = (window.discordTemplates && window.discordTemplates[type])
-    ? window.discordTemplates[type]
-    : '';
-  
   try {
     showDiscordNotification('Saving webhook...', 'info');
     
@@ -75,7 +68,7 @@ async function saveWebhook(type, inputId) {
         'Content-Type': 'application/json', 
         'x-session-id': localStorage.getItem('adminSessionId') 
       },
-      body: JSON.stringify({ type, url, template })
+      body: JSON.stringify({ type, url })
     });
     
     if (!res.ok) {
@@ -228,23 +221,39 @@ function initDiscord() {
     e.preventDefault();
     const type = document.getElementById('edit-template-type').value;
     const content = document.getElementById('edit-template-content').value;
-    window.discordTemplates[type] = content;
-    // Save both URL and template
+    // Get the current webhook URL for this type from the input
     const inputId = webhookTypes.find(w => w.type === type).input;
-    await saveWebhook(type, inputId);
-    showDiscordNotification('Template saved!', 'success');
-    bootstrap.Modal.getInstance(document.getElementById('editTemplateModal')).hide();
+    const url = document.getElementById(inputId).value.trim();
+    if (!url) {
+      showDiscordNotification('Please enter a webhook URL.', 'warning');
+      return;
+    }
+    try {
+      showDiscordNotification('Saving webhook...', 'info');
+      const res = await fetch('/.netlify/functions/discord-webhooks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-id': localStorage.getItem('adminSessionId')
+        },
+        body: JSON.stringify({ type, url, template: content })
+      });
+      if (!res.ok) throw new Error('Failed to save webhook');
+      const data = await res.json();
+      if (data.success) {
+        showDiscordNotification('Template saved!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editTemplateModal')).hide();
+      } else {
+        showDiscordNotification(data.message || 'Failed to save webhook.', 'error');
+      }
+    } catch (error) {
+      showDiscordNotification('Failed to save webhook. Please try again.', 'error');
+    }
   });
 
   // Reset to default
-  document.getElementById('reset-template-btn').addEventListener('click', async function() {
-    const type = document.getElementById('edit-template-type').value;
+  document.getElementById('reset-template-btn').addEventListener('click', function() {
     document.getElementById('edit-template-content').value = '';
-    window.discordTemplates[type] = '';
-    // Save both URL and template
-    const inputId = webhookTypes.find(w => w.type === type).input;
-    await saveWebhook(type, inputId);
-    showDiscordNotification('Template reset to default.', 'info');
   });
 
   return true;
@@ -281,14 +290,25 @@ const defaultTemplates = {
 };
 
 // Modal logic
-function openEditTemplateModal(type) {
+async function openEditTemplateModal(type) {
   const modal = new bootstrap.Modal(document.getElementById('editTemplateModal'));
   document.getElementById('edit-template-type').value = type;
-  // Only use the value from window.discordTemplates[type], no fallback
-  document.getElementById('edit-template-content').value =
-    window.discordTemplates && window.discordTemplates[type]
-      ? window.discordTemplates[type]
-      : '';
+  // Fetch template from backend
+  try {
+    const res = await fetch('/.netlify/functions/discord-webhooks', {
+      headers: { 'x-session-id': localStorage.getItem('adminSessionId') }
+    });
+    if (!res.ok) throw new Error('Failed to fetch webhooks');
+    const data = await res.json();
+    let template = '';
+    if (data.success && Array.isArray(data.webhooks)) {
+      const wh = data.webhooks.find(w => w.type === type);
+      template = wh && wh.template ? wh.template : '';
+    }
+    document.getElementById('edit-template-content').value = template;
+  } catch (e) {
+    document.getElementById('edit-template-content').value = '';
+  }
   // Set modal title
   const label = {
     registration: 'Registration Link',
