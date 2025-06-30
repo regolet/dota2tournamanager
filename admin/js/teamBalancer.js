@@ -1298,4 +1298,8 @@ function syncSessionSelectorToState() {
     }
 }
 
+// Expose showLoadTeamsModal and loadSelectedTeams globally for compatibility
+window.showLoadTeamsModal = typeof showLoadTeamsModal !== 'undefined' ? showLoadTeamsModal : function() { console.error('showLoadTeamsModal is not implemented'); };
+window.loadSelectedTeams = typeof loadSelectedTeams !== 'undefined' ? loadSelectedTeams : function() { console.error('loadSelectedTeams is not implemented'); };
+
 })();
