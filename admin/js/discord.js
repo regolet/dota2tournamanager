@@ -7,7 +7,7 @@ const webhookTypes = [
 ];
 
 // Use centralized notification system instead of local status
-function showNotification(message, type = 'info') {
+function showDiscordNotification(message, type = 'info') {
   if (window.showNotification) {
     window.showNotification(message, type);
   } else {
@@ -18,7 +18,7 @@ function showNotification(message, type = 'info') {
 
 async function loadWebhooks() {
   try {
-    showNotification('Loading webhook configuration...', 'info');
+    showDiscordNotification('Loading webhook configuration...', 'info');
     
     const res = await fetch('/.netlify/functions/discord-webhooks', {
       headers: { 'x-session-id': localStorage.getItem('adminSessionId') }
@@ -34,20 +34,20 @@ async function loadWebhooks() {
         const wh = data.webhooks.find(w => w.type === type);
         document.getElementById(input).value = wh ? wh.url : '';
       });
-      showNotification('Webhook configuration loaded successfully', 'success');
+      showDiscordNotification('Webhook configuration loaded successfully', 'success');
     } else {
-      showNotification(data.message || 'Failed to load webhook configuration', 'error');
+      showDiscordNotification(data.message || 'Failed to load webhook configuration', 'error');
     }
   } catch (error) {
     console.error('Error loading webhooks:', error);
-    showNotification('Failed to load webhook configuration. Please try again.', 'error');
+    showDiscordNotification('Failed to load webhook configuration. Please try again.', 'error');
   }
 }
 
 async function saveWebhook(type, inputId) {
   const url = document.getElementById(inputId).value.trim();
   if (!url) {
-    showNotification('Please enter a webhook URL.', 'warning');
+    showDiscordNotification('Please enter a webhook URL.', 'warning');
     return;
   }
   
@@ -55,12 +55,12 @@ async function saveWebhook(type, inputId) {
   try {
     new URL(url);
   } catch {
-    showNotification('Please enter a valid webhook URL.', 'warning');
+    showDiscordNotification('Please enter a valid webhook URL.', 'warning');
     return;
   }
   
   try {
-    showNotification('Saving webhook...', 'info');
+    showDiscordNotification('Saving webhook...', 'info');
     
     const res = await fetch('/.netlify/functions/discord-webhooks', {
       method: 'POST',
@@ -77,19 +77,19 @@ async function saveWebhook(type, inputId) {
     
     const data = await res.json();
     if (data.success) {
-      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} webhook saved successfully!`, 'success');
+      showDiscordNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} webhook saved successfully!`, 'success');
     } else {
-      showNotification(data.message || 'Failed to save webhook.', 'error');
+      showDiscordNotification(data.message || 'Failed to save webhook.', 'error');
     }
   } catch (error) {
     console.error('Error saving webhook:', error);
-    showNotification('Failed to save webhook. Please try again.', 'error');
+    showDiscordNotification('Failed to save webhook. Please try again.', 'error');
   }
 }
 
 async function deleteWebhook(type, inputId) {
   try {
-    showNotification('Deleting webhook...', 'info');
+    showDiscordNotification('Deleting webhook...', 'info');
     
     const res = await fetch('/.netlify/functions/discord-webhooks', {
       method: 'DELETE',
@@ -107,20 +107,20 @@ async function deleteWebhook(type, inputId) {
     const data = await res.json();
     if (data.success) {
       document.getElementById(inputId).value = '';
-      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} webhook deleted successfully.`, 'success');
+      showDiscordNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} webhook deleted successfully.`, 'success');
     } else {
-      showNotification(data.message || 'Failed to delete webhook.', 'error');
+      showDiscordNotification(data.message || 'Failed to delete webhook.', 'error');
     }
   } catch (error) {
     console.error('Error deleting webhook:', error);
-    showNotification('Failed to delete webhook. Please try again.', 'error');
+    showDiscordNotification('Failed to delete webhook. Please try again.', 'error');
   }
 }
 
 async function testWebhook(inputId) {
   const url = document.getElementById(inputId).value.trim();
   if (!url) {
-    showNotification('Please enter a webhook URL to test.', 'warning');
+    showDiscordNotification('Please enter a webhook URL to test.', 'warning');
     return;
   }
   
@@ -128,12 +128,12 @@ async function testWebhook(inputId) {
   try {
     new URL(url);
   } catch {
-    showNotification('Please enter a valid webhook URL.', 'warning');
+    showDiscordNotification('Please enter a valid webhook URL.', 'warning');
     return;
   }
   
   try {
-    showNotification('Sending test message...', 'info');
+    showDiscordNotification('Sending test message...', 'info');
     
     const res = await fetch(url, {
       method: 'POST',
@@ -146,15 +146,15 @@ async function testWebhook(inputId) {
     });
     
     if (res.ok) {
-      showNotification('Test message sent successfully! Check your Discord channel.', 'success');
+      showDiscordNotification('Test message sent successfully! Check your Discord channel.', 'success');
     } else {
       const errorText = await res.text();
-      showNotification(`Failed to send test message. Discord returned: ${res.status}`, 'error');
+      showDiscordNotification(`Failed to send test message. Discord returned: ${res.status}`, 'error');
       console.error('Discord webhook error:', errorText);
     }
   } catch (error) {
     console.error('Error testing webhook:', error);
-    showNotification('Failed to send test message. Please check your webhook URL and try again.', 'error');
+    showDiscordNotification('Failed to send test message. Please check your webhook URL and try again.', 'error');
   }
 }
 
