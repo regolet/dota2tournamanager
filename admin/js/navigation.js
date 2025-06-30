@@ -427,10 +427,8 @@ async function loadTournamentBracket() {
             }
         }
         
-        // Refresh data if function exists
-        if (typeof window.refreshTournamentBracketData === 'function') {
-            window.refreshTournamentBracketData();
-        }
+        // Note: refreshTournamentBracketData is not needed here as the module
+        // already loads data during initialization via initTournamentBrackets
         
         return true;
     } catch (error) {
