@@ -1510,8 +1510,11 @@ async function loadDiscord() {
         const discordSection = document.getElementById('discord-webhooks-section');
         
         if (discordSection) {
-            // Hide all other content and show Discord section
-            container.innerHTML = '';
+            // Hide the loading content and show Discord section
+            const loadingContent = container.querySelector('.text-center.py-5.text-muted');
+            if (loadingContent) {
+                loadingContent.style.display = 'none';
+            }
             discordSection.classList.remove('d-none');
             
             // Load the Discord JavaScript module for functionality
