@@ -881,14 +881,8 @@ function displayBalancedTeams() {
                     <button id="load-teams-btn" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-folder2-open me-1"></i>Load
                     </button>
-                    <button id="load-players-from-teams-btn" class="btn btn-sm btn-outline-info">
-                        <i class="bi bi-arrow-left-circle me-1"></i>Load Players
-                    </button>
                     <button id="save-teams-btn" class="btn btn-sm btn-outline-success">
                         <i class="bi bi-floppy me-1"></i>Save
-                    </button>
-                    <button id="export-teams-btn" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-download me-1"></i>Export
                     </button>
                     <button id="clear-teams-btn" class="btn btn-sm btn-outline-danger">
                         <i class="bi bi-trash me-1"></i>Clear
@@ -954,6 +948,11 @@ function displayBalancedTeams() {
     const loadTeamsBtn = document.getElementById('load-teams-btn');
     if (loadTeamsBtn) {
         loadTeamsBtn.addEventListener('click', loadTeams);
+    }
+    // Re-attach Clear button event listener after rendering
+    const clearTeamsBtn = document.getElementById('clear-teams-btn');
+    if (clearTeamsBtn) {
+        clearTeamsBtn.addEventListener('click', () => clearTeams());
     }
     
     // Note: Event listeners are handled by event delegation in setupTeamBalancerEventListeners
