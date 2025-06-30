@@ -200,6 +200,32 @@
                 return {};
             }
         },
+        logout: () => {
+            try {
+                console.log('🔐 SessionManager: Logging out user...');
+                
+                // Clear cache
+                sessionCache.sessionId = null;
+                sessionCache.userData = null;
+                sessionCache.lastValidation = 0;
+                sessionCache.validationInProgress = false;
+                
+                // Clear localStorage
+                localStorage.removeItem("adminSessionId");
+                localStorage.removeItem("adminUser");
+                localStorage.removeItem("adminSessionExpires");
+                localStorage.removeItem("adminLoginTimestamp");
+                
+                console.log('✅ SessionManager: Logout completed, redirecting to login...');
+                
+                // Redirect to login page
+                window.location.href = "/admin/login.html";
+            } catch (e) {
+                console.error('❌ SessionManager: Error during logout:', e);
+                // Fallback redirect
+                window.location.href = "/admin/login.html";
+            }
+        },
         clearCache: () => {
             sessionCache.sessionId = null;
             sessionCache.userData = null;
