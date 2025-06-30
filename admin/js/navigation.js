@@ -880,7 +880,16 @@ async function initializeModule(moduleFileName) {
                 break;
                 
             case 'tournamentBrackets':
-                console.log('🚀 Navigation: Tournament bracket handled separately');
+                if (typeof window.initTournamentBrackets === 'function') {
+                    console.log('🚀 Navigation: Calling initTournamentBrackets...');
+                    await window.initTournamentBrackets();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initTournamentBrackets';
+                    window[moduleKey].lastInitTime = now;
+                    console.log('✅ Navigation: Tournament Brackets initialized');
+                } else {
+                    console.error('❌ Navigation: initTournamentBrackets function not found');
+                }
                 break;
                 
             default:
