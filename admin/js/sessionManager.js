@@ -200,6 +200,10 @@
                 return {};
             }
         },
+        getUserInfo: () => {
+            // Alias for getUser() for compatibility
+            return window.simpleSessionManager.getUser();
+        },
         logout: () => {
             try {
                 console.log('🔐 SessionManager: Logging out user...');
