@@ -237,6 +237,19 @@ async function initializeDatabase() {
     // Create optimal indexes for performance
     await createBasicIndexes();
     
+    // Create discord_webhooks table for storing Discord webhook URLs
+    await sql`
+      CREATE TABLE IF NOT EXISTS discord_webhooks (
+        id SERIAL PRIMARY KEY,
+        admin_user_id VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL, -- e.g., 'registration', 'teams', 'bracket', 'updates'
+        url TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(admin_user_id, type)
+      )
+    `;
+    
     console.log('Database initialization completed successfully');
 
   } catch (error) {
@@ -1925,4 +1938,27 @@ export async function getTournaments(adminUserId = null) {
     // Return empty array instead of throwing to prevent 500 errors
     return [];
   }
+}
+
+// Discord Webhooks CRUD
+export async function getDiscordWebhooks(adminUserId) {
+  await initializeDatabase();
+  return await sql`SELECT type, url FROM discord_webhooks WHERE admin_user_id = ${adminUserId}`;
+}
+
+export async function setDiscordWebhook(adminUserId, type, url) {
+  await initializeDatabase();
+  await sql`
+    INSERT INTO discord_webhooks (admin_user_id, type, url, created_at, updated_at)
+    VALUES (${adminUserId}, ${type}, ${url}, NOW(), NOW())
+    ON CONFLICT (admin_user_id, type)
+    DO UPDATE SET url = EXCLUDED.url, updated_at = NOW()
+  `;
+  return true;
+}
+
+export async function deleteDiscordWebhook(adminUserId, type) {
+  await initializeDatabase();
+  await sql`DELETE FROM discord_webhooks WHERE admin_user_id = ${adminUserId} AND type = ${type}`;
+  return true;
 }
