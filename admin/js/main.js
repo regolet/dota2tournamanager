@@ -41,6 +41,18 @@ async function loadAndInitModule({ htmlFile, jsFile, contentContainer, initFunct
         // 2. Call cleanup for previous module if it exists
         if (window.activeModule && window.activeModule.cleanup) {
             window.activeModule.cleanup();
+            
+            // Reset the initialization guard for the previous module
+            const previousModuleName = window.activeModule.name;
+            if (previousModuleName) {
+                // Map function name to module key
+                const moduleKey = getModuleKeyFromFunctionName(previousModuleName);
+                if (moduleKey && window[moduleKey]) {
+                    window[moduleKey].isInitialized = false;
+                    window[moduleKey].lastInitTime = 0;
+                    console.log(`🔄 Reset initialization guard for: ${moduleKey}`);
+                }
+            }
         }
 
         // 3. Load the HTML content FIRST
@@ -79,6 +91,22 @@ async function loadAndInitModule({ htmlFile, jsFile, contentContainer, initFunct
         }
         return false;
     }
+}
+
+/**
+ * Map init function names to module keys
+ */
+function getModuleKeyFromFunctionName(functionName) {
+    const mapping = {
+        'initTeamBalancer': 'module_teamBalancer',
+        'initTournamentBrackets': 'module_tournamentBrackets',
+        'initRandomPicker': 'module_randompicker',
+        'initPlayerList': 'module_playerList',
+        'initRegistration': 'module_registration',
+        'initMasterlist': 'module_masterlist'
+    };
+    
+    return mapping[functionName] || null;
 }
 
 // Define the application namespace and module loader immediately
