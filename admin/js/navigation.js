@@ -4,12 +4,13 @@
 // Simple template cache
 const templateCache = new Map();
 
-// Navigation loading state management
-const navigationState = {
+// Global state for navigation
+let navigationState = {
     isInitializing: true,
     disabledTabs: new Set(),
     readyTabs: new Set(),
-    hasShownWelcomeNotification: false
+    hasShownWelcomeNotification: false,
+    userHasInteracted: false
 };
 
 /**
@@ -92,6 +93,12 @@ async function enableActiveTabAfterInit() {
     // Wait a moment for DOM to be fully ready
     setTimeout(async () => {
         const activeTab = document.querySelector('.nav-link.active');
+        
+        // Only auto-load if user hasn't interacted yet
+        if (navigationState.userHasInteracted) {
+            console.log('🚫 Navigation: Skipping auto-initialization - user has already interacted');
+            return;
+        }
         
         let loadResult = false;
         
@@ -618,11 +625,10 @@ function initNavigation() {
     const registrationTab = document.getElementById('registration-tab');
     const masterlistTab = document.getElementById('masterlist-tab');
     
-    
-    
     if (teamBalancerTab) {
         teamBalancerTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            navigationState.userHasInteracted = true;
             await loadTeamBalancer();
             showWelcomeNotificationOnce();
         });
@@ -631,6 +637,7 @@ function initNavigation() {
     if (tournamentBracketTab) {
         tournamentBracketTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            navigationState.userHasInteracted = true;
             await loadTournamentBracket();
             showWelcomeNotificationOnce();
         });
@@ -639,6 +646,7 @@ function initNavigation() {
     if (randomPickerTab) {
         randomPickerTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            navigationState.userHasInteracted = true;
             await loadRandomPicker();
             showWelcomeNotificationOnce();
         });
@@ -647,6 +655,7 @@ function initNavigation() {
     if (playerListTab) {
         playerListTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            navigationState.userHasInteracted = true;
             await loadPlayerList();
             showWelcomeNotificationOnce();
         });
@@ -655,6 +664,7 @@ function initNavigation() {
     if (registrationTab) {
         registrationTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            navigationState.userHasInteracted = true;
             await loadRegistration();
             showWelcomeNotificationOnce();
         });
@@ -663,6 +673,7 @@ function initNavigation() {
     if (masterlistTab) {
         masterlistTab.addEventListener('click', async function(e) {
             e.preventDefault();
+            navigationState.userHasInteracted = true;
             try {
                 await loadMasterlist();
                 showWelcomeNotificationOnce();
@@ -670,29 +681,6 @@ function initNavigation() {
                 // Silent error handling
             }
         });
-    }
-    
-    // Load default tab content
-    const defaultTab = document.querySelector('.nav-link.active');
-    if (defaultTab) {
-        const tabId = defaultTab.id;
-        
-        if (tabId === 'team-balancer-tab') {
-            loadTeamBalancer();
-        } else if (tabId === 'tournament-bracket-tab') {
-            loadTournamentBracket();
-        } else if (tabId === 'random-picker-tab') {
-            loadRandomPicker();
-        } else if (tabId === 'player-list-tab') {
-            loadPlayerList();
-        } else if (tabId === 'registration-tab') {
-            loadRegistration();
-        } else if (tabId === 'masterlist-tab') {
-            loadMasterlist();
-        }
-    } else {
-        // If no active tab, default to team balancer
-        loadTeamBalancer();
     }
 }
 
