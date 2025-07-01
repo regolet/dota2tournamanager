@@ -902,12 +902,14 @@ async function initializeModule(moduleFileName) {
                 break;
                 
             case 'attendance':
+                // Match Team Balancer: always cleanup, then init, no isInitialized logic
+                if (typeof window.resetAttendanceModule === 'function') {
+                    console.log('🧹 Navigation: Cleaning up Attendance module...');
+                    window.resetAttendanceModule();
+                }
                 if (typeof window.initAttendance === 'function') {
                     console.log('🚀 Navigation: Calling initAttendance...');
                     await window.initAttendance();
-                    window[moduleKey].isInitialized = true;
-                    window[moduleKey].initFunction = 'initAttendance';
-                    window[moduleKey].lastInitTime = now;
                     console.log('✅ Navigation: Attendance initialized');
                 } else {
                     console.error('❌ Navigation: initAttendance function not found');
