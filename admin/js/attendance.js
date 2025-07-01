@@ -673,11 +673,11 @@
 
     async function markPlayerAttendance(playerId, isPresent) {
         try {
-            // Call the backend API to update attendance
-            const response = await fetch('/api/update-attendance', {
+            // Call the backend API to update attendance (use /api/update-player)
+            const response = await fetch('/api/update-player', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, present: isPresent })
+                body: JSON.stringify({ playerId, updates: { present: isPresent } })
             });
             const data = await response.json();
             if (data.success) {
