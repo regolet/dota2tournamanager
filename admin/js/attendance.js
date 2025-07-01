@@ -673,25 +673,38 @@
 
     async function markPlayerAttendance(playerId, isPresent) {
         try {
-            // TODO: Implement player attendance update API
-            // For now, we'll update the local state
+            // Call the backend API to update attendance
+            const response = await fetch('/api/update-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, present: isPresent })
+            });
+            const data = await response.json();
+            if (data.success) {
+                // Reload the player list from the server
+                await loadPlayersWithAttendance();
+                updateAttendanceStatistics();
+                window.utils.showNotification(
+                    `${data.player?.name || 'Player'} marked as ${isPresent ? 'present' : 'absent'} (database updated)`,
+                    'success'
+                );
+            } else {
+                throw new Error(data.message || 'Update failed');
+            }
+        } catch (error) {
+            // Fallback: update local state only
             const player = state.players.find(p => p.id === playerId);
             if (player) {
                 player.present = isPresent;
                 player.updated_at = new Date().toISOString();
-                
-                // Update display
                 displayPlayersWithAttendance();
                 updateAttendanceStatistics();
-                
                 window.utils.showNotification(
-                    `${player.name} marked as ${isPresent ? 'present' : 'absent'}`, 
-                    'success'
+                    `${player.name} marked as ${isPresent ? 'present' : 'absent'} (local only, API error)`,
+                    'warning'
                 );
             }
-        } catch (error) {
             console.error('Error marking player attendance:', error);
-            window.utils.showNotification('Error updating attendance', 'error');
         }
     }
 
