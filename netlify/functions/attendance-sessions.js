@@ -68,7 +68,7 @@ export async function handler(event, context) {
             headers,
             body: JSON.stringify({ 
                 success: false, 
-                message: 'Internal server error',
+                message: 'Internal server error - Attendance sessions function',
                 error: error.message 
             })
         };
