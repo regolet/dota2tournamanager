@@ -2,12 +2,6 @@
 (function() {
     'use strict';
     
-    // Prevent multiple loads
-    if (window.attendanceModuleLoaded) {
-        return;
-    }
-    window.attendanceModuleLoaded = true;
-    
     // Module state
     const state = {
         attendanceSessions: [],
@@ -833,7 +827,6 @@
         state.players = [];
         state.registrationSessions = [];
         state.currentUser = null;
-        window.attendanceModuleLoaded = false;
         // Also reset any retry counters or timers if present
         attendanceInitAttempts = 0;
         // Remove any event listeners if needed (optional, for future-proofing)
