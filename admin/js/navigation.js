@@ -633,6 +633,7 @@ function initNavigation() {
     const registrationTab = document.getElementById('registration-tab');
     const masterlistTab = document.getElementById('masterlist-tab');
     const discordTab = document.getElementById('discord-tab');
+    const attendanceTab = document.getElementById('attendance-tab');
     
     if (teamBalancerTab) {
         teamBalancerTab.addEventListener('click', async function(e) {
@@ -698,6 +699,19 @@ function initNavigation() {
             navigationState.userHasInteracted = true;
             try {
                 await loadDiscord();
+                showWelcomeNotificationOnce();
+            } catch (error) {
+                // Silent error handling
+            }
+        });
+    }
+    
+    if (attendanceTab) {
+        attendanceTab.addEventListener('click', async function(e) {
+            e.preventDefault();
+            navigationState.userHasInteracted = true;
+            try {
+                await loadAttendance();
                 showWelcomeNotificationOnce();
             } catch (error) {
                 // Silent error handling
@@ -884,6 +898,19 @@ async function initializeModule(moduleFileName) {
                     console.log('✅ Navigation: Masterlist initialized');
                 } else {
                     console.error('❌ Navigation: initMasterlist function not found');
+                }
+                break;
+                
+            case 'attendance':
+                if (typeof window.initAttendance === 'function') {
+                    console.log('🚀 Navigation: Calling initAttendance...');
+                    await window.initAttendance();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initAttendance';
+                    window[moduleKey].lastInitTime = now;
+                    console.log('✅ Navigation: Attendance initialized');
+                } else {
+                    console.error('❌ Navigation: initAttendance function not found');
                 }
                 break;
                 

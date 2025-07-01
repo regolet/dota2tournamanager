@@ -790,5 +790,6 @@
     // Expose functions globally
     window.initAttendance = initAttendance;
     window.resetAttendanceModule = resetAttendanceModule;
+    window.loadAttendance = loadAttendance;
     
 })(); 
