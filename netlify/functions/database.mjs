@@ -1,6 +1,6 @@
 // Database module for Netlify Functions using Neon DB (PostgreSQL)
 import { neon } from '@netlify/neon';
-import { hashPassword, verifyPassword, validatePasswordStrength } from './password-utils.js';
+import { hashPassword, verifyPassword, validatePasswordStrength } from './password-utils.mjs';
 
 // Initialize Neon database connection
 const sql = neon(process.env.DATABASE_URL);

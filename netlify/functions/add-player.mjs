@@ -7,7 +7,7 @@ import {
   addMasterlistPlayer,
   getRegistrationSessionBySessionId,
   incrementRegistrationPlayerCount
-} from './database.js';
+} from './database.mjs';
 
 // Simplified validation functions to avoid dependency issues
 function validatePlayerData(name, dota2id, peakmmr) {

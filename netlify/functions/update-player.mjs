@@ -1,5 +1,5 @@
 // Update Player API function with Neon DB integration
-import { updatePlayer, validateSession } from './database.js';
+import { updatePlayer, validateSession } from './database.mjs';
 
 export const handler = async (event, context) => {
   try {

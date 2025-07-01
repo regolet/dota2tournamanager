@@ -1,5 +1,5 @@
 // Players API function with Neon DB integration
-import { getPlayers, savePlayers, addPlayer, updatePlayer, deletePlayer, validateSession } from './database.js';
+import { getPlayers, savePlayers, addPlayer, updatePlayer, deletePlayer, validateSession } from './database.mjs';
 
 export const handler = async (event, context) => {
   try {

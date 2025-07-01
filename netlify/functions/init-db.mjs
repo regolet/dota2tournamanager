@@ -1,5 +1,5 @@
 // Simple database initialization endpoint
-import { initializeDatabase } from './database.js';
+import { initializeDatabase } from './database.mjs';
 
 export async function handler(event, context) {
   // CORS headers

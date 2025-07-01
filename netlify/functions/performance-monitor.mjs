@@ -1,5 +1,5 @@
 // Performance monitoring and metrics collection
-import { dbMonitor } from './database-optimization.js';
+import { dbMonitor } from './database-optimization.mjs';
 
 class PerformanceMonitor {
     constructor() {

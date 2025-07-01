@@ -1,5 +1,5 @@
 // Get-players function using persistent database storage
-import { playerDb } from './database.js';
+import { playerDb } from './database.mjs';
 
 export const handler = async (event, context) => {
   try {

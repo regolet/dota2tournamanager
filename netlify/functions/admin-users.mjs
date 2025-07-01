@@ -1,5 +1,5 @@
 // Admin user management API
-import { getAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, validateSession } from './database.js';
+import { getAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, validateSession } from './database.mjs';
 
 export const handler = async (event, context) => {
   try {

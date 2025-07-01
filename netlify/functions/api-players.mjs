@@ -7,7 +7,7 @@ import {
   savePlayers,
   getPlayersForAdmin,
   validateSession 
-} from './database.js';
+} from './database.mjs';
 
 export const handler = async (event, context) => {
   try {

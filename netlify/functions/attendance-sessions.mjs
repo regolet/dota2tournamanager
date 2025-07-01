@@ -1,5 +1,5 @@
-import { sql } from './database.js';
-import { validateSession } from './database.js';
+import { sql } from './database.mjs';
+import { validateSession } from './database.mjs';
 
 export async function handler(event, context) {
     // Set CORS headers

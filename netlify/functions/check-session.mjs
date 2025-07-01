@@ -1,5 +1,5 @@
 // Session validation function for admin authentication
-import { validateSession } from './database.js';
+import { validateSession } from './database.mjs';
 
 export const handler = async (event, context) => {
   // Handle CORS

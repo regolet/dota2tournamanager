@@ -1,5 +1,5 @@
 // Function to handle tournament data operations (GET, POST, DELETE)
-import { saveTournament, getTournament, getTournaments, validateSession, deleteTournament } from './database.js';
+import { saveTournament, getTournament, getTournaments, validateSession, deleteTournament } from './database.mjs';
 
 export async function handler(event, context) {
     const headers = {

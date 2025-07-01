@@ -1,4 +1,4 @@
-import { sql } from './database.js';
+import { sql } from './database.mjs';
 
 export async function handler(event, context) {
     // Set CORS headers

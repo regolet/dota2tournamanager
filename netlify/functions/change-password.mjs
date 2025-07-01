@@ -1,6 +1,6 @@
 // Change password API for admin users
-import { authenticateUser, updateAdminUser, validateSession } from './database.js';
-import { validatePasswordStrength } from './password-utils.js';
+import { authenticateUser, updateAdminUser, validateSession } from './database.mjs';
+import { validatePasswordStrength } from './password-utils.mjs';
 
 export const handler = async (event, context) => {
   const headers = {

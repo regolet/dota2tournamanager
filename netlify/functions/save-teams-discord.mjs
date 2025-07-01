@@ -2,8 +2,8 @@
 import { 
   saveTeamConfiguration,
   saveTournament
-} from './database.js';
-import { getSecurityHeaders } from './security-utils.js';
+} from './database.mjs';
+import { getSecurityHeaders } from './security-utils.mjs';
 
 export async function handler(event, context) {
   const headers = getSecurityHeaders();

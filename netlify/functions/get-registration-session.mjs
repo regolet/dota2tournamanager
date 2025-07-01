@@ -1,5 +1,5 @@
 // Public endpoint to get registration session information (no auth required)
-import { getRegistrationSessionBySessionId } from './database.js';
+import { getRegistrationSessionBySessionId } from './database.mjs';
 
 export const handler = async (event, context) => {
   try {

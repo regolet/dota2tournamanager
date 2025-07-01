@@ -1,11 +1,11 @@
 // Registration API function for admin panel using Neon DB
-import { getRegistrationSettings, saveRegistrationSettings } from './database.js';
+import { getRegistrationSettings, saveRegistrationSettings } from './database.mjs';
 import { 
   validateString, 
   validateSessionTitle, 
   checkRateLimit, 
   sanitizeForLogging 
-} from './validation-utils.js';
+} from './validation-utils.mjs';
 import { neon } from '@netlify/neon';
 
 // Initialize Neon database connection
