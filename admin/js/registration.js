@@ -727,36 +727,43 @@ async function initRegistration() {
                 window.utils.showNotification('Registration session not found.', 'error');
                 return;
             }
+            
             // Fetch webhooks from backend
             const res = await fetch('/.netlify/functions/discord-webhooks', {
                 headers: { 'x-session-id': localStorage.getItem('adminSessionId') }
             });
+            
             if (!res.ok) {
                 window.utils.showNotification('Failed to fetch Discord webhooks from server.', 'error');
                 return;
             }
+            
             const data = await res.json();
             if (!data.success || !Array.isArray(data.webhooks)) {
                 window.utils.showNotification('No Discord webhooks found for your account.', 'warning');
                 return;
             }
+            
             // Find registration webhook and template
             const webhookObj = data.webhooks.find(w => w.type === 'registration');
             const webhookUrl = webhookObj ? webhookObj.url : '';
-            const template = webhookObj && webhookObj.template ? webhookObj.template : (
-                window.defaultTemplates ? window.defaultTemplates.registration :
-                `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`
-            );
+            
+            // Use database template if available, otherwise use default
+            const template = webhookObj && webhookObj.template ? webhookObj.template : 
+                `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`;
+            
             if (!webhookUrl) {
                 window.utils.showNotification('No Discord webhook URL set for registration. Please configure it in the Discord tab.', 'warning');
                 return;
             }
+            
             // Fill template
             const message = template
                 .replace('{tournament_name}', session.title)
                 .replace('{player_count}', `${session.playerCount}/${session.maxPlayers}`)
                 .replace('{created_date}', formatDate(session.createdAt))
                 .replace('{tournament_id}', session.sessionId);
+            
             // Send to Discord webhook
             const sendRes = await fetch(webhookUrl, {
                 method: 'POST',
@@ -767,6 +774,7 @@ async function initRegistration() {
                     avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png'
                 })
             });
+            
             if (sendRes.ok) {
                 window.utils.showNotification('Registration link sent to Discord!', 'success');
             } else {

@@ -77,6 +77,26 @@
   status = 200
 
 [[redirects]]
+  from = "/admin/api/attendance-sessions"
+  to = "/.netlify/functions/attendance-sessions"
+  status = 200
+
+[[redirects]]
+  from = "/admin/api/attendance-sessions/*"
+  to = "/.netlify/functions/attendance-sessions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/attendance"
+  to = "/attendance.html"
+  status = 200
+
+[[redirects]]
+  from = "/api/update-attendance"
+  to = "/.netlify/functions/update-player-attendance"
+  status = 200
+
+[[redirects]]
   from = "/api/get-registration-session"
   to = "/.netlify/functions/get-registration-session"
   status = 200

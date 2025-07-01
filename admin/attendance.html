@@ -1,0 +1,307 @@
+<!-- Attendance Management for Dota 2 Tournament Manager -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="bi bi-person-check me-2"></i>Attendance Management
+                </h2>
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary" id="refresh-attendance">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-primary" id="create-attendance-session">
+                        <i class="bi bi-plus-circle me-1"></i>Create Attendance Session
+                    </button>
+                </div>
+            </div>
+
+            <!-- Attendance Sessions Overview -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Active Sessions</h6>
+                                    <h3 id="active-sessions-count">0</h3>
+                                </div>
+                                <i class="bi bi-calendar-check display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Present Today</h6>
+                                    <h3 id="present-today-count">0</h3>
+                                </div>
+                                <i class="bi bi-person-check-fill display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Absent Today</h6>
+                                    <h3 id="absent-today-count">0</h3>
+                                </div>
+                                <i class="bi bi-person-x-fill display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Attendance Rate</h6>
+                                    <h3 id="attendance-rate">0%</h3>
+                                </div>
+                                <i class="bi bi-graph-up display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Sessions Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-event me-2"></i>Attendance Sessions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Session Name</th>
+                                    <th>Registration Session</th>
+                                    <th>Status</th>
+                                    <th>Present/Absent</th>
+                                    <th>Created</th>
+                                    <th>Expires</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-sessions-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Loading attendance sessions...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Attendance List -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people me-2"></i>Player Attendance
+                    </h5>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-success btn-sm" id="mark-all-present">
+                            <i class="bi bi-check-all me-1"></i>Mark All Present
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" id="mark-all-absent">
+                            <i class="bi bi-x-circle me-1"></i>Mark All Absent
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" id="export-attendance">
+                            <i class="bi bi-download me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="select-all-players" class="form-check-input">
+                                    </th>
+                                    <th>Name</th>
+                                    <th>Dota 2 ID</th>
+                                    <th>MMR</th>
+                                    <th>Registration Session</th>
+                                    <th>Status</th>
+                                    <th>Last Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="player-attendance-table-body">
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Loading player attendance...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Attendance Session Modal -->
+<div class="modal fade" id="createAttendanceSessionModal" tabindex="-1" aria-labelledby="createAttendanceSessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createAttendanceSessionModalLabel">
+                    <i class="bi bi-calendar-plus me-2"></i>Create Attendance Session
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="attendance-session-form">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="attendance-session-name" class="form-label">Session Name</label>
+                                <input type="text" class="form-control" id="attendance-session-name" required>
+                                <div class="form-text">e.g., "Day 1 Morning", "Quarter Finals", etc.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="attendance-registration-session" class="form-label">Registration Session</label>
+                                <select class="form-select" id="attendance-registration-session" required>
+                                    <option value="">Select Registration Session</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="attendance-start-time" class="form-label">Start Time</label>
+                                <input type="datetime-local" class="form-control" id="attendance-start-time" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="attendance-end-time" class="form-label">End Time</label>
+                                <input type="datetime-local" class="form-control" id="attendance-end-time" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="attendance-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="attendance-description" rows="3" placeholder="Optional description for this attendance session"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Attendance Link:</strong> A unique attendance link will be generated that players can use to mark themselves present.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Link Modal -->
+<div class="modal fade" id="attendanceLinkModal" tabindex="-1" aria-labelledby="attendanceLinkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="attendanceLinkModalLabel">
+                    <i class="bi bi-link-45deg me-2"></i>Attendance Link Generated
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Attendance session created successfully!
+                </div>
+                
+                <div class="mb-3">
+                    <label for="attendance-url" class="form-label">Attendance Link</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="attendance-url" readonly>
+                        <button class="btn btn-outline-secondary" type="button" id="copy-attendance-url-btn">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">QR Code</label>
+                    <div class="text-center">
+                        <div id="attendance-qr-code"></div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Share this link with players:</strong> They can use this link to mark themselves present during the attendance window.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="send-discord-attendance">
+                    <i class="bi bi-discord me-1"></i>Send to Discord
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Statistics Modal -->
+<div class="modal fade" id="attendanceStatsModal" tabindex="-1" aria-labelledby="attendanceStatsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="attendanceStatsModalLabel">
+                    <i class="bi bi-graph-up me-2"></i>Attendance Statistics
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Attendance Summary</h6>
+                                <div id="attendance-summary">
+                                    <!-- Summary data will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="export-attendance-stats">
+                    <i class="bi bi-download me-1"></i>Export Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div> 

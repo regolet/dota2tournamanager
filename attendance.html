@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Attendance - Dota 2 Tournament</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .attendance-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .attendance-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .attendance-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .attendance-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .attendance-header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .attendance-body {
+            padding: 2rem;
+        }
+        
+        .session-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .session-info h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .info-value {
+            color: #333;
+        }
+        
+        .attendance-form {
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-attendance {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .btn-attendance:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        .btn-attendance:disabled {
+            background: #6c757d;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-expired {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-upcoming {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .countdown {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .countdown.urgent {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .countdown-display {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin: 0.5rem 0;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .success-animation {
+            animation: successPulse 0.5s ease-in-out;
+        }
+        
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 1rem;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="attendance-container">
+        <div class="attendance-card">
+            <div class="attendance-header">
+                <h1><i class="bi bi-person-check me-2"></i>Tournament Attendance</h1>
+                <p>Mark your attendance for the tournament</p>
+            </div>
+            
+            <div class="attendance-body">
+                <div id="loading-state">
+                    <div class="text-center">
+                        <div class="loading-spinner mb-3"></div>
+                        <p>Loading attendance session...</p>
+                    </div>
+                </div>
+                
+                <div id="error-state" style="display: none;">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Error:</strong> <span id="error-message">Failed to load attendance session</span>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-muted">Please check the attendance link or contact the tournament administrator.</p>
+                    </div>
+                </div>
+                
+                <div id="attendance-content" style="display: none;">
+                    <div id="session-status"></div>
+                    
+                    <div class="session-info">
+                        <h3><i class="bi bi-calendar-event me-2"></i>Session Information</h3>
+                        <div class="info-item">
+                            <span class="info-label">Session Name:</span>
+                            <span class="info-value" id="session-name">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tournament:</span>
+                            <span class="info-value" id="tournament-name">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Start Time:</span>
+                            <span class="info-value" id="start-time">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">End Time:</span>
+                            <span class="info-value" id="end-time">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Description:</span>
+                            <span class="info-value" id="session-description">-</span>
+                        </div>
+                    </div>
+                    
+                    <div id="countdown-container" style="display: none;">
+                        <div class="countdown">
+                            <div class="countdown-label" id="countdown-label">Time Remaining</div>
+                            <div class="countdown-display" id="countdown-display">--:--:--</div>
+                        </div>
+                    </div>
+                    
+                    <div id="attendance-form-container">
+                        <form id="attendance-form" class="attendance-form">
+                            <div class="form-group">
+                                <label for="player-name" class="form-label">Your Name</label>
+                                <input type="text" class="form-control" id="player-name" required 
+                                       placeholder="Enter your full name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="dota2-id" class="form-label">Dota 2 ID</label>
+                                <input type="text" class="form-control" id="dota2-id" required 
+                                       placeholder="Enter your Dota 2 Friend ID">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-attendance" id="mark-attendance-btn">
+                                <i class="bi bi-check-circle me-2"></i>Mark Attendance
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div id="success-state" style="display: none;">
+                        <div class="alert alert-success success-animation">
+                            <i class="bi bi-check-circle me-2"></i>
+                            <strong>Attendance Marked Successfully!</strong>
+                            <p class="mb-0 mt-2">You have been marked as present for this tournament session.</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-muted">You can now close this page. Good luck in the tournament!</p>
+                        </div>
+                    </div>
+                    
+                    <div id="already-marked-state" style="display: none;">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Already Marked Present</strong>
+                            <p class="mb-0 mt-2">You have already marked your attendance for this session.</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-muted">No further action is required.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Dota 2 Tournament Manager - Attendance System</p>
+    </div>
+
+    <script>
+        // Attendance page functionality
+        (function() {
+            'use strict';
+            
+            let attendanceSession = null;
+            let countdownInterval = null;
+            
+            // Get session ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session');
+            
+            if (!sessionId) {
+                showError('No attendance session ID provided');
+                return;
+            }
+            
+            // Load attendance session
+            loadAttendanceSession();
+            
+            async function loadAttendanceSession() {
+                try {
+                    const response = await fetch(`/.netlify/functions/attendance-sessions?sessionId=${sessionId}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.session) {
+                        attendanceSession = data.session;
+                        displayAttendanceSession();
+                    } else {
+                        showError(data.message || 'Attendance session not found');
+                    }
+                } catch (error) {
+                    console.error('Error loading attendance session:', error);
+                    showError('Failed to load attendance session');
+                }
+            }
+            
+            function displayAttendanceSession() {
+                hideAllStates();
+                document.getElementById('attendance-content').style.display = 'block';
+                
+                // Display session information
+                document.getElementById('session-name').textContent = attendanceSession.name || 'N/A';
+                document.getElementById('tournament-name').textContent = attendanceSession.registration_session_title || 'N/A';
+                document.getElementById('start-time').textContent = formatDateTime(attendanceSession.start_time);
+                document.getElementById('end-time').textContent = formatDateTime(attendanceSession.end_time);
+                document.getElementById('session-description').textContent = attendanceSession.description || 'No description provided';
+                
+                // Check session status
+                const now = new Date();
+                const startTime = new Date(attendanceSession.start_time);
+                const endTime = new Date(attendanceSession.end_time);
+                
+                let statusBadge = '';
+                let statusClass = '';
+                let statusText = '';
+                
+                if (!attendanceSession.is_active) {
+                    statusBadge = 'Session Inactive';
+                    statusClass = 'status-expired';
+                    statusText = 'This attendance session is currently inactive.';
+                } else if (now < startTime) {
+                    statusBadge = 'Session Upcoming';
+                    statusClass = 'status-upcoming';
+                    statusText = 'Attendance session has not started yet.';
+                    startCountdown(startTime, 'Session starts in');
+                } else if (now > endTime) {
+                    statusBadge = 'Session Expired';
+                    statusClass = 'status-expired';
+                    statusText = 'Attendance session has ended.';
+                } else {
+                    statusBadge = 'Session Active';
+                    statusClass = 'status-active';
+                    statusText = 'Attendance session is currently active.';
+                    startCountdown(endTime, 'Session ends in');
+                }
+                
+                document.getElementById('session-status').innerHTML = `
+                    <div class="status-badge ${statusClass}">
+                        <i class="bi bi-calendar-check me-2"></i>${statusBadge}
+                    </div>
+                    <p class="text-muted">${statusText}</p>
+                `;
+                
+                // Show/hide attendance form based on status
+                const canMarkAttendance = attendanceSession.is_active && now >= startTime && now <= endTime;
+                document.getElementById('attendance-form-container').style.display = canMarkAttendance ? 'block' : 'none';
+                
+                if (!canMarkAttendance) {
+                    document.getElementById('attendance-content').innerHTML += `
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Attendance Not Available</strong>
+                            <p class="mb-0 mt-2">Attendance can only be marked during the active session window.</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            function startCountdown(targetTime, label) {
+                const countdownContainer = document.getElementById('countdown-container');
+                const countdownLabel = document.getElementById('countdown-label');
+                const countdownDisplay = document.getElementById('countdown-display');
+                
+                countdownContainer.style.display = 'block';
+                countdownLabel.textContent = label;
+                
+                function updateCountdown() {
+                    const now = new Date();
+                    const timeLeft = targetTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        countdownContainer.style.display = 'none';
+                        // Reload session to update status
+                        loadAttendanceSession();
+                        return;
+                    }
+                    
+                    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    
+                    countdownDisplay.textContent = 
+                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    // Add urgent styling for last 5 minutes
+                    const countdown = countdownContainer.querySelector('.countdown');
+                    if (timeLeft <= 5 * 60 * 1000) { // 5 minutes
+                        countdown.classList.add('urgent');
+                    }
+                }
+                
+                updateCountdown();
+                countdownInterval = setInterval(updateCountdown, 1000);
+            }
+            
+            // Handle attendance form submission
+            document.getElementById('attendance-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const playerName = document.getElementById('player-name').value.trim();
+                const dota2Id = document.getElementById('dota2-id').value.trim();
+                
+                if (!playerName || !dota2Id) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                const submitBtn = document.getElementById('mark-attendance-btn');
+                const originalText = submitBtn.innerHTML;
+                
+                try {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="loading-spinner me-2"></span>Marking Attendance...';
+                    
+                    // Call the attendance marking API
+                    const response = await fetch('/api/update-attendance', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sessionId: sessionId,
+                            playerName: playerName,
+                            dota2Id: dota2Id
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        if (data.alreadyPresent) {
+                            // Show already marked state
+                            hideAllStates();
+                            document.getElementById('already-marked-state').style.display = 'block';
+                        } else {
+                            // Show success state
+                            hideAllStates();
+                            document.getElementById('success-state').style.display = 'block';
+                        }
+                    } else {
+                        throw new Error(data.message || 'Failed to mark attendance');
+                    }
+                    
+                } catch (error) {
+                    console.error('Error marking attendance:', error);
+                    alert('Failed to mark attendance. Please try again.');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            });
+            
+            function hideAllStates() {
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('error-state').style.display = 'none';
+                document.getElementById('attendance-content').style.display = 'none';
+                document.getElementById('success-state').style.display = 'none';
+                document.getElementById('already-marked-state').style.display = 'none';
+            }
+            
+            function showError(message) {
+                hideAllStates();
+                document.getElementById('error-message').textContent = message;
+                document.getElementById('error-state').style.display = 'block';
+            }
+            
+            function formatDateTime(dateString) {
+                if (!dateString) return 'N/A';
+                
+                const date = new Date(dateString);
+                return date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZoneName: 'short'
+                });
+            }
+            
+            // Cleanup on page unload
+            window.addEventListener('beforeunload', function() {
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                }
+            });
+            
+        })();
+    </script>
+</body>
+</html> 

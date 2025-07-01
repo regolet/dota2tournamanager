@@ -52,7 +52,8 @@ function getOriginalIconForTab(tabId) {
         'player-list-tab': 'bi bi-list-ul me-1',
         'registration-tab': 'bi bi-clipboard2-check me-1',
         'masterlist-tab': 'bi bi-shield-check me-1',
-        'discord-tab': 'bi bi-discord me-2'
+        'discord-tab': 'bi bi-discord me-2',
+        'attendance-tab': 'bi bi-person-check me-2'
     };
     return iconMap[tabId] || 'bi bi-circle me-2';
 }
@@ -126,6 +127,9 @@ async function enableActiveTabAfterInit() {
                     break;
                 case 'discord-tab':
                     loadResult = await loadDiscord();
+                    break;
+                case 'attendance-tab':
+                    loadResult = await loadAttendance();
                     break;
                 default:
                     // Unknown tab, fallback to team balancer
@@ -1509,6 +1513,21 @@ async function loadDiscord() {
         contentContainer: 'main-content',
         initFunction: 'initDiscord',
         cleanupFunction: 'cleanupDiscord'
+    });
+    return result;
+}
+
+/**
+ * Load Attendance content
+ */
+async function loadAttendance() {
+    updateActiveTab('attendance-tab');
+    const result = await window.adminApp.loadAndInitModule({
+        htmlFile: 'attendance.html',
+        jsFile: 'js/attendance.js',
+        contentContainer: 'main-content',
+        initFunction: 'initAttendance',
+        cleanupFunction: 'resetAttendanceModule'
     });
     return result;
 }

@@ -42,7 +42,7 @@ export async function handler(event, context) {
         };
       }
       case 'POST': {
-        const { type, url } = JSON.parse(event.body || '{}');
+        const { type, url, template } = JSON.parse(event.body || '{}');
         if (!type || !url) {
           return {
             statusCode: 400,
@@ -50,7 +50,7 @@ export async function handler(event, context) {
             body: JSON.stringify({ error: 'Missing type or url' })
           };
         }
-        await setDiscordWebhook(adminUserId, type, url);
+        await setDiscordWebhook(adminUserId, type, url, template);
         return {
           statusCode: 200,
           headers,

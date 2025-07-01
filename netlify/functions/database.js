@@ -177,6 +177,25 @@ async function initializeDatabase() {
       )
     `;
 
+    // Create attendance_sessions table for attendance management
+    await sql`
+      CREATE TABLE IF NOT EXISTS attendance_sessions (
+        id SERIAL PRIMARY KEY,
+        session_id VARCHAR(255) UNIQUE NOT NULL,
+        admin_user_id VARCHAR(255) NOT NULL,
+        admin_username VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        registration_session_id VARCHAR(255) NOT NULL,
+        start_time TIMESTAMP NOT NULL,
+        end_time TIMESTAMP NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (registration_session_id) REFERENCES registration_sessions(session_id) ON DELETE CASCADE
+      )
+    `;
+
     // Add admin_user_id column to tournaments table if it doesn't exist (for backward compatibility)
     try {
       await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS admin_user_id VARCHAR(255)`;
