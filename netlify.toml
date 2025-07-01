@@ -97,6 +97,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/update-player"
+  to = "/.netlify/functions/update-player"
+  status = 200
+
+[[redirects]]
   from = "/api/get-registration-session"
   to = "/.netlify/functions/get-registration-session"
   status = 200
