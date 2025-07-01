@@ -2,6 +2,10 @@ import { sql } from './database.mjs';
 import { validateSession } from './database.mjs';
 
 export async function handler(event, context) {
+    console.log('🔧 Attendance sessions function started');
+    console.log('HTTP Method:', event.httpMethod);
+    console.log('Headers:', JSON.stringify(event.headers, null, 2));
+    
     // Set CORS headers
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -22,6 +26,7 @@ export async function handler(event, context) {
         // Validate admin session
         const sessionId = event.headers['x-session-id'];
         if (!sessionId) {
+            console.log('❌ No session ID provided');
             return {
                 statusCode: 401,
                 headers,
@@ -29,14 +34,18 @@ export async function handler(event, context) {
             };
         }
 
+        console.log('🔍 Validating session...');
         const session = await validateSession(sessionId);
         if (!session) {
+            console.log('❌ Invalid or expired session');
             return {
                 statusCode: 401,
                 headers,
                 body: JSON.stringify({ success: false, message: 'Invalid or expired session' })
             };
         }
+        
+        console.log('✅ Session validated for user:', session.userId);
 
         const { httpMethod, queryStringParameters, body } = event;
         const sessionIdParam = queryStringParameters?.sessionId;
@@ -62,14 +71,16 @@ export async function handler(event, context) {
                 };
         }
     } catch (error) {
-        console.error('Attendance sessions error:', error);
+        console.error('💥 Attendance sessions function critical error:', error);
+        console.error('Error stack:', error.stack);
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({ 
                 success: false, 
                 message: 'Internal server error - Attendance sessions function',
-                error: error.message 
+                error: error.message,
+                timestamp: new Date().toISOString()
             })
         };
     }
@@ -77,21 +88,30 @@ export async function handler(event, context) {
 
 async function getAttendanceSessions(adminUserId) {
     try {
+        console.log('🔍 Getting attendance sessions for admin user:', adminUserId);
         const sessions = await sql`
             SELECT 
-                as.*,
-                rs.title as registration_session_title,
-                rs.player_count as registration_player_count,
-                COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
-                COUNT(p.id) as total_count
-            FROM attendance_sessions as
-            LEFT JOIN registration_sessions rs ON as.registration_session_id = rs.session_id
-            LEFT JOIN players p ON rs.session_id = p.registration_session_id
-            WHERE as.admin_user_id = ${adminUserId}
-            GROUP BY as.id, rs.title, rs.player_count
-            ORDER BY as.created_at DESC
+                att.*,
+                COALESCE(rs.title, 'Unknown') as registration_session_title,
+                COALESCE(rs.player_count, 0) as registration_player_count,
+                COALESCE(present_stats.present_count, 0) as present_count,
+                COALESCE(present_stats.total_count, 0) as total_count
+            FROM attendance_sessions att
+            LEFT JOIN registration_sessions rs ON att.registration_session_id = rs.session_id
+            LEFT JOIN (
+                SELECT 
+                    rs.session_id,
+                    COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
+                    COUNT(p.id) as total_count
+                FROM registration_sessions rs
+                LEFT JOIN players p ON rs.session_id = p.registration_session_id
+                GROUP BY rs.session_id
+            ) present_stats ON att.registration_session_id = present_stats.session_id
+            WHERE att.admin_user_id = ${adminUserId}
+            ORDER BY att.created_at DESC
         `;
 
+        console.log('✅ Found', sessions.length, 'attendance sessions');
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -101,14 +121,16 @@ async function getAttendanceSessions(adminUserId) {
             })
         };
     } catch (error) {
-        console.error('Error getting attendance sessions:', error);
+        console.error('❌ Error getting attendance sessions:', error);
+        console.error('Error stack:', error.stack);
         return {
             statusCode: 500,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 success: false, 
                 message: 'Failed to get attendance sessions',
-                error: error.message 
+                error: error.message,
+                timestamp: new Date().toISOString()
             })
         };
     }
@@ -118,16 +140,23 @@ async function getAttendanceSession(sessionId, adminUserId) {
     try {
         const sessions = await sql`
             SELECT 
-                as.*,
-                rs.title as registration_session_title,
-                rs.player_count as registration_player_count,
-                COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
-                COUNT(p.id) as total_count
-            FROM attendance_sessions as
-            LEFT JOIN registration_sessions rs ON as.registration_session_id = rs.session_id
-            LEFT JOIN players p ON rs.session_id = p.registration_session_id
-            WHERE as.session_id = ${sessionId} AND as.admin_user_id = ${adminUserId}
-            GROUP BY as.id, rs.title, rs.player_count
+                att.*,
+                COALESCE(rs.title, 'Unknown') as registration_session_title,
+                COALESCE(rs.player_count, 0) as registration_player_count,
+                COALESCE(present_stats.present_count, 0) as present_count,
+                COALESCE(present_stats.total_count, 0) as total_count
+            FROM attendance_sessions att
+            LEFT JOIN registration_sessions rs ON att.registration_session_id = rs.session_id
+            LEFT JOIN (
+                SELECT 
+                    rs.session_id,
+                    COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
+                    COUNT(p.id) as total_count
+                FROM registration_sessions rs
+                LEFT JOIN players p ON rs.session_id = p.registration_session_id
+                GROUP BY rs.session_id
+            ) present_stats ON att.registration_session_id = present_stats.session_id
+            WHERE att.session_id = ${sessionId} AND att.admin_user_id = ${adminUserId}
         `;
 
         if (sessions.length === 0) {

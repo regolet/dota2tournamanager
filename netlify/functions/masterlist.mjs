@@ -118,4 +118,186 @@ export const handler = async (event, context) => {
           players: responseData,
           stats: stats,
           count: responseData.length,
-          message: `
+          message: `Masterlist data retrieved successfully`
+        })
+      };
+    }
+    
+    // Handle POST requests (add new player)
+    if (event.httpMethod === 'POST') {
+      try {
+        const playerData = JSON.parse(event.body);
+        
+        // Validate required fields
+        if (!playerData.name || !playerData.dota2id) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: 'Name and Dota 2 ID are required'
+            })
+          };
+        }
+        
+        // Add player to masterlist
+        const result = await addMasterlistPlayer(playerData);
+        
+        return {
+          statusCode: 201,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Player added to masterlist successfully',
+            player: result
+          })
+        };
+      } catch (error) {
+        console.error('Error adding player to masterlist:', error);
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Error adding player to masterlist: ' + error.message
+          })
+        };
+      }
+    }
+    
+    // Handle PUT requests (update player)
+    if (event.httpMethod === 'PUT') {
+      try {
+        const { id, ...updateData } = JSON.parse(event.body);
+        
+        if (!id) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: 'Player ID is required'
+            })
+          };
+        }
+        
+        // Update player in masterlist
+        const result = await updateMasterlistPlayer(id, updateData);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Player updated successfully',
+            player: result
+          })
+        };
+      } catch (error) {
+        console.error('Error updating player in masterlist:', error);
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Error updating player: ' + error.message
+          })
+        };
+      }
+    }
+    
+    // Handle DELETE requests (delete player)
+    if (event.httpMethod === 'DELETE') {
+      try {
+        const { id } = JSON.parse(event.body);
+        
+        if (!id) {
+          return {
+            statusCode: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: 'Player ID is required'
+            })
+          };
+        }
+        
+        // Delete player from masterlist
+        await deleteMasterlistPlayer(id);
+        
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            message: 'Player deleted successfully'
+          })
+        };
+      } catch (error) {
+        console.error('Error deleting player from masterlist:', error);
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Error deleting player: ' + error.message
+          })
+        };
+      }
+    }
+    
+    // Method not allowed
+    return {
+      statusCode: 405,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        success: false,
+        message: 'Method not allowed'
+      })
+    };
+    
+  } catch (error) {
+    console.error('Masterlist function error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        success: false,
+        message: 'Internal server error: ' + error.message
+      })
+    };
+  }
+};

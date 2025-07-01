@@ -5,8 +5,11 @@ import { hashPassword, verifyPassword, validatePasswordStrength } from './passwo
 // Initialize Neon database connection
 const sql = neon(process.env.DATABASE_URL);
 
+// Export sql instance for use in other modules
+export { sql };
+
 // Database schema initialization
-async function initializeDatabase() {
+export async function initializeDatabase() {
   try {
     console.log('Starting database initialization...');
     
