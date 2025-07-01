@@ -827,12 +827,21 @@
 
     // Function to reset attendance module (for cleanup)
     function resetAttendanceModule() {
+        // Reset all state variables
         state.initialized = false;
         state.attendanceSessions = [];
         state.players = [];
         state.registrationSessions = [];
         state.currentUser = null;
         window.attendanceModuleLoaded = false;
+        // Also reset any retry counters or timers if present
+        attendanceInitAttempts = 0;
+        // Remove any event listeners if needed (optional, for future-proofing)
+        // Optionally clear any DOM content if needed
+        const tableBody = document.getElementById('attendance-sessions-table-body');
+        if (tableBody) tableBody.innerHTML = '';
+        const playerTableBody = document.getElementById('player-attendance-table-body');
+        if (playerTableBody) playerTableBody.innerHTML = '';
     }
 
     // Expose functions globally
