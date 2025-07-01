@@ -343,12 +343,45 @@ document.addEventListener('DOMContentLoaded', function() {
     addNotificationStyles();
 });
 
+// Enhanced players loader with retry logic
+async function loadPlayersWithRetry(maxRetries = 3, delay = 1000) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`🔄 Attempting to load players (attempt ${attempt}/${maxRetries})`);
+            
+            const response = await fetchWithAuth('/.netlify/functions/players');
+            
+            if (response.success && Array.isArray(response.players)) {
+                console.log(`✅ Players loaded successfully on attempt ${attempt}`);
+                return response;
+            } else {
+                throw new Error(response.message || 'Invalid response format');
+            }
+        } catch (error) {
+            lastError = error;
+            console.warn(`⚠️ Players load attempt ${attempt} failed:`, error.message);
+            
+            if (attempt < maxRetries) {
+                showNotification(`Retrying players load... (${attempt}/${maxRetries})`, 'info', 2000);
+                await new Promise(resolve => setTimeout(resolve, delay * attempt));
+            }
+        }
+    }
+    
+    // All attempts failed
+    console.error(`❌ Failed to load players after ${maxRetries} attempts`);
+    throw lastError;
+}
+
 // Export functions for use in other modules
 window.utils = {
     showNotification,
     fetchWithAuth,
     handleRegistrationSessionError,
     loadRegistrationSessionsWithRetry,
+    loadPlayersWithRetry,
     hasPermission,
     formatDate,
     copyToClipboard
