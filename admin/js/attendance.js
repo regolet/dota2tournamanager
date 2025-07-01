@@ -699,26 +699,39 @@
         if (!confirm(`Are you sure you want to mark ALL players as ${isPresent ? 'present' : 'absent'}?`)) {
             return;
         }
-        
         try {
-            // TODO: Implement bulk attendance update API
-            // For now, we'll update the local state
+            // Call bulk attendance update API
+            const playerIds = state.players.map(p => p.id);
+            const response = await fetch('/api/update-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bulk: true, playerIds, present: isPresent })
+            });
+            const data = await response.json();
+            if (data.success) {
+                // Reload players from server to reflect changes
+                await loadPlayersWithAttendance();
+                updateAttendanceStatistics();
+                window.utils.showNotification(
+                    `All players marked as ${isPresent ? 'present' : 'absent'} (database updated)`,
+                    'success'
+                );
+            } else {
+                throw new Error(data.message || 'Bulk update failed');
+            }
+        } catch (error) {
+            // Fallback: update local state only
             state.players.forEach(player => {
                 player.present = isPresent;
                 player.updated_at = new Date().toISOString();
             });
-            
-            // Update display
             displayPlayersWithAttendance();
             updateAttendanceStatistics();
-            
             window.utils.showNotification(
-                `All players marked as ${isPresent ? 'present' : 'absent'}`, 
-                'success'
+                `All players marked as ${isPresent ? 'present' : 'absent'} (local only, API error)`,
+                'warning'
             );
-        } catch (error) {
             console.error('Error marking all players attendance:', error);
-            window.utils.showNotification('Error updating attendance', 'error');
         }
     }
 

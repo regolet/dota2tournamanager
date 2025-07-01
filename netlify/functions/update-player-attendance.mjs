@@ -26,7 +26,29 @@ export async function handler(event, context) {
     }
 
     try {
-        const { sessionId, playerName, dota2Id } = JSON.parse(event.body);
+        const body = JSON.parse(event.body);
+        // Bulk update logic
+        if (body.bulk === true && Array.isArray(body.playerIds) && typeof body.present === 'boolean') {
+            // Update all players in the list
+            const updatedPlayers = await sql`
+                UPDATE players
+                SET present = ${body.present}, updated_at = NOW()
+                WHERE id = ANY(${body.playerIds})
+                RETURNING *
+            `;
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: true,
+                    message: `Bulk attendance update successful`,
+                    updatedCount: updatedPlayers.length,
+                    updatedPlayers
+                })
+            };
+        }
+
+        const { sessionId, playerName, dota2Id } = body;
 
         // Validate required fields
         if (!sessionId || !playerName || !dota2Id) {
