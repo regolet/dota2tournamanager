@@ -42,16 +42,22 @@
                         <i class="bi bi-people me-2"></i>Player List
                         <span id="player-count" class="badge bg-primary ms-1">0</span>
                     </h3>
-                    <button id="clear-players" class="btn btn-sm btn-outline-danger" title="Clear All Players">
-                        <i class="bi bi-trash"></i> Clear All
-                    </button>
+                    <div>
+                        <button id="bulk-exclude-btn" class="btn btn-sm btn-outline-warning me-2" title="Exclude Selected" style="display:none;">
+                            <i class="bi bi-eye-slash"></i> Exclude Selected
+                        </button>
+                        <button id="clear-players" class="btn btn-sm btn-outline-danger" title="Clear All Players">
+                            <i class="bi bi-trash"></i> Clear All
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0 d-flex flex-column" style="overflow: hidden;">
                     <div class="table-responsive flex-grow-1" style="overflow-y: auto;">
                         <table class="table table-sm table-hover align-middle mb-0">
                             <thead class="table-light position-sticky top-0">
                                 <tr>
-                                    <th class="small text-muted fw-normal ps-3">Name</th>
+                                    <th class="small text-muted fw-normal ps-3"><input type="checkbox" id="select-all-players"></th>
+                                    <th class="small text-muted fw-normal">Name</th>
                                     <th class="small text-muted fw-normal text-center">MMR</th>
                                     <th class="small text-muted fw-normal text-end pe-3">Actions</th>
                                 </tr>

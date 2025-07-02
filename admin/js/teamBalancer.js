@@ -194,6 +194,84 @@ function setupTeamBalancerEventListeners() {
             }
         });
     }
+
+    // Event delegation for player actions (exclude/restore)
+    const playersList = document.getElementById('player-list');
+    if (playersList) {
+        playersList.addEventListener('click', function(e) {
+            const excludeBtn = e.target.closest('.exclude-player');
+            if (excludeBtn) {
+                const playerId = excludeBtn.getAttribute('data-id');
+                // Exclude player
+                const idx = window.teamBalancerData.availablePlayers.findIndex(p => p.id === playerId);
+                if (idx !== -1) {
+                    const [excluded] = window.teamBalancerData.availablePlayers.splice(idx, 1);
+                    window.teamBalancerData.reservedPlayers.push(excluded);
+                    displayPlayersForBalancer(window.teamBalancerData.availablePlayers);
+                    displayReservedPlayers();
+                    window.showNotification(`${excluded.name} excluded from balancing`, 'info');
+                }
+            }
+        });
+    }
+
+    // Select all checkbox logic
+    const selectAllCheckbox = document.getElementById('select-all-players');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            document.querySelectorAll('.player-checkbox').forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+        });
+    }
+
+    // Show/hide bulk exclude button based on selection
+    const playersListTable = document.getElementById('player-list');
+    if (playersListTable) {
+        playersListTable.addEventListener('change', function(e) {
+            if (e.target.classList.contains('player-checkbox')) {
+                const anyChecked = Array.from(document.querySelectorAll('.player-checkbox')).some(cb => cb.checked);
+                const bulkBtn = document.getElementById('bulk-exclude-btn');
+                if (bulkBtn) bulkBtn.style.display = anyChecked ? '' : 'none';
+            }
+        });
+    }
+
+    // Bulk exclude button logic
+    const bulkExcludeBtn = document.getElementById('bulk-exclude-btn');
+    if (bulkExcludeBtn) {
+        bulkExcludeBtn.addEventListener('click', function() {
+            const checkedBoxes = Array.from(document.querySelectorAll('.player-checkbox:checked'));
+            if (checkedBoxes.length === 0) return;
+            const idsToExclude = checkedBoxes.map(cb => cb.getAttribute('data-id'));
+            const excluded = [];
+            window.teamBalancerData.availablePlayers = window.teamBalancerData.availablePlayers.filter(p => {
+                if (idsToExclude.includes(p.id)) {
+                    excluded.push(p);
+                    return false;
+                }
+                return true;
+            });
+            window.teamBalancerData.reservedPlayers.push(...excluded);
+            displayPlayersForBalancer(window.teamBalancerData.availablePlayers);
+            displayReservedPlayers();
+            window.showNotification(`${excluded.length} player(s) excluded from balancing`, 'info');
+            bulkExcludeBtn.style.display = 'none';
+            if (document.getElementById('select-all-players')) document.getElementById('select-all-players').checked = false;
+        });
+    }
+
+    // Restore player from reserved list
+    const reservedList = document.getElementById('reserved-players-list');
+    if (reservedList) {
+        reservedList.addEventListener('click', function(e) {
+            const restoreBtn = e.target.closest('.restore-player');
+            if (restoreBtn) {
+                const idx = parseInt(restoreBtn.getAttribute('data-index'), 10);
+                restorePlayerFromReserved(idx);
+            }
+        });
+    }
 }
 
 /**
@@ -489,6 +567,9 @@ function displayPlayersForBalancer(players) {
     const playersHtml = sortedPlayers.map((player, index) => `
         <tr>
             <td class="ps-3">
+                <input type="checkbox" class="player-checkbox" data-id="${player.id}" data-index="${index}">
+            </td>
+            <td>
                 <div class="d-flex align-items-center">
                     <div class="badge bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" 
                          style="width: 32px; height: 32px; font-size: 0.85rem; font-weight: bold;">
@@ -503,9 +584,9 @@ function displayPlayersForBalancer(players) {
                 <span class="badge bg-primary">${player.peakmmr || 0}</span>
             </td>
             <td class="text-end pe-3">
-                <button type="button" class="btn btn-outline-danger btn-sm remove-player" 
-                        data-id="${player.id}" data-index="${index}" title="Remove Player">
-                    <i class="bi bi-trash"></i>
+                <button type="button" class="btn btn-outline-warning btn-sm exclude-player" 
+                        data-id="${player.id}" data-index="${index}" title="Exclude Player">
+                    <i class="bi bi-eye-slash"></i>
                 </button>
             </td>
         </tr>
