@@ -176,19 +176,29 @@ let pickerHistory = [];
  */
 async function initRandomPicker() {
     try {
+        console.log('🎲 Random Picker: Starting initialization...');
+        
+        // Always re-initialize when called (for tab switching)
+        // Reset state to ensure fresh start
+        state.currentSessionId = null;
+        state.registrationSessions = [];
+        state.availablePlayers = [];
+        state.pickerHistory = [];
+        state.isPicking = false;
+        if (state.pickerTimer) {
+            clearTimeout(state.pickerTimer);
+            state.pickerTimer = null;
+        }
+        
         await createRandomPickerSessionSelector();
         await loadRegistrationSessions();
         setupRandomPickerEventListeners();
         setupRandomPickerRegistrationListener();
-        if (typeof window.enableOnlyNavigationTab === 'function') {
-            window.enableOnlyNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
-        }
+        
+        console.log('✅ Random Picker: Initialization complete');
     } catch (error) {
-        console.error('Error initializing random picker:', error);
+        console.error('❌ Random Picker: Error initializing:', error);
         window.showNotification('Failed to initialize random picker', 'error');
-        if (typeof window.enableOnlyNavigationTab === 'function') {
-            window.enableOnlyNavigationTab('random-picker-tab', 'bi bi-shuffle me-2');
-        }
     }
 }
 
@@ -1388,6 +1398,8 @@ window.showExcludedPlayersModal = showExcludedPlayersModal;
  * Cleanup function for random picker when switching tabs
  */
 function cleanupRandomPicker() {
+    console.log('🧹 Random Picker: Starting cleanup...');
+    
     // Clear any ongoing operations
     if (state.pickerTimer) {
         clearTimeout(state.pickerTimer);
@@ -1397,8 +1409,23 @@ function cleanupRandomPicker() {
     
     // Clear state data
     state.currentSessionId = null;
+    state.registrationSessions = [];
     state.availablePlayers = [];
     state.pickerHistory = [];
+    
+    // Clear DOM content
+    const pickerPlayerList = document.getElementById('random-picker-players');
+    if (pickerPlayerList) pickerPlayerList.innerHTML = '';
+    
+    const pickerResult = document.getElementById('picker-result');
+    if (pickerResult) pickerResult.innerHTML = '';
+    
+    const pickerHistory = document.getElementById('picker-history');
+    if (pickerHistory) pickerHistory.innerHTML = '';
+    
+    // Clear session selector
+    const sessionSelector = document.getElementById('random-picker-session-selector');
+    if (sessionSelector) sessionSelector.innerHTML = '<option value="">Loading sessions...</option>';
     
     // Remove event listeners by cloning elements (this removes all attached listeners)
     const elementsToClean = [
@@ -1431,7 +1458,7 @@ function cleanupRandomPicker() {
         existingModal.remove();
     }
     
-    console.log('Random picker cleanup completed');
+    console.log('🧹 Random Picker: Cleanup complete');
 }
 
 })(); // Close IIFE

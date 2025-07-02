@@ -40,12 +40,17 @@ let lastLoadedSessionCount = null;
 async function initRegistration() {
     try {
         console.log('🚀 Registration: Starting initRegistration...');
-        if (state.initialized) {
-            console.log('🚀 Registration: Already initialized, skipping...');
-            return;
-        }
+        
+        // Always re-initialize when called (for tab switching)
+        state.initialized = false;
+        state.registrationSessions = [];
+        state.currentUser = null;
+        window.registrationModuleLoaded = false;
+        registrationInitAttempts = 0;
+        
         console.log('🚀 Registration: Setting up event listeners...');
         setupEventListeners();
+        
         try {
             await waitForElement('registration-sessions-table-body', 20, 100);
         } catch (e) {
@@ -59,6 +64,7 @@ async function initRegistration() {
                 return;
             }
         }
+        
         console.log('🚀 Registration: Loading registration sessions...');
         await loadRegistrationSessions();
         state.initialized = true;
@@ -638,10 +644,29 @@ async function initRegistration() {
     
     // Function to reset registration module (for cleanup)
     function resetRegistrationModule() {
+        console.log('🧹 Registration: Starting cleanup...');
+        
+        // Reset state variables
         state.initialized = false;
         state.registrationSessions = [];
         state.currentUser = null;
         window.registrationModuleLoaded = false;
+        registrationInitAttempts = 0;
+        
+        // Clear DOM content
+        const tableBody = document.getElementById('registration-sessions-table-body');
+        if (tableBody) tableBody.innerHTML = '';
+        
+        // Clear any modals that might be open
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        });
+        
+        console.log('🧹 Registration: Cleanup complete');
     }
     
     /**
@@ -716,6 +741,7 @@ async function initRegistration() {
     // Expose functions globally that need to be called from HTML
     window.initRegistration = initRegistration;
     window.resetRegistrationModule = resetRegistrationModule;
+    window.cleanupRegistration = resetRegistrationModule; // Alias for navigation system
     window.notifyPlayerListsToRefresh = notifyPlayerListsToRefresh;
     
     // Add the sendDiscordRegistrationMessage function at module scope

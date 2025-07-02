@@ -91,6 +91,15 @@ if (typeof fetchWithAuth === 'undefined') {
  */
 async function initPlayerList() {
     try {
+        console.log('📋 Player List: Starting initialization...');
+        
+        // Always re-initialize when called (for tab switching)
+        // Reset state to ensure fresh start
+        currentSessionId = null;
+        registrationSessions = [];
+        allPlayers = [];
+        lastLoadedPlayerCount = null;
+        
         // Get current user info from session manager
         currentUser = window.sessionManager?.getUserInfo();
         
@@ -106,11 +115,9 @@ async function initPlayerList() {
         // Listen for registration updates to refresh player data
         setupRegistrationUpdateListener();
         
-        console.log('Player list module initialized successfully');
-        
-        // Player list is loaded - tab will be enabled when clicked
+        console.log('✅ Player List: Initialization complete');
     } catch (error) {
-        console.error('Error initializing player list:', error);
+        console.error('❌ Player List: Error initializing:', error);
         window.showNotification('Failed to initialize player list module', 'error');
     }
 }
@@ -1079,4 +1086,59 @@ window.playerListModule = {
 
 // Expose init function globally for navigation system
 window.initPlayerList = initPlayerList;
+
+// Expose cleanup function globally for navigation system
+window.cleanupPlayerList = cleanupPlayerList;
+
+/**
+ * Cleanup function for player list when switching tabs
+ */
+function cleanupPlayerList() {
+    console.log('🧹 Player List: Starting cleanup...');
+    
+    // Reset state variables
+    currentSessionId = null;
+    registrationSessions = [];
+    allPlayers = [];
+    lastLoadedPlayerCount = null;
+    
+    // Clear DOM content
+    const playersTableBody = document.getElementById('players-table-body');
+    if (playersTableBody) playersTableBody.innerHTML = '';
+    
+    const sessionSelector = document.getElementById('session-selector');
+    if (sessionSelector) sessionSelector.innerHTML = '<option value="">Loading sessions...</option>';
+    
+    const playerCountBadge = document.getElementById('session-player-count');
+    if (playerCountBadge) playerCountBadge.textContent = '0 players';
+    
+    const playerSearch = document.getElementById('player-search');
+    if (playerSearch) playerSearch.value = '';
+    
+    // Remove event listeners by cloning elements
+    const elementsToClean = [
+        'session-selector',
+        'refresh-sessions',
+        'player-search',
+        'search-button',
+        'refresh-player-list',
+        'add-player-button',
+        'export-csv-btn',
+        'export-json-btn',
+        'remove-all-players-btn'
+    ];
+    
+    elementsToClean.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            const newElement = element.cloneNode(true);
+            element.parentNode.replaceChild(newElement, element);
+        }
+    });
+    
+    // Clear any custom event listeners
+    window.removeEventListener('registrationUpdated', window.playerListRegistrationListener);
+    
+    console.log('🧹 Player List: Cleanup complete');
+}
 
