@@ -1,5 +1,6 @@
 import { sql } from './database.mjs';
 import { validateSession } from './database.mjs';
+import { DateTime } from 'luxon';
 
 export async function handler(event, context) {
     console.log('🔧 Attendance sessions function started');
@@ -240,7 +241,14 @@ async function getAttendanceSession(sessionId, adminUserId) {
 
 async function createAttendanceSession(sessionData, adminUserId, adminUsername) {
     try {
-        const { name, registrationSessionId, startTime, endTime, description } = sessionData;
+        let { name, registrationSessionId, startTime, endTime, description } = sessionData;
+        // Convert from PH time to UTC
+        if (startTime) {
+            startTime = DateTime.fromISO(startTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+        }
+        if (endTime) {
+            endTime = DateTime.fromISO(endTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+        }
         
         // Validate required fields
         if (!name || !registrationSessionId || !startTime || !endTime) {
@@ -296,7 +304,14 @@ async function createAttendanceSession(sessionData, adminUserId, adminUsername) 
 
 async function updateAttendanceSession(sessionId, updates, adminUserId) {
     try {
-        const { isActive, name, startTime, endTime, description } = updates;
+        let { isActive, name, startTime, endTime, description } = updates;
+        // Convert from PH time to UTC
+        if (startTime) {
+            startTime = DateTime.fromISO(startTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+        }
+        if (endTime) {
+            endTime = DateTime.fromISO(endTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+        }
         
         // Check if session exists
         const existingSession = await sql`
