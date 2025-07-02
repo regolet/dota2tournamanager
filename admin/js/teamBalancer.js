@@ -631,17 +631,27 @@ function autoBalance() {
         // Get balance settings
         const teamSizeSelect = document.getElementById('team-size');
         const balanceMethodSelect = document.getElementById('balance-type');
+        const numTeamsInput = document.getElementById('num-teams');
         
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
+        let numTeams = parseInt(numTeamsInput?.value) || 2;
 
         // Use only availablePlayers for balancing
-        const allPlayers = [...window.teamBalancerData.availablePlayers];
+        let allPlayers = [...window.teamBalancerData.availablePlayers];
         // Do NOT reset reservedPlayers before generating teams
 
-        // For all methods, use allPlayers as the pool
-        let playersForTeams = [...allPlayers];
-        let numTeams = Math.floor(playersForTeams.length / teamSize);
+        // Cap numTeams to what is possible with available players
+        const maxPossibleTeams = Math.floor(allPlayers.length / teamSize);
+        if (numTeams > maxPossibleTeams) numTeams = maxPossibleTeams;
+        if (numTeams < 2) numTeams = 2;
+
+        // Calculate how many players are needed for the requested number of teams
+        const playersNeeded = numTeams * teamSize;
+        // Sort players by MMR (highest first) for fair selection (or keep as-is for registration order)
+        allPlayers = allPlayers.sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+        const playersForTeams = allPlayers.slice(0, playersNeeded);
+        const overflowPlayers = allPlayers.slice(playersNeeded);
 
         if (playersForTeams.length === 0) {
             window.showNotification('No players available for team generation.', 'warning');
@@ -664,18 +674,20 @@ function autoBalance() {
 
         // Distribute players based on selected balance method
         const reservePlayers = distributePlayersByMethod(playersForTeams, balanceMethod, numTeams, teamSize);
+        // Add overflow players to reserves
+        const allReserves = [...reservePlayers, ...overflowPlayers];
 
         // Handle reserve logic for all methods
-        if (reservePlayers && reservePlayers.length > 0) {
+        if (allReserves && allReserves.length > 0) {
             // Update available and reserved players based on what's in teams vs reserves
             const playersUsedInTeams = window.teamBalancerData.balancedTeams.flatMap(team => team.players);
             const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
             window.teamBalancerData.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
             // Add new reserves to existing reservedPlayers, avoiding duplicates
             const existingReserveIds = new Set((window.teamBalancerData.reservedPlayers || []).map(p => p.id));
-            const newReserves = reservePlayers.filter(p => !existingReserveIds.has(p.id));
+            const newReserves = allReserves.filter(p => !existingReserveIds.has(p.id));
             window.teamBalancerData.reservedPlayers = [...(window.teamBalancerData.reservedPlayers || []), ...newReserves];
-            window.showNotification(`${reservePlayers.length} low MMR player(s) moved to reserved list`, 'info');
+            window.showNotification(`${allReserves.length} player(s) moved to reserved list`, 'info');
         } else {
             // No reserve players, all players are in teams
             const playersUsedInTeams = window.teamBalancerData.balancedTeams.flatMap(team => team.players);
