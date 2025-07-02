@@ -465,7 +465,7 @@
                     submitBtn.innerHTML = '<span class="loading-spinner me-2"></span>Marking Attendance...';
                     
                     // Call the attendance marking API
-                    const response = await fetch('/api/update-attendance', {
+                    const response = await fetch('/.netlify/functions/update-player-attendance', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
