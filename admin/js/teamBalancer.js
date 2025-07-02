@@ -643,8 +643,20 @@ function autoBalance() {
 
         // Cap numTeams to what is possible with available players
         const maxPossibleTeams = Math.floor(allPlayers.length / teamSize);
-        if (numTeams > maxPossibleTeams) numTeams = maxPossibleTeams;
-        if (numTeams < 2) numTeams = 2;
+        let capped = false;
+        if (numTeams > maxPossibleTeams) {
+            numTeams = maxPossibleTeams;
+            capped = true;
+        }
+        if (numTeams < 2) {
+            numTeams = 2;
+            capped = true;
+        }
+        // Auto-correct the input field if capped
+        if (capped && numTeamsInput) {
+            numTeamsInput.value = numTeams;
+            window.showNotification(`Number of teams adjusted to ${numTeams} based on available players and team size.`, 'info');
+        }
 
         // Calculate how many players are needed for the requested number of teams
         const playersNeeded = numTeams * teamSize;
