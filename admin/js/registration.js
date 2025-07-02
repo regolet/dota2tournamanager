@@ -345,11 +345,17 @@ async function initRegistration() {
         const sessionId = document.getElementById('edit-session-id').value;
         const isEdit = !!sessionId;
         
+        const expiresInput = document.getElementById('session-expires-at').value;
+        let expiry = null;
+        if (expiresInput) {
+            const localDate = new Date(expiresInput);
+            expiry = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+        }
         const sessionData = {
             title: document.getElementById('session-title').value,
             description: document.getElementById('session-description').value,
             maxPlayers: parseInt(document.getElementById('session-max-players').value),
-            expiresAt: document.getElementById('session-expires-at').value || null
+            expiry
         };
         
         if (isEdit) {
