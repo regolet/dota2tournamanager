@@ -208,25 +208,28 @@
         const sessionsTableBody = document.getElementById('attendance-sessions-table-body');
         if (sessionsTableBody) {
             sessionsTableBody.addEventListener('click', function(e) {
-                const target = e.target.closest('button');
-                if (!target) return;
-                
-                const sessionId = target.dataset.sessionId;
-                const sessionName = target.dataset.sessionName;
-                
-                if (target.classList.contains('copy-attendance-link')) {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const sessionId = button.dataset.sessionId;
+                const sessionName = button.dataset.sessionName;
+                if (!sessionId) {
+                    console.warn('No sessionId found for attendance session action button:', button);
+                    window.utils.showNotification('Error: Session ID not found for this action.', 'error');
+                    return;
+                }
+                if (button.classList.contains('copy-attendance-link')) {
                     copyAttendanceSessionLink(sessionId);
-                } else if (target.classList.contains('open-attendance-link')) {
+                } else if (button.classList.contains('open-attendance-link')) {
                     openAttendanceSessionLink(sessionId);
-                } else if (target.classList.contains('edit-attendance-session')) {
+                } else if (button.classList.contains('edit-attendance-session')) {
                     editAttendanceSession(sessionId);
-                } else if (target.classList.contains('close-attendance-session')) {
+                } else if (button.classList.contains('close-attendance-session')) {
                     closeAttendanceSession(sessionId, sessionName);
-                } else if (target.classList.contains('reopen-attendance-session')) {
+                } else if (button.classList.contains('reopen-attendance-session')) {
                     reopenAttendanceSession(sessionId, sessionName);
-                } else if (target.classList.contains('delete-attendance-session')) {
+                } else if (button.classList.contains('delete-attendance-session')) {
                     deleteAttendanceSession(sessionId, sessionName);
-                } else if (target.classList.contains('view-attendance-stats')) {
+                } else if (button.classList.contains('view-attendance-stats')) {
                     viewAttendanceStats(sessionId);
                 }
             });
