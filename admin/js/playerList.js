@@ -238,6 +238,7 @@ async function createSessionSelector() {
                                             <th>Tournament</th>
                                             <th>ID</th>
                                             <th>Registered</th>
+                                            <th>Status</th>
                                             <th class="text-center">Actions</th>
                                                     </tr>
                                                 </thead>
@@ -519,6 +520,9 @@ function displayPlayers(players) {
             </td>
             <td class="px-3">
                 <small class="text-muted">${registrationDate}</small>
+            </td>
+            <td class="px-3">
+                <span class="badge ${player.present ? 'bg-success' : 'bg-secondary'}">${player.present ? 'Present' : 'Absent'}</span>
             </td>
             <td class="text-center px-3">
                 <div class="btn-group btn-group-sm">
