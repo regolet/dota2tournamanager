@@ -106,9 +106,32 @@
         }
     }
 
-    function editAttendanceSession(sessionId) {
-        // For now, show a simple alert. This could be expanded to show an edit modal
-        window.utils.showNotification('Edit functionality coming soon!', 'info');
+    async function editAttendanceSession(sessionId) {
+        try {
+            // Fetch session data (replace with actual API call if needed)
+            const session = state.attendanceSessions.find(s => s.sessionId === sessionId);
+            if (!session) {
+                window.utils.showNotification('Attendance session not found', 'error');
+                return;
+            }
+            // Fill modal fields
+            document.getElementById('attendance-session-name').value = session.name || '';
+            document.getElementById('attendance-registration-session').value = session.registrationSessionId || '';
+            document.getElementById('attendance-start-time').value = session.startTime ? session.startTime.slice(0, 16) : '';
+            document.getElementById('attendance-end-time').value = session.endTime ? session.endTime.slice(0, 16) : '';
+            document.getElementById('attendance-description').value = session.description || '';
+            document.getElementById('attendance-status').value = session.isActive ? 'active' : 'inactive';
+            // Store sessionId for update
+            document.getElementById('attendance-session-form').setAttribute('data-edit-session-id', sessionId);
+            // Update modal title/button
+            document.getElementById('createAttendanceSessionModalLabel').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Attendance Session';
+            document.querySelector('#attendance-session-form button[type="submit"]').textContent = 'Update Session';
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('createAttendanceSessionModal'));
+            modal.show();
+        } catch (error) {
+            window.utils.showNotification('Error loading attendance session for edit', 'error');
+        }
     }
 
     function viewAttendanceStats(sessionId) {
@@ -597,25 +620,34 @@
 
     async function handleAttendanceSessionSave(e) {
         e.preventDefault();
-        
+        const form = document.getElementById('attendance-session-form');
+        const isEdit = form.hasAttribute('data-edit-session-id');
+        const sessionId = form.getAttribute('data-edit-session-id');
         const sessionData = {
             name: document.getElementById('attendance-session-name').value,
             registrationSessionId: document.getElementById('attendance-registration-session').value,
             startTime: document.getElementById('attendance-start-time').value,
             endTime: document.getElementById('attendance-end-time').value,
-            description: document.getElementById('attendance-description').value
+            description: document.getElementById('attendance-description').value,
+            isActive: document.getElementById('attendance-status').value === 'active'
         };
-        
         const saveButton = e.target.querySelector('button[type="submit"]');
         const originalText = saveButton.textContent;
-        
         try {
             saveButton.disabled = true;
-            saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
-            
-            // Create attendance session via API
-            try {
-                const response = await fetch('/admin/api/attendance-sessions', {
+            saveButton.innerHTML = isEdit ? '<span class="spinner-border spinner-border-sm me-2"></span>Updating...' : '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+            let response, data;
+            if (isEdit) {
+                response = await fetch(`/admin/api/attendance-sessions?sessionId=${encodeURIComponent(sessionId)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-session-id': localStorage.getItem('adminSessionId')
+                    },
+                    body: JSON.stringify(sessionData)
+                });
+            } else {
+                response = await fetch('/admin/api/attendance-sessions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -623,64 +655,27 @@
                     },
                     body: JSON.stringify(sessionData)
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                if (data.success && data.session) {
-                    const newSession = data.session;
-                    state.attendanceSessions.push(newSession);
-                    
-                    // Close modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('createAttendanceSessionModal'));
-                    if (modal) {
-                        modal.hide();
-                    }
-                    
-                    // Show attendance link modal
-                    showAttendanceLinkModal(newSession);
-                    
-                    // Reload data
-                    await loadAttendanceData();
-                    
-                    window.utils.showNotification('Attendance session created successfully', 'success');
-                } else {
-                    throw new Error(data.message || 'Failed to create attendance session');
-                }
-            } catch (apiError) {
-                console.warn('Attendance API not available, using mock session:', apiError.message);
-                
-                // Create mock session for demo purposes
-                const mockSession = {
-                    sessionId: 'att_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                    ...sessionData,
-                    isActive: true,
-                    createdAt: new Date().toISOString(),
-                    presentCount: 0,
-                    totalCount: 0
-                };
-                
-                state.attendanceSessions.push(mockSession);
-                
+            }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            data = await response.json();
+            if (data.success && data.session) {
                 // Close modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('createAttendanceSessionModal'));
                 if (modal) {
                     modal.hide();
                 }
-                
-                // Show attendance link modal
-                showAttendanceLinkModal(mockSession);
-                
+                // Clear edit state
+                form.removeAttribute('data-edit-session-id');
                 // Reload data
                 await loadAttendanceData();
-                
-                window.utils.showNotification('Attendance session created (demo mode)', 'success');
+                window.utils.showNotification(isEdit ? 'Attendance session updated successfully' : 'Attendance session created successfully', 'success');
+            } else {
+                throw new Error(data.message || (isEdit ? 'Failed to update attendance session' : 'Failed to create attendance session'));
             }
         } catch (error) {
-            console.error('Error creating attendance session:', error);
-            window.utils.showNotification('Error creating attendance session', 'error');
+            window.utils.showNotification(error.message || (isEdit ? 'Error updating attendance session' : 'Error creating attendance session'), 'error');
         } finally {
             saveButton.disabled = false;
             saveButton.textContent = originalText;
