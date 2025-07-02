@@ -116,14 +116,20 @@
         window.utils.showNotification('Statistics view coming soon!', 'info');
     }
 
+    function viewPlayerDetails(playerId) {
+        // For now, show a simple alert. This could be expanded to show player details modal
+        window.utils.showNotification('Player details view coming soon!', 'info');
+    }
+
     // Initialize attendance module
     async function initAttendance() {
         try {
             console.log('🚀 Attendance: Starting initAttendance...');
-            if (state.initialized) {
-                console.log('🚀 Attendance: Already initialized, skipping...');
-                return;
-            }
+            
+            // Always re-initialize when called (for tab switching)
+            state.initialized = false;
+            attendanceInitAttempts = 0;
+            
             console.log('🚀 Attendance: Setting up event listeners...');
             setupEventListeners();
             
@@ -196,6 +202,15 @@
         const exportBtn = document.getElementById('export-attendance');
         if (exportBtn) {
             exportBtn.addEventListener('click', exportAttendanceData);
+        }
+        
+        // Attendance session dropdown
+        const dropdown = document.getElementById('attendance-session-select');
+        if (dropdown) {
+            dropdown.addEventListener('change', function() {
+                const sessionId = dropdown.value;
+                loadPlayersForAttendanceSession(sessionId);
+            });
         }
         
         // Select all players checkbox
@@ -400,7 +415,6 @@
     function displayAttendanceSessions() {
         const tableBody = document.getElementById('attendance-sessions-table-body');
         if (!tableBody) return;
-        
         if (state.attendanceSessions.length === 0) {
             tableBody.innerHTML = `
                 <tr>
@@ -414,9 +428,7 @@
             renderAttendanceSessionDropdown();
             return;
         }
-        
         tableBody.innerHTML = '';
-        
         state.attendanceSessions.forEach(session => {
             const row = document.createElement('tr');
             
@@ -888,20 +900,30 @@
 
     // Function to reset attendance module (for cleanup)
     function resetAttendanceModule() {
+        console.log('🧹 Attendance: Starting cleanup...');
+        
         // Reset all state variables
         state.initialized = false;
         state.attendanceSessions = [];
         state.players = [];
         state.registrationSessions = [];
         state.currentUser = null;
-        // Also reset any retry counters or timers if present
+        
+        // Reset retry counters
         attendanceInitAttempts = 0;
-        // Remove any event listeners if needed (optional, for future-proofing)
-        // Optionally clear any DOM content if needed
+        
+        // Clear DOM content
         const tableBody = document.getElementById('attendance-sessions-table-body');
         if (tableBody) tableBody.innerHTML = '';
+        
         const playerTableBody = document.getElementById('player-attendance-table-body');
         if (playerTableBody) playerTableBody.innerHTML = '';
+        
+        // Clear dropdown
+        const dropdown = document.getElementById('attendance-session-select');
+        if (dropdown) dropdown.innerHTML = '<option value="">-- Select Session --</option>';
+        
+        console.log('🧹 Attendance: Cleanup complete');
     }
 
     // Expose functions globally
@@ -971,104 +993,4 @@
             displayPlayersWithAttendance();
         }
     }
-
-    // Remove the fetch-based populateAttendanceSessionDropdown
-    // Instead, call renderAttendanceSessionDropdown after displayAttendanceSessions
-
-    // Update displayAttendanceSessions to call renderAttendanceSessionDropdown
-    function displayAttendanceSessions() {
-        const tableBody = document.getElementById('attendance-sessions-table-body');
-        if (!tableBody) return;
-        if (state.attendanceSessions.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">
-                        <i class="bi bi-calendar-x me-2"></i>
-                        No attendance sessions created yet.
-                        <br><small>Click "Create Attendance Session" to get started.</small>
-                    </td>
-                </tr>
-            `;
-            renderAttendanceSessionDropdown();
-            return;
-        }
-        tableBody.innerHTML = '';
-        state.attendanceSessions.forEach(session => {
-            const row = document.createElement('tr');
-            
-            // Status determination
-            let statusBadge = '';
-            let statusClass = '';
-            
-            if (!session.isActive) {
-                statusBadge = 'Inactive';
-                statusClass = 'bg-secondary';
-            } else if (session.endTime && new Date() > new Date(session.endTime)) {
-                statusBadge = 'Expired';
-                statusClass = 'bg-warning';
-            } else if (new Date() < new Date(session.startTime)) {
-                statusBadge = 'Upcoming';
-                statusClass = 'bg-info';
-            } else {
-                statusBadge = 'Active';
-                statusClass = 'bg-success';
-            }
-            
-            // Find registration session
-            const regSession = state.registrationSessions.find(s => s.sessionId === session.registrationSessionId);
-            const regSessionTitle = regSession ? regSession.title : 'Unknown';
-            
-            row.innerHTML = `
-                <td>
-                    <div class="fw-bold">${escapeHtml(session.name)}</div>
-                    <small class="text-muted">ID: ${session.sessionId}</small>
-                </td>
-                <td>${escapeHtml(regSessionTitle)}</td>
-                <td><span class="badge ${statusClass}">${statusBadge}</span></td>
-                <td>${session.presentCount}/${session.totalCount}</td>
-                <td><small>${formatDate(session.createdAt)}</small></td>
-                <td><small>${session.endTime ? formatDate(session.endTime) : 'Never'}</small></td>
-                <td>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary copy-attendance-link" data-session-id="${session.sessionId}" title="Copy Link">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                        <button class="btn btn-outline-secondary open-attendance-link" data-session-id="${session.sessionId}" title="Open Link">
-                            <i class="bi bi-box-arrow-up-right"></i>
-                        </button>
-                        <button class="btn btn-outline-info view-attendance-stats" data-session-id="${session.sessionId}" title="View Stats">
-                            <i class="bi bi-graph-up"></i>
-                        </button>
-                        ${session.isActive ? 
-                            `<button class="btn btn-outline-warning close-attendance-session" data-session-id="${session.sessionId}" data-session-name="${escapeHtml(session.name)}" title="Close Session">
-                                <i class="bi bi-stop-circle"></i>
-                            </button>` : 
-                            `<button class="btn btn-outline-success reopen-attendance-session" data-session-id="${session.sessionId}" data-session-name="${escapeHtml(session.name)}" title="Reopen Session">
-                                <i class="bi bi-play-circle"></i>
-                            </button>`
-                        }
-                        <button class="btn btn-outline-danger delete-attendance-session" data-session-id="${session.sessionId}" data-session-name="${escapeHtml(session.name)}" title="Delete">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-            
-            tableBody.appendChild(row);
-        });
-        renderAttendanceSessionDropdown();
-    }
-
-    // Remove or comment out the old populateAttendanceSessionDropdown and its DOMContentLoaded usage
-    // Instead, just call loadAttendanceData() on DOMContentLoaded
-    document.addEventListener('DOMContentLoaded', function() {
-        loadAttendanceData();
-        const dropdown = document.getElementById('attendance-session-select');
-        if (dropdown) {
-            dropdown.addEventListener('change', function() {
-                const sessionId = dropdown.value;
-                loadPlayersForAttendanceSession(sessionId);
-            });
-        }
-    });
 })(); 
