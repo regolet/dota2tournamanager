@@ -508,9 +508,15 @@
                         })
                     });
                     
-                    const data = await response.json();
+                    let data = null;
+                    try {
+                        data = await response.json();
+                    } catch (jsonErr) {
+                        showError('Invalid server response. Please try again or contact the admin.');
+                        return;
+                    }
                     
-                    if (data.success) {
+                    if (data && data.success) {
                         if (data.alreadyPresent) {
                             // Show already marked state
                             hideAllStates();
@@ -520,13 +526,15 @@
                             hideAllStates();
                             document.getElementById('success-state').style.display = 'block';
                         }
+                    } else if (data && data.message) {
+                        showError(data.message);
                     } else {
-                        throw new Error(data.message || 'Failed to mark attendance');
+                        showError('Unknown error occurred. Please try again.');
                     }
                     
                 } catch (error) {
                     console.error('Error marking attendance:', error);
-                    alert('Failed to mark attendance. Please try again.');
+                    showError('Failed to mark attendance. Please try again.');
                 } finally {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalText;
