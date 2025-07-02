@@ -3,7 +3,8 @@ const webhookTypes = [
   { type: 'registration', input: 'webhook-registration', save: 'save-webhook-registration', del: 'delete-webhook-registration', test: 'test-webhook-registration' },
   { type: 'teams', input: 'webhook-teams', save: 'save-webhook-teams', del: 'delete-webhook-teams', test: 'test-webhook-teams' },
   { type: 'bracket', input: 'webhook-bracket', save: 'save-webhook-bracket', del: 'delete-webhook-bracket', test: 'test-webhook-bracket' },
-  { type: 'updates', input: 'webhook-updates', save: 'save-webhook-updates', del: 'delete-webhook-updates', test: 'test-webhook-updates' }
+  { type: 'updates', input: 'webhook-updates', save: 'save-webhook-updates', del: 'delete-webhook-updates', test: 'test-webhook-updates' },
+  { type: 'attendance', input: 'webhook-attendance', save: 'save-webhook-attendance', del: 'delete-webhook-attendance', test: 'test-webhook-attendance' }
 ];
 
 // Use centralized notification system instead of local status
@@ -215,6 +216,7 @@ function initDiscord() {
   document.getElementById('edit-template-teams').addEventListener('click', () => openEditTemplateModal('teams'));
   document.getElementById('edit-template-bracket').addEventListener('click', () => openEditTemplateModal('bracket'));
   document.getElementById('edit-template-updates').addEventListener('click', () => openEditTemplateModal('updates'));
+  document.getElementById('edit-template-attendance').addEventListener('click', () => openEditTemplateModal('attendance'));
 
   // Save template
   document.getElementById('edit-template-form').addEventListener('submit', async function(e) {
@@ -286,7 +288,8 @@ const defaultTemplates = {
   registration: `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`,
   teams: `**Balanced Teams ({team_count} teams, {players_per_team} per team)**\nBalance type: *{balance_type}*\nTotal present: {player_count}\nPlayers in teams: {players_in_teams}\nReserves: {reserve_count}\n\n{team_list}`,
   bracket: `🏆 **Tournament Bracket Created!**\n**Tournament:** {tournament_name} - {format}\n**Teams:** {team_count}\n**Rounds:** {round_count}\n\n📋 **First Round Matches**\n{first_round_matches}\n\nTournament bracket saved to database` ,
-  updates: `**{tournament_name} - {format} - Bracket Update**\n\n*First Round*\n{first_round}\n\n*Semi-Final*\n{semi_final}\n\n*Final*\n{final}\n\nResult\n{result}\n\n🎉 Congratulations to {winner}!\nPlayers: {winner_players}`
+  updates: `**{tournament_name} - {format} - Bracket Update**\n\n*First Round*\n{first_round}\n\n*Semi-Final*\n{semi_final}\n\n*Final*\n{final}\n\nResult\n{result}\n\n🎉 Congratulations to {winner}!\nPlayers: {winner_players}`,
+  attendance: `📋 **Attendance Session: {session_name}**\n\n🎯 **Attendance Link:**\n{attendance_url}\n\n⏰ **Please mark your attendance using the link above.**\n\n✅ Present players will be eligible for tournament participation.`
 };
 
 // Modal logic
@@ -314,7 +317,8 @@ async function openEditTemplateModal(type) {
     registration: 'Registration Link',
     teams: 'Teams',
     bracket: 'Bracket',
-    updates: 'Bracket Updates'
+    updates: 'Bracket Updates',
+    attendance: 'Attendance'
   }[type] || 'Template';
   document.getElementById('editTemplateModalLabel').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Discord Message Template: <span class="text-primary">${label}</span>`;
   modal.show();
