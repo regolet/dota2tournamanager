@@ -292,6 +292,15 @@
                 }
             });
         }
+
+        // Edit attendance session
+        document.getElementById('attendance-sessions-table-body').addEventListener('click', function(e) {
+            const editBtn = e.target.closest('.edit-attendance-session');
+            if (editBtn) {
+                const sessionId = editBtn.getAttribute('data-session-id');
+                editAttendanceSession(sessionId);
+            }
+        });
     }
 
     async function loadAttendanceData() {
@@ -497,6 +506,9 @@
                         </button>
                         <button class="btn btn-outline-info view-attendance-stats" data-session-id="${session.sessionId}" title="View Stats">
                             <i class="bi bi-graph-up"></i>
+                        </button>
+                        <button class="btn btn-outline-primary edit-attendance-session" data-session-id="${session.sessionId}" title="Edit">
+                            <i class="bi bi-pencil"></i>
                         </button>
                         ${session.isActive ? 
                             `<button class="btn btn-outline-warning close-attendance-session" data-session-id="${session.sessionId}" data-session-name="${escapeHtml(session.name)}" title="Close Session">
