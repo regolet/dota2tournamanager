@@ -635,10 +635,9 @@ function autoBalance() {
         const teamSize = parseInt(teamSizeSelect?.value) || 5;
         const balanceMethod = balanceMethodSelect?.value || 'highRanked';
 
-        // Create a clean copy of all players for this execution (available + reserved)
-        const allPlayers = [...window.teamBalancerData.availablePlayers, ...(window.teamBalancerData.reservedPlayers || [])];
-        // Always reset reservedPlayers before generating teams
-        window.teamBalancerData.reservedPlayers = [];
+        // Use only availablePlayers for balancing
+        const allPlayers = [...window.teamBalancerData.availablePlayers];
+        // Do NOT reset reservedPlayers before generating teams
 
         // For all methods, use allPlayers as the pool
         let playersForTeams = [...allPlayers];
@@ -672,14 +671,17 @@ function autoBalance() {
             const playersUsedInTeams = window.teamBalancerData.balancedTeams.flatMap(team => team.players);
             const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
             window.teamBalancerData.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
-            window.teamBalancerData.reservedPlayers = reservePlayers;
+            // Add new reserves to existing reservedPlayers, avoiding duplicates
+            const existingReserveIds = new Set((window.teamBalancerData.reservedPlayers || []).map(p => p.id));
+            const newReserves = reservePlayers.filter(p => !existingReserveIds.has(p.id));
+            window.teamBalancerData.reservedPlayers = [...(window.teamBalancerData.reservedPlayers || []), ...newReserves];
             window.showNotification(`${reservePlayers.length} low MMR player(s) moved to reserved list`, 'info');
         } else {
             // No reserve players, all players are in teams
             const playersUsedInTeams = window.teamBalancerData.balancedTeams.flatMap(team => team.players);
             const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
             window.teamBalancerData.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
-            window.teamBalancerData.reservedPlayers = [];
+            // reservedPlayers remain unchanged
         }
 
         // Update all displays at once (much more efficient)
