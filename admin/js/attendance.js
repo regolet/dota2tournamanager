@@ -133,7 +133,7 @@
             }
             document.getElementById('attendance-session-name').value = session.name || '';
             document.getElementById('attendance-registration-session').value = session.registrationSessionId || '';
-            document.getElementById('attendance-start-time').value = toPHLocalInput(session.startTime);
+            document.getElementById('attendance-start-time').value = toPHLocalInput(session.createdAt);
             document.getElementById('attendance-end-time').value = toPHLocalInput(session.endTime);
             document.getElementById('attendance-description').value = session.description || '';
             document.getElementById('attendance-status').value = session.isActive ? 'active' : 'inactive';
