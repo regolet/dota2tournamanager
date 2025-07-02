@@ -272,13 +272,11 @@ async function createAttendanceSession(sessionData, adminUserId, adminUsername) 
 async function updateAttendanceSession(sessionId, updates, adminUserId) {
     try {
         const { isActive, name, startTime, endTime, description } = updates;
-        
-        // Check if session exists and belongs to admin
+        // Check if session exists (no longer restrict to admin_user_id)
         const existingSession = await sql`
             SELECT id FROM attendance_sessions 
-            WHERE session_id = ${sessionId} AND admin_user_id = ${adminUserId}
+            WHERE session_id = ${sessionId}
         `;
-
         if (existingSession.length === 0) {
             return {
                 statusCode: 404,
@@ -289,11 +287,9 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
                 })
             };
         }
-
         // Build update query dynamically
         const updateFields = [];
         const updateValues = [];
-        
         if (isActive !== undefined) {
             updateFields.push('is_active');
             updateValues.push(isActive);
@@ -314,7 +310,6 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             updateFields.push('description');
             updateValues.push(description);
         }
-
         if (updateFields.length === 0) {
             return {
                 statusCode: 400,
@@ -325,17 +320,13 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
                 })
             };
         }
-
         // Add updated_at field
         updateFields.push('updated_at');
         updateValues.push(new Date().toISOString());
-
-        // Build dynamic SQL query
+        // Build dynamic SQL query (no admin_user_id in WHERE)
         const setClause = updateFields.map((field, index) => `${field} = $${index + 1}`).join(', ');
-        const query = `UPDATE attendance_sessions SET ${setClause} WHERE session_id = $${updateFields.length + 1} AND admin_user_id = $${updateFields.length + 2} RETURNING *`;
-        
-        const result = await sql.unsafe(query, ...updateValues, sessionId, adminUserId);
-
+        const query = `UPDATE attendance_sessions SET ${setClause} WHERE session_id = $${updateFields.length + 1} RETURNING *`;
+        const result = await sql.unsafe(query, ...updateValues, sessionId);
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
