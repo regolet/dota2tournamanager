@@ -211,10 +211,18 @@
             await loadRegistrationSession();
         });
         
-        // Clear countdown timer when page is unloaded
+        // Cleanup on page unload
         window.addEventListener('beforeunload', function() {
             if (countdownInterval) {
                 clearInterval(countdownInterval);
+            }
+        });
+        
+        // Cleanup countdown timers when page becomes hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
             }
         });
 
@@ -320,6 +328,12 @@
         let countdownInterval = null;
         
         function startRegistrationCountdown(expiryTime) {
+            // Validate expiryTime
+            if (!expiryTime || isNaN(new Date(expiryTime).getTime())) {
+                console.error('Invalid expiry time for countdown:', expiryTime);
+                return;
+            }
+            
             // Clear existing interval
             if (countdownInterval) {
                 clearInterval(countdownInterval);
@@ -333,42 +347,49 @@
             const messageElement = document.getElementById('countdown-message');
             
             function updateCountdown() {
-                const now = new Date().getTime();
-                const timeRemaining = expiryTime - now;
-                
-                if (timeRemaining <= 0) {
-                    // Registration has expired
+                try {
+                    const now = new Date().getTime();
+                    const target = new Date(expiryTime).getTime();
+                    const timeRemaining = target - now;
+                    
+                    if (timeRemaining <= 0) {
+                        // Registration has expired
+                        clearInterval(countdownInterval);
+                        countdownSection.style.display = 'none';
+                        
+                        // Reload the session to update status
+                        loadRegistrationSession();
+                        return;
+                    }
+                    
+                    // Calculate time units
+                    const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+                    
+                    // Update display
+                    daysElement.textContent = String(days).padStart(2, '0');
+                    hoursElement.textContent = String(hours).padStart(2, '0');
+                    minutesElement.textContent = String(minutes).padStart(2, '0');
+                    secondsElement.textContent = String(seconds).padStart(2, '0');
+                    
+                    // Update styling and message based on time remaining
+                    countdownSection.className = 'countdown-section';
+                    
+                    if (timeRemaining <= 24 * 60 * 60 * 1000) { // Less than 1 day
+                        countdownSection.classList.add('critical');
+                        messageElement.textContent = '🚨 Hurry! Registration closes soon!';
+                    } else if (timeRemaining <= 3 * 24 * 60 * 60 * 1000) { // Less than 3 days
+                        countdownSection.classList.add('urgent');
+                        messageElement.textContent = '⚡ Don\'t wait too long to register!';
+                    } else {
+                        messageElement.textContent = '📅 Plenty of time to register';
+                    }
+                } catch (error) {
+                    console.error('Error updating countdown:', error);
                     clearInterval(countdownInterval);
                     countdownSection.style.display = 'none';
-                    
-                    // Reload the session to update status
-                    loadRegistrationSession();
-                    return;
-                }
-                
-                // Calculate time units
-                const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-                
-                // Update display
-                daysElement.textContent = String(days).padStart(2, '0');
-                hoursElement.textContent = String(hours).padStart(2, '0');
-                minutesElement.textContent = String(minutes).padStart(2, '0');
-                secondsElement.textContent = String(seconds).padStart(2, '0');
-                
-                // Update styling and message based on time remaining
-                countdownSection.className = 'countdown-section';
-                
-                if (timeRemaining <= 24 * 60 * 60 * 1000) { // Less than 1 day
-                    countdownSection.classList.add('critical');
-                    messageElement.textContent = '🚨 Hurry! Registration closes soon!';
-                } else if (timeRemaining <= 3 * 24 * 60 * 60 * 1000) { // Less than 3 days
-                    countdownSection.classList.add('urgent');
-                    messageElement.textContent = '⚡ Don\'t wait too long to register!';
-                } else {
-                    messageElement.textContent = '📅 Plenty of time to register';
                 }
             }
             

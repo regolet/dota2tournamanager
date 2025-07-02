@@ -571,22 +571,32 @@
         function formatDate(dateString) {
             if (!dateString) return 'N/A';
             
-            const date = new Date(dateString);
-            const now = new Date();
-            
-            // If it's today, show time
-            if (date.toDateString() === now.toDateString()) {
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    console.warn('Invalid date string in formatDate:', dateString);
+                    return 'Invalid date';
+                }
+                
+                const now = new Date();
+                
+                // If it's today, show time
+                if (date.toDateString() === now.toDateString()) {
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                
+                // If it's within the last week, show day
+                const daysDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+                if (daysDiff < 7) {
+                    return `${daysDiff} day${daysDiff !== 1 ? 's' : ''} ago`;
+                }
+                
+                // Otherwise show date
+                return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            } catch (error) {
+                console.error('Error formatting date:', error, dateString);
+                return 'Invalid date';
             }
-            
-            // If it's within the last week, show day
-            const daysDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-            if (daysDiff < 7) {
-                return `${daysDiff} day${daysDiff !== 1 ? 's' : ''} ago`;
-            }
-            
-            // Otherwise show date
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
         }
 
         function createCountdownHtml(tournament) {
@@ -624,31 +634,44 @@
             const countdownElement = document.getElementById(`countdown-${sessionId}`);
             if (!countdownElement) return;
             
+            // Validate expiryTime
+            if (!expiryTime || isNaN(new Date(expiryTime).getTime())) {
+                console.error('Invalid expiry time for session:', sessionId, expiryTime);
+                countdownElement.textContent = 'Invalid time';
+                return;
+            }
+            
             function updateCountdown() {
-                const now = new Date().getTime();
-                const timeRemaining = expiryTime - now;
-                
-                if (timeRemaining <= 0) {
-                    countdownElement.textContent = 'Registration Closed';
-                    countdownElement.parentElement.className = 'countdown-timer critical';
-                    return;
+                try {
+                    const now = new Date().getTime();
+                    const target = new Date(expiryTime).getTime();
+                    const timeRemaining = target - now;
+                    
+                    if (timeRemaining <= 0) {
+                        countdownElement.textContent = 'Registration Closed';
+                        countdownElement.parentElement.className = 'countdown-timer critical';
+                        return;
+                    }
+                    
+                    const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+                    
+                    let countdownText = '';
+                    if (days > 0) {
+                        countdownText = `${days}d ${hours}h ${minutes}m`;
+                    } else if (hours > 0) {
+                        countdownText = `${hours}h ${minutes}m ${seconds}s`;
+                    } else {
+                        countdownText = `${minutes}m ${seconds}s`;
+                    }
+                    
+                    countdownElement.textContent = countdownText;
+                } catch (error) {
+                    console.error('Error updating countdown for session:', sessionId, error);
+                    countdownElement.textContent = 'Error';
                 }
-                
-                const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-                
-                let countdownText = '';
-                if (days > 0) {
-                    countdownText = `${days}d ${hours}h ${minutes}m`;
-                } else if (hours > 0) {
-                    countdownText = `${hours}h ${minutes}m ${seconds}s`;
-                } else {
-                    countdownText = `${minutes}m ${seconds}s`;
-                }
-                
-                countdownElement.textContent = countdownText;
             }
             
             // Update immediately
@@ -685,6 +708,21 @@
                 window.countdownIntervals = {};
             }
         }
+        
+        // Cleanup countdown timers when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            clearAllCountdownTimers();
+        });
+        
+        // Cleanup countdown timers when page becomes hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                clearAllCountdownTimers();
+            } else {
+                // Restart countdown timers when page becomes visible again
+                startAllCountdownTimers();
+            }
+        });
         
         function escapeHtml(text) {
             if (!text) return '';

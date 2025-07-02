@@ -121,10 +121,13 @@ export const handler = async (event, context) => {
       };
     }
     
-    // Generate session
+    // Generate session with proper timezone handling
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
+    
+    // Ensure we're working with UTC for consistency
+    const expiresAtUTC = new Date(expiresAt.toISOString());
     
     console.log('Creating session...', {
       sessionId,
@@ -136,7 +139,7 @@ export const handler = async (event, context) => {
     // Create session in database
     await sql`
       INSERT INTO admin_sessions (id, user_id, role, expires_at)
-      VALUES (${sessionId}, ${user.id}, ${user.role}, ${expiresAt.toISOString()})
+      VALUES (${sessionId}, ${user.id}, ${user.role}, ${expiresAtUTC.toISOString()})
     `;
     
     console.log('Session created successfully:', sessionId);
@@ -177,18 +180,18 @@ export const handler = async (event, context) => {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify({
-        success: true,
-        sessionId: sessionId,
-        expiresAt: expiresAt.toISOString(),
-        user: {
-          username: user.username,
-          role: user.role,
-          fullName: user.full_name,
-          email: user.email
-        },
-        message: 'Login successful'
-      })
+              body: JSON.stringify({
+          success: true,
+          sessionId: sessionId,
+          expiresAt: expiresAtUTC.toISOString(),
+          user: {
+            username: user.username,
+            role: user.role,
+            fullName: user.full_name,
+            email: user.email
+          },
+          message: 'Login successful'
+        })
     };
 
   } catch (error) {

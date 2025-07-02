@@ -86,6 +86,19 @@ export async function handler(event, context) {
         const startTime = new Date(session.start_time);
         const endTime = new Date(session.end_time);
 
+        // Validate dates
+        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+            console.error('Invalid session times:', { startTime: session.start_time, endTime: session.end_time });
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ 
+                    success: false, 
+                    message: 'Invalid session time configuration' 
+                })
+            };
+        }
+
         // Check if attendance window is open
         if (now < startTime) {
             return {

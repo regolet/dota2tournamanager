@@ -116,20 +116,26 @@
             // Helper to convert UTC/ISO to PH datetime-local string
             function toPHLocalInput(dateString) {
                 if (!dateString) return '';
-                const date = new Date(dateString);
-                const phFormatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone: 'Asia/Manila',
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit', hour12: false
-                });
-                const parts = phFormatter.formatToParts(date);
-                const get = type => parts.find(p => p.type === type)?.value;
-                const yyyy = get('year');
-                const mm = get('month');
-                const dd = get('day');
-                let hh = get('hour');
-                let min = get('minute');
-                return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+                try {
+                    const date = new Date(dateString);
+                    if (isNaN(date.getTime())) {
+                        console.warn('Invalid date string:', dateString);
+                        return '';
+                    }
+                    
+                    // Use a more reliable method to get PH time
+                    const phDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
+                    const year = phDate.getFullYear();
+                    const month = String(phDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(phDate.getDate()).padStart(2, '0');
+                    const hours = String(phDate.getHours()).padStart(2, '0');
+                    const minutes = String(phDate.getMinutes()).padStart(2, '0');
+                    
+                    return `${year}-${month}-${day}T${hours}:${minutes}`;
+                } catch (error) {
+                    console.error('Error converting date to PH local:', error, dateString);
+                    return '';
+                }
             }
             document.getElementById('attendance-session-name').value = session.name || '';
             document.getElementById('attendance-registration-session').value = session.registrationSessionId || '';
@@ -471,6 +477,9 @@
                 </tr>
             `;
             renderAttendanceSessionDropdown();
+            // Clear countdown when no sessions
+            const countdownEl = document.getElementById('admin-session-countdown');
+            if (countdownEl) countdownEl.textContent = '';
             return;
         }
         tableBody.innerHTML = '';
@@ -487,7 +496,7 @@
             } else if (session.endTime && new Date() > new Date(session.endTime)) {
                 statusBadge = 'Expired';
                 statusClass = 'bg-warning';
-            } else if (new Date() < new Date(session.startTime)) {
+            } else if (session.startTime && new Date() < new Date(session.startTime)) {
                 statusBadge = 'Upcoming';
                 statusClass = 'bg-info';
             } else {
@@ -541,6 +550,32 @@
             tableBody.appendChild(row);
         });
         renderAttendanceSessionDropdown();
+        
+        // Start countdown for next upcoming session
+        const now = new Date();
+        console.log('Checking for upcoming sessions. Current time:', now);
+        console.log('Available sessions:', state.attendanceSessions.map(s => ({
+            name: s.name,
+            isActive: s.isActive,
+            startTime: s.startTime,
+            createdAt: s.createdAt,
+            endTime: s.endTime
+        })));
+        
+        const nextUpcoming = state.attendanceSessions
+            .filter(s => s.isActive && s.startTime && new Date(s.startTime) > now)
+            .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
+        
+        const countdownEl = document.getElementById('admin-session-countdown');
+        if (countdownEl) {
+            if (nextUpcoming) {
+                console.log('Starting countdown for session:', nextUpcoming.name, 'at', nextUpcoming.startTime);
+                startAdminSessionCountdown(new Date(nextUpcoming.startTime));
+            } else {
+                console.log('No upcoming sessions found for countdown');
+                countdownEl.textContent = '';
+            }
+        }
     }
 
     function displayPlayersWithAttendance() {
@@ -631,25 +666,32 @@
 
         // Get current time in PH timezone (Asia/Manila)
         function getPHISOString(offsetMinutes = 0) {
-            const now = new Date();
-            // Get PH time using Intl.DateTimeFormat
-            const phFormatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Manila',
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit', hour12: false
-            });
-            const parts = phFormatter.formatToParts(now);
-            const get = type => parts.find(p => p.type === type)?.value;
-            // Compose PH time string in YYYY-MM-DDTHH:mm
-            const yyyy = get('year');
-            const mm = get('month');
-            const dd = get('day');
-            let hh = get('hour');
-            let min = get('minute');
-            // Add offset if needed
-            let date = new Date(`${yyyy}-${mm}-${dd}T${hh}:${min}`);
-            if (offsetMinutes) date = new Date(date.getTime() + offsetMinutes * 60000);
-            return date.toISOString().slice(0, 16);
+            try {
+                const now = new Date();
+                // Get PH time using a more reliable method
+                const phDate = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
+                
+                // Add offset if needed
+                if (offsetMinutes) {
+                    phDate.setMinutes(phDate.getMinutes() + offsetMinutes);
+                }
+                
+                const year = phDate.getFullYear();
+                const month = String(phDate.getMonth() + 1).padStart(2, '0');
+                const day = String(phDate.getDate()).padStart(2, '0');
+                const hours = String(phDate.getHours()).padStart(2, '0');
+                const minutes = String(phDate.getMinutes()).padStart(2, '0');
+                
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            } catch (error) {
+                console.error('Error getting PH ISO string:', error);
+                // Fallback to current time without timezone conversion
+                const now = new Date();
+                if (offsetMinutes) {
+                    now.setMinutes(now.getMinutes() + offsetMinutes);
+                }
+                return now.toISOString().slice(0, 16);
+            }
         }
         document.getElementById('attendance-start-time').value = getPHISOString();
         document.getElementById('attendance-end-time').value = getPHISOString(120);
@@ -913,9 +955,25 @@
         if (!dateString) return '-';
         try {
             const date = new Date(dateString);
-            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid date string in formatDate:', dateString);
+                return 'Invalid date';
+            }
+            
+            // Try to get user's timezone, fallback to local
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local';
+            const options = { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZoneName: 'short'
+            };
+            
             return date.toLocaleString(undefined, options);
         } catch (error) {
+            console.error('Error formatting date:', error, dateString);
             return 'Invalid date';
         }
     }
@@ -931,14 +989,19 @@
     function resetAttendanceModule() {
         console.log('🧹 Attendance: Starting cleanup...');
         
-        // Reset all state variables
+        // Clear countdown intervals to prevent memory leaks
+        if (window.adminCountdownInterval) {
+            clearInterval(window.adminCountdownInterval);
+            window.adminCountdownInterval = null;
+        }
+        
+        // Reset state variables
         state.initialized = false;
         state.attendanceSessions = [];
         state.players = [];
         state.registrationSessions = [];
         state.currentUser = null;
-        
-        // Reset retry counters
+        window.attendanceModuleLoaded = false;
         attendanceInitAttempts = 0;
         
         // Clear DOM content
@@ -948,9 +1011,14 @@
         const playerTableBody = document.getElementById('player-attendance-table-body');
         if (playerTableBody) playerTableBody.innerHTML = '';
         
-        // Clear dropdown
-        const dropdown = document.getElementById('attendance-session-select');
-        if (dropdown) dropdown.innerHTML = '<option value="">-- Select Session --</option>';
+        // Clear any modals that might be open
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        });
         
         console.log('🧹 Attendance: Cleanup complete');
     }
@@ -1025,43 +1093,58 @@
 
     // Real-time countdown for next upcoming session (admin)
     function startAdminSessionCountdown(targetTime) {
+        console.log('startAdminSessionCountdown called with targetTime:', targetTime);
         const countdownEl = document.getElementById('admin-session-countdown');
-        if (!countdownEl) return;
-        let intervalId;
-        function updateCountdown() {
-            const now = new Date();
-            const timeLeft = targetTime - now;
-            if (timeLeft <= 0) {
-                clearInterval(intervalId);
-                countdownEl.textContent = '00:00:00';
-                // Optionally reload data to update session status
-                loadAttendanceData();
-                return;
-            }
-            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-            countdownEl.textContent = `${hours.toString().padStart(2, '0')}` + ':' +
-                                     `${minutes.toString().padStart(2, '0')}` + ':' +
-                                     `${seconds.toString().padStart(2, '0')}`;
+        if (!countdownEl) {
+            console.error('Countdown element not found');
+            return;
         }
+        
+        // Validate targetTime
+        if (!targetTime || isNaN(new Date(targetTime).getTime())) {
+            console.error('Invalid target time:', targetTime);
+            countdownEl.textContent = 'Invalid time';
+            return;
+        }
+        
+        // Clear any existing interval
+        if (window.adminCountdownInterval) {
+            clearInterval(window.adminCountdownInterval);
+        }
+        
+        function updateCountdown() {
+            try {
+                const now = new Date();
+                const target = new Date(targetTime);
+                const timeLeft = target - now;
+                console.log('Countdown update - timeLeft:', timeLeft, 'targetTime:', targetTime, 'now:', now);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(window.adminCountdownInterval);
+                    countdownEl.textContent = '00:00:00';
+                    console.log('Countdown finished');
+                    // Optionally reload data to update session status
+                    loadAttendanceData();
+                    return;
+                }
+                
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                const countdownText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                countdownEl.textContent = countdownText;
+                console.log('Countdown updated to:', countdownText);
+            } catch (error) {
+                console.error('Error updating countdown:', error);
+                clearInterval(window.adminCountdownInterval);
+                countdownEl.textContent = 'Error';
+            }
+        }
+        
         updateCountdown();
-        intervalId = setInterval(updateCountdown, 1000);
+        window.adminCountdownInterval = setInterval(updateCountdown, 1000);
+        console.log('Countdown interval started');
     }
 
-    // Hook into displayAttendanceSessions to show countdown for next upcoming session
-    const origDisplayAttendanceSessions = displayAttendanceSessions;
-    displayAttendanceSessions = function() {
-        origDisplayAttendanceSessions.apply(this, arguments);
-        // Find next upcoming session
-        const now = new Date();
-        const nextUpcoming = state.attendanceSessions
-            .filter(s => s.isActive && new Date(s.startTime) > now)
-            .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
-        const countdownEl = document.getElementById('admin-session-countdown');
-        if (countdownEl) countdownEl.textContent = '';
-        if (nextUpcoming) {
-            startAdminSessionCountdown(new Date(nextUpcoming.startTime));
-        }
-    };
 })(); 

@@ -492,7 +492,7 @@ function displayPlayers(players) {
     // Add each player to the table
     players.forEach((player, index) => {
         const registrationDate = player.registrationDate ? 
-            new Date(player.registrationDate).toLocaleString() : 'N/A';
+            formatDateWithTimezone(player.registrationDate) : 'N/A';
         const playerId = player.id || `player_${index}`;
         const tournamentName = player.sessionTitle || 'Legacy';
         
@@ -896,6 +896,35 @@ async function confirmRemoveAllPlayers() {
 }
 
 /**
+ * Format date with timezone information
+ */
+function formatDateWithTimezone(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date string in formatDateWithTimezone:', dateString);
+            return 'Invalid date';
+        }
+        
+        // Use consistent timezone formatting
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZoneName: 'short'
+        };
+        
+        return date.toLocaleString(undefined, options);
+    } catch (error) {
+        console.error('Error formatting date with timezone:', error, dateString);
+        return 'Invalid date';
+    }
+}
+
+/**
  * Export players to CSV
  */
 function exportPlayersCSV() {
@@ -918,7 +947,7 @@ function exportPlayersCSV() {
         player.peakmmr || 0,
         player.sessionTitle || 'Legacy',
         player.id || '',
-        player.registrationDate ? new Date(player.registrationDate).toLocaleString() : ''
+        player.registrationDate ? formatDateWithTimezone(player.registrationDate) : ''
     ]);
     
     // Combine headers and rows
@@ -961,13 +990,13 @@ function exportPlayersJSON() {
         exportDate: new Date().toISOString(),
         playerCount: allPlayers.length,
         players: allPlayers.map(player => ({
-            name: player.name || '',
-            dota2id: player.dota2id || '',
-            peakmmr: player.peakmmr || 0,
+            name: player.name,
+            dota2id: player.dota2id,
+            peakmmr: player.peakmmr,
             tournament: player.sessionTitle || 'Legacy',
-            playerId: player.id || '',
-            registrationDate: player.registrationDate || null,
-            ipAddress: player.ipAddress || null
+            playerId: player.id,
+            registrationDate: player.registrationDate ? formatDateWithTimezone(player.registrationDate) : 'N/A',
+            present: player.present || false
         }))
     };
     

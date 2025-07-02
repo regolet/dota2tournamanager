@@ -1,5 +1,6 @@
 // Input validation utilities for security and data integrity
 import DOMPurify from 'isomorphic-dompurify';
+import { DateTime } from 'luxon';
 
 /**
  * Sanitize HTML content to prevent XSS attacks
@@ -405,4 +406,129 @@ export function checkRateLimit(identifier, maxRequests = 10, windowMs = 60000) {
         allowed: true,
         remaining: maxRequests - recentRequests.length
     };
+}
+
+/**
+ * Convert PH time to UTC with validation
+ * @param {string} phTime - Time string in YYYY-MM-DDTHH:mm format
+ * @returns {string} UTC ISO string
+ */
+export function convertPHTimeToUTC(phTime) {
+    if (!phTime) {
+        throw new Error('Time is required');
+    }
+    
+    try {
+        const utcTime = DateTime.fromISO(phTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+        if (!utcTime) {
+            throw new Error('Invalid time format');
+        }
+        return utcTime;
+    } catch (error) {
+        throw new Error(`Invalid time format: ${error.message}. Please use YYYY-MM-DDTHH:mm format.`);
+    }
+}
+
+/**
+ * Validate that a date is in the future
+ * @param {string} dateString - ISO date string
+ * @returns {boolean} true if valid future date
+ */
+export function validateFutureDate(dateString) {
+    if (!dateString) {
+        throw new Error('Date is required');
+    }
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid date format');
+    }
+    
+    const now = new Date();
+    if (date <= now) {
+        throw new Error('Date must be in the future');
+    }
+    
+    return true;
+}
+
+/**
+ * Validate that end time is after start time
+ * @param {string} startTime - ISO date string
+ * @param {string} endTime - ISO date string
+ * @returns {boolean} true if valid
+ */
+export function validateTimeRange(startTime, endTime) {
+    if (!startTime || !endTime) {
+        throw new Error('Both start and end times are required');
+    }
+    
+    const start = DateTime.fromISO(startTime);
+    const end = DateTime.fromISO(endTime);
+    
+    if (!start.isValid || !end.isValid) {
+        throw new Error('Invalid time format');
+    }
+    
+    if (end <= start) {
+        throw new Error('End time must be after start time');
+    }
+    
+    return true;
+}
+
+/**
+ * Format date for display with timezone
+ * @param {string} dateString - ISO date string
+ * @param {string} timezone - Timezone (default: 'Asia/Manila')
+ * @returns {string} Formatted date string
+ */
+export function formatDateForDisplay(dateString, timezone = 'Asia/Manila') {
+    if (!dateString) {
+        return 'N/A';
+    }
+    
+    try {
+        const date = DateTime.fromISO(dateString);
+        if (!date.isValid) {
+            return 'Invalid date';
+        }
+        
+        return date.setZone(timezone).toFormat('yyyy-MM-dd HH:mm z');
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Invalid date';
+    }
+}
+
+/**
+ * Get current time in specified timezone
+ * @param {string} timezone - Timezone (default: 'Asia/Manila')
+ * @returns {string} ISO string in specified timezone
+ */
+export function getCurrentTimeInTimezone(timezone = 'Asia/Manila') {
+    try {
+        return DateTime.now().setZone(timezone).toISO();
+    } catch (error) {
+        console.error('Error getting current time in timezone:', error);
+        return DateTime.now().toISO();
+    }
+}
+
+/**
+ * Validate session expiry date
+ * @param {string} expiryDate - ISO date string
+ * @returns {boolean} true if valid
+ */
+export function validateSessionExpiry(expiryDate) {
+    if (!expiryDate) {
+        throw new Error('Expiry date is required');
+    }
+    
+    const date = new Date(expiryDate);
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid expiry date format');
+    }
+    
+    return true;
 } 

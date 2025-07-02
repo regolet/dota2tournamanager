@@ -265,10 +265,23 @@ function formatDate(dateString) {
     if (!dateString) return 'N/A';
     try {
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date string in formatDate:', dateString);
+            return 'Invalid date';
+        }
+        
         // Get local time string with timezone
-        const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            timeZoneName: 'short' 
+        };
         return date.toLocaleString(undefined, options);
     } catch (error) {
+        console.error('Error formatting date:', error, dateString);
         return 'Invalid date';
     }
 }

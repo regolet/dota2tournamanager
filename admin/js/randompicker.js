@@ -917,7 +917,7 @@ function displayPickerResultWithAnimation(players, title) {
                 </div>
                 <div class="text-muted small">
                     <i class="bi bi-clock me-1"></i>
-                    Selected at ${new Date().toLocaleString()}
+                    Selected at ${formatDateWithTimezone(new Date())}
                 </div>
             </div>
                     </div>
@@ -1035,7 +1035,7 @@ function displayPickerResult(players, title) {
                 `).join('')}
                 <div class="text-muted small mt-3">
                     <i class="bi bi-clock me-1"></i>
-                    Selected at ${new Date().toLocaleString()}
+                    Selected at ${formatDateWithTimezone(new Date())}
                 </div>
             </div>
         </div>
@@ -1090,7 +1090,7 @@ function updateHistoryDisplay() {
                             ${entry.type === 'single' ? '🎯' : '🎲'} ${entry.players.map(p => p.name).join(', ')}
                         </div>
                         <div class="text-muted" style="font-size: 0.75rem;">
-                            ${entry.tournament} • ${new Date(entry.timestamp).toLocaleTimeString()}
+                            ${entry.tournament} • ${formatDateWithTimezone(entry.timestamp)}
                         </div>
                     </div>
                 </div>
@@ -1187,7 +1187,36 @@ function setupRandomPickerRegistrationListener() {
 }
 
 /**
- * Utility function to escape HTML
+ * Format date with timezone information
+ */
+function formatDateWithTimezone(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date string in formatDateWithTimezone:', dateString);
+            return 'Invalid date';
+        }
+        
+        // Use consistent timezone formatting
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZoneName: 'short'
+        };
+        
+        return date.toLocaleString(undefined, options);
+    } catch (error) {
+        console.error('Error formatting date with timezone:', error, dateString);
+        return 'Invalid date';
+    }
+}
+
+/**
+ * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
     if (!text) return '';

@@ -4,7 +4,8 @@ import {
   validateString, 
   validateSessionTitle, 
   checkRateLimit, 
-  sanitizeForLogging 
+  sanitizeForLogging,
+  validateFutureDate
 } from './validation-utils.mjs';
 import { neon } from '@netlify/neon';
 
@@ -194,14 +195,16 @@ export const handler = async (event, context) => {
             };
           }
           
-          const expiryDate = new Date(expiry);
-          if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+          // Validate expiry date using utility function
+          try {
+            validateFutureDate(expiry);
+          } catch (error) {
             return {
               statusCode: 400,
               headers: corsHeaders,
               body: JSON.stringify({
                 success: false,
-                message: 'Expiry date must be a valid future date'
+                message: error.message
               })
             };
           }

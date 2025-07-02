@@ -1,6 +1,7 @@
 import { sql } from './database.mjs';
 import { validateSession } from './database.mjs';
 import { DateTime } from 'luxon';
+import { convertPHTimeToUTC, validateTimeRange } from './validation-utils.mjs';
 
 export async function handler(event, context) {
     console.log('🔧 Attendance sessions function started');
@@ -242,12 +243,54 @@ async function getAttendanceSession(sessionId, adminUserId) {
 async function createAttendanceSession(sessionData, adminUserId, adminUsername) {
     try {
         let { name, registrationSessionId, startTime, endTime, description } = sessionData;
-        // Convert from PH time to UTC
+        
+        // Convert from PH time to UTC with better error handling
         if (startTime) {
-            startTime = DateTime.fromISO(startTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+            try {
+                startTime = convertPHTimeToUTC(startTime);
+            } catch (error) {
+                console.error('Error converting start time:', error);
+                return {
+                    statusCode: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        success: false, 
+                        message: error.message 
+                    })
+                };
+            }
         }
+        
         if (endTime) {
-            endTime = DateTime.fromISO(endTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+            try {
+                endTime = convertPHTimeToUTC(endTime);
+            } catch (error) {
+                console.error('Error converting end time:', error);
+                return {
+                    statusCode: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        success: false, 
+                        message: error.message 
+                    })
+                };
+            }
+        }
+        
+        // Validate that end time is after start time
+        if (startTime && endTime) {
+            try {
+                validateTimeRange(startTime, endTime);
+            } catch (error) {
+                return {
+                    statusCode: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        success: false, 
+                        message: error.message 
+                    })
+                };
+            }
         }
         
         // Validate required fields
@@ -257,7 +300,7 @@ async function createAttendanceSession(sessionData, adminUserId, adminUsername) 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     success: false, 
-                    message: 'Missing required fields' 
+                    message: 'Missing required fields: name, registrationSessionId, startTime, endTime' 
                 })
             };
         }
@@ -305,12 +348,38 @@ async function createAttendanceSession(sessionData, adminUserId, adminUsername) 
 async function updateAttendanceSession(sessionId, updates, adminUserId) {
     try {
         let { isActive, name, startTime, endTime, description } = updates;
-        // Convert from PH time to UTC
+        
+        // Convert from PH time to UTC with better error handling
         if (startTime) {
-            startTime = DateTime.fromISO(startTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+            try {
+                startTime = convertPHTimeToUTC(startTime);
+            } catch (error) {
+                console.error('Error converting start time:', error);
+                return {
+                    statusCode: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        success: false, 
+                        message: error.message 
+                    })
+                };
+            }
         }
+        
         if (endTime) {
-            endTime = DateTime.fromISO(endTime, { zone: 'Asia/Manila' }).toUTC().toISO();
+            try {
+                endTime = convertPHTimeToUTC(endTime);
+            } catch (error) {
+                console.error('Error converting end time:', error);
+                return {
+                    statusCode: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        success: false, 
+                        message: error.message 
+                    })
+                };
+            }
         }
         
         // Check if session exists

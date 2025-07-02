@@ -247,29 +247,41 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Start countdown timer
     function startCountdown(expiryTime) {
+        // Validate expiryTime
+        if (!expiryTime || isNaN(new Date(expiryTime).getTime())) {
+            console.error('Invalid expiry time for countdown:', expiryTime);
+            return;
+        }
+        
         // Update countdown every second
         const countdownInterval = setInterval(() => {
-            const now = new Date().getTime();
-            const timeRemaining = expiryTime - now;
-            
-            if (timeRemaining <= 0) {
-                // Time expired
+            try {
+                const now = new Date().getTime();
+                const target = new Date(expiryTime).getTime();
+                const timeRemaining = target - now;
+                
+                if (timeRemaining <= 0) {
+                    // Time expired
+                    clearInterval(countdownInterval);
+                    showRegistrationClosed();
+                    return;
+                }
+                
+                // Calculate days, hours, minutes, seconds
+                const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+                
+                // Update the countdown timer
+                daysElement.textContent = formatTime(days);
+                hoursElement.textContent = formatTime(hours);
+                minutesElement.textContent = formatTime(minutes);
+                secondsElement.textContent = formatTime(seconds);
+            } catch (error) {
+                console.error('Error updating countdown:', error);
                 clearInterval(countdownInterval);
-                showRegistrationClosed();
-                return;
             }
-            
-            // Calculate days, hours, minutes, seconds
-            const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-            
-            // Update the countdown timer
-            daysElement.textContent = formatTime(days);
-            hoursElement.textContent = formatTime(hours);
-            minutesElement.textContent = formatTime(minutes);
-            secondsElement.textContent = formatTime(seconds);
         }, 1000);
     }
     

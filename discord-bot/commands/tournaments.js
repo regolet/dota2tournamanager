@@ -1,6 +1,35 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fetch = require('node-fetch');
 
+/**
+ * Format date with timezone information
+ */
+function formatDateWithTimezone(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date string in formatDateWithTimezone:', dateString);
+            return 'Invalid date';
+        }
+        
+        // Use consistent timezone formatting
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZoneName: 'short'
+        };
+        
+        return date.toLocaleString(undefined, options);
+    } catch (error) {
+        console.error('Error formatting date with timezone:', error, dateString);
+        return 'Invalid date';
+    }
+}
+
 module.exports = {
     name: 'tournaments',
     description: 'List available tournaments',
@@ -60,7 +89,7 @@ module.exports = {
                         .filter(session => session.isActive)
                         .map(session => ({
                             name: `${session.title}`,
-                            value: `👥 Players: ${session.playerCount}\n📅 Created: ${new Date(session.createdAt).toLocaleDateString()}\n🆔 ID: \`${session.sessionId}\``,
+                            value: `👥 Players: ${session.playerCount}\n📅 Created: ${formatDateWithTimezone(session.createdAt)}\n🆔 ID: \`${session.sessionId}\``,
                             inline: true
                         })),
                     footer: {

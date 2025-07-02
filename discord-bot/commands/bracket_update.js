@@ -2,6 +2,35 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Strin
 const fetch = require('node-fetch');
 const { getGuildSessionId, requireValidSession } = require('../sessionUtil');
 
+/**
+ * Format date with timezone information
+ */
+function formatDateWithTimezone(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date string in formatDateWithTimezone:', dateString);
+            return 'Invalid date';
+        }
+        
+        // Use consistent timezone formatting
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZoneName: 'short'
+        };
+        
+        return date.toLocaleString(undefined, options);
+    } catch (error) {
+        console.error('Error formatting date with timezone:', error, dateString);
+        return 'Invalid date';
+    }
+}
+
 module.exports = {
     name: 'bracket_update',
     description: 'Update the current tournament bracket (admin/creator only)',
@@ -53,7 +82,7 @@ module.exports = {
             const options = tournaments.map(t => ({
                 label: t.name || `Tournament (${t.id})`,
                 value: t.id,
-                description: `Created: ${new Date(t.created_at || t.createdAt).toLocaleString()}`
+                description: `Created: ${formatDateWithTimezone(t.created_at || t.createdAt)}`
             })).slice(0, 25); // Discord max 25 options
             
             const selectMenu = new StringSelectMenuBuilder()

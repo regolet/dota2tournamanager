@@ -348,8 +348,17 @@ async function initRegistration() {
         const expiresInput = document.getElementById('session-expires-at').value;
         let expiry = null;
         if (expiresInput) {
-            const localDate = new Date(expiresInput);
-            expiry = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+            try {
+                const localDate = new Date(expiresInput);
+                if (isNaN(localDate.getTime())) {
+                    throw new Error('Invalid date input');
+                }
+                expiry = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+            } catch (error) {
+                console.error('Error processing expiry date:', error);
+                window.utils.showNotification('Invalid expiry date format', 'error');
+                return;
+            }
         }
         const sessionData = {
             title: document.getElementById('session-title').value,
@@ -626,9 +635,25 @@ async function initRegistration() {
         if (!dateString) return '-';
         try {
             const date = new Date(dateString);
-            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid date string in formatDate:', dateString);
+                return 'Invalid date';
+            }
+            
+            // Try to get user's timezone, fallback to local
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local';
+            const options = { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZoneName: 'short'
+            };
+            
             return date.toLocaleString(undefined, options);
         } catch (error) {
+            console.error('Error formatting date:', error, dateString);
             return 'Invalid date';
         }
     }

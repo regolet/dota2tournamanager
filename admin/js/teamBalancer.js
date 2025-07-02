@@ -1234,7 +1234,7 @@ async function saveTeams() {
 
     const currentSession = window.teamBalancerData.registrationSessions.find(s => s.sessionId === window.teamBalancerData.currentSessionId);
     const sessionTitle = currentSession ? currentSession.title : 'Balanced Teams';
-    const teamSetTitle = `${sessionTitle} - ${new Date().toLocaleString()}`;
+    const teamSetTitle = `${sessionTitle} - ${formatDateWithTimezone(new Date())}`;
 
 
     const teamsPayload = {
@@ -1492,6 +1492,35 @@ async function loadTeams() {
         window.showNotification('Error loading saved teams.', 'error');
     } finally {
         window.isTeamBalancerLoading = false;
+    }
+}
+
+/**
+ * Format date with timezone information
+ */
+function formatDateWithTimezone(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date string in formatDateWithTimezone:', dateString);
+            return 'Invalid date';
+        }
+        
+        // Use consistent timezone formatting
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZoneName: 'short'
+        };
+        
+        return date.toLocaleString(undefined, options);
+    } catch (error) {
+        console.error('Error formatting date with timezone:', error, dateString);
+        return 'Invalid date';
     }
 }
 

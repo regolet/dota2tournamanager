@@ -1237,6 +1237,14 @@ export async function validateSession(sessionId) {
       const now = new Date();
       const expiresAt = new Date(session.expires_at);
       
+      // Validate date parsing
+      if (isNaN(expiresAt.getTime())) {
+        console.error('Invalid session expiry date:', session.expires_at);
+        // Clean up invalid session
+        await sql`DELETE FROM admin_sessions WHERE id = ${sessionId}`;
+        return { valid: false, reason: 'invalid_date' };
+      }
+      
       console.log('Session expires at:', expiresAt.toISOString());
       console.log('Current time:', now.toISOString());
       console.log('Session valid:', expiresAt > now);
