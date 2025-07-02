@@ -617,13 +617,17 @@
         // Reset form
         document.getElementById('attendance-session-form').reset();
         
-        // Set default times
-        const now = new Date();
-        const startTime = new Date(now.getTime() + 30 * 60000); // 30 minutes from now
-        const endTime = new Date(now.getTime() + 2 * 60 * 60000); // 2 hours from now
-        
-        document.getElementById('attendance-start-time').value = startTime.toISOString().slice(0, 16);
-        document.getElementById('attendance-end-time').value = endTime.toISOString().slice(0, 16);
+        // Get current time in PH timezone (UTC+8)
+        function getPHISOString(offsetMinutes = 0) {
+            const now = new Date();
+            // Convert to PH time (UTC+8)
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const phTime = new Date(utc + (8 * 60 + offsetMinutes) * 60000);
+            return phTime.toISOString().slice(0, 16);
+        }
+        // Set default times: now in PH, and +2 hours for end
+        document.getElementById('attendance-start-time').value = getPHISOString();
+        document.getElementById('attendance-end-time').value = getPHISOString(120);
         
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('createAttendanceSessionModal'));
