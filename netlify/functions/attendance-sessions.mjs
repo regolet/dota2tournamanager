@@ -35,9 +35,9 @@ export async function handler(event, context) {
         }
 
         console.log('🔍 Validating session...');
-        const session = await validateSession(sessionId);
-        if (!session) {
-            console.log('❌ Invalid or expired session');
+        const sessionValidation = await validateSession(sessionId);
+        if (!sessionValidation || !sessionValidation.valid) {
+            console.log('❌ Invalid or expired session:', sessionValidation?.reason);
             return {
                 statusCode: 401,
                 headers,
@@ -45,7 +45,7 @@ export async function handler(event, context) {
             };
         }
         
-        console.log('✅ Session validated for user:', session.userId);
+        console.log('✅ Session validated for user:', sessionValidation.userId);
 
         const { httpMethod, queryStringParameters, body } = event;
         const sessionIdParam = queryStringParameters?.sessionId;
@@ -53,16 +53,16 @@ export async function handler(event, context) {
         switch (httpMethod) {
             case 'GET':
                 if (sessionIdParam) {
-                    return await getAttendanceSession(sessionIdParam, session.userId);
+                    return await getAttendanceSession(sessionIdParam, sessionValidation.userId);
                 } else {
-                    return await getAttendanceSessions(session.userId);
+                    return await getAttendanceSessions(sessionValidation.userId);
                 }
             case 'POST':
-                return await createAttendanceSession(JSON.parse(body), session.userId, session.username);
+                return await createAttendanceSession(JSON.parse(body), sessionValidation.userId, sessionValidation.username);
             case 'PUT':
-                return await updateAttendanceSession(sessionIdParam, JSON.parse(body), session.userId);
+                return await updateAttendanceSession(sessionIdParam, JSON.parse(body), sessionValidation.userId);
             case 'DELETE':
-                return await deleteAttendanceSession(sessionIdParam, session.userId);
+                return await deleteAttendanceSession(sessionIdParam, sessionValidation.userId);
             default:
                 return {
                     statusCode: 405,
@@ -272,11 +272,13 @@ async function createAttendanceSession(sessionData, adminUserId, adminUsername) 
 async function updateAttendanceSession(sessionId, updates, adminUserId) {
     try {
         const { isActive, name, startTime, endTime, description } = updates;
-        // Check if session exists (no longer restrict to admin_user_id)
+        
+        // Check if session exists
         const existingSession = await sql`
             SELECT id FROM attendance_sessions 
             WHERE session_id = ${sessionId}
         `;
+        
         if (existingSession.length === 0) {
             return {
                 statusCode: 404,
@@ -287,31 +289,56 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
                 })
             };
         }
-        // Build update query dynamically
-        const updateFields = [];
-        const updateValues = [];
+
+        // Build update query using proper parameterized queries
+        let result;
+        
         if (isActive !== undefined) {
-            updateFields.push('is_active');
-            // Force boolean
-            updateValues.push(isActive === true || isActive === 'true');
-        }
-        if (name !== undefined) {
-            updateFields.push('name');
-            updateValues.push(name);
-        }
-        if (startTime !== undefined) {
-            updateFields.push('start_time');
-            updateValues.push(startTime);
-        }
-        if (endTime !== undefined) {
-            updateFields.push('end_time');
-            updateValues.push(endTime);
-        }
-        if (description !== undefined) {
-            updateFields.push('description');
-            updateValues.push(description);
-        }
-        if (updateFields.length === 0) {
+            // Update is_active field
+            result = await sql`
+                UPDATE attendance_sessions 
+                SET is_active = ${isActive === true || isActive === 'true'}, 
+                    updated_at = NOW()
+                WHERE session_id = ${sessionId}
+                RETURNING *
+            `;
+        } else if (name !== undefined) {
+            // Update name field
+            result = await sql`
+                UPDATE attendance_sessions 
+                SET name = ${name}, 
+                    updated_at = NOW()
+                WHERE session_id = ${sessionId}
+                RETURNING *
+            `;
+        } else if (startTime !== undefined) {
+            // Update start_time field
+            result = await sql`
+                UPDATE attendance_sessions 
+                SET start_time = ${startTime}, 
+                    updated_at = NOW()
+                WHERE session_id = ${sessionId}
+                RETURNING *
+            `;
+        } else if (endTime !== undefined) {
+            // Update end_time field
+            result = await sql`
+                UPDATE attendance_sessions 
+                SET end_time = ${endTime}, 
+                    updated_at = NOW()
+                WHERE session_id = ${sessionId}
+                RETURNING *
+            `;
+        } else if (description !== undefined) {
+            // Update description field
+            result = await sql`
+                UPDATE attendance_sessions 
+                SET description = ${description}, 
+                    updated_at = NOW()
+                WHERE session_id = ${sessionId}
+                RETURNING *
+            `;
+        } else {
             return {
                 statusCode: 400,
                 headers: { 'Content-Type': 'application/json' },
@@ -321,20 +348,13 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
                 })
             };
         }
-        // Add updated_at field
-        updateFields.push('updated_at');
-        updateValues.push(new Date().toISOString());
-        // Build dynamic SQL query (no admin_user_id in WHERE)
-        const setClause = updateFields.map((field, index) => `${field} = $${index + 1}`).join(', ');
-        const query = `UPDATE attendance_sessions SET ${setClause} WHERE session_id = $${updateFields.length + 1} RETURNING *`;
-        // Add detailed logging
-        console.log('DEBUG: updateAttendanceSession', {
+
+        console.log('DEBUG: updateAttendanceSession success', {
             sessionId,
-            updateFields,
-            updateValues,
-            query
+            updates,
+            result: result[0]
         });
-        const result = await sql.unsafe(query, ...updateValues, sessionId);
+
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -346,6 +366,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
         };
     } catch (error) {
         console.error('Error updating attendance session:', error);
+        console.error('Error stack:', error.stack);
         return {
             statusCode: 500,
             headers: { 'Content-Type': 'application/json' },
