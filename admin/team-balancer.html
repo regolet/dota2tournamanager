@@ -112,22 +112,22 @@
                 </div>
                 <div class="card-body pt-0">
                     <!-- Controls -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-8">
+                    <div class="row g-2 mb-4 align-items-end flex-nowrap">
+                        <div class="col-auto" style="min-width:180px;max-width:220px;">
                             <label class="form-label small text-muted mb-1">Balance Method</label>
-                            <select id="balance-type" class="form-select form-select-sm">
+                            <select id="balance-type" class="form-select form-select-sm" style="min-width:140px;max-width:200px;">
                                 <option value="highRanked">High Ranked Balance</option>
                                 <option value="perfectMmr">Perfect MMR Balance</option>
                                 <option value="highLowShuffle">High/Low Shuffle</option>
                                 <option value="random">Random Teams</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-auto" style="min-width:120px;max-width:160px;">
                             <label class="form-label small text-muted mb-1">Number of Teams</label>
                             <input id="num-teams" type="number" class="form-control form-control-sm" min="2" max="50" value="2" style="max-width: 120px;">
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <button id="generate-teams" class="btn btn-primary btn-sm w-100">
+                        <div class="col-auto d-flex align-items-end">
+                            <button id="generate-teams" class="btn btn-primary btn-sm" style="white-space:nowrap;">
                                 <i class="bi bi-shuffle me-1"></i> Generate Teams (5v5)
                             </button>
                         </div>
