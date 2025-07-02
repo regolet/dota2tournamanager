@@ -314,6 +314,37 @@ function setupRandomPickerEventListeners() {
         refreshSessionsBtn.addEventListener('click', loadRegistrationSessions);
     }
 
+    // Refresh players button
+    const refreshPlayersBtn = document.getElementById('refresh-players-btn');
+    if (refreshPlayersBtn) {
+        refreshPlayersBtn.addEventListener('click', loadPlayersForPicker);
+    }
+
+    // Import from team balancer button
+    const importBtn = document.getElementById('import-players-to-picker');
+    if (importBtn) {
+        importBtn.addEventListener('click', importPlayersFromTeamBalancer);
+    }
+
+    // Show excluded players button
+    const showExcludedBtn = document.getElementById('show-excluded-picker');
+    if (showExcludedBtn) {
+        showExcludedBtn.addEventListener('click', showExcludedPlayersModal);
+    }
+
+    // Clear all players button
+    const clearAllBtn = document.getElementById('clear-players-picker');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all players from the picker?')) {
+                availablePlayers = [];
+                excludedPlayers = [];
+                displayPlayersForPicker([]);
+                window.showNotification('All players cleared from picker', 'info');
+            }
+        });
+    }
+
     // Setup existing picker buttons with session validation
     setupPickerButtons();
 }
@@ -389,25 +420,6 @@ function setupPickerButtons() {
                 } else {
                     window.showNotification('Please enter a player name', 'warning');
                 }
-            }
-        });
-    }
-
-    // Show Excluded button
-    const showExcludedBtn = document.getElementById('show-excluded-picker');
-    if (showExcludedBtn) {
-        showExcludedBtn.addEventListener('click', showExcludedPlayersModal);
-    }
-
-    // Clear All button
-    const clearAllBtn = document.getElementById('clear-players-picker');
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear all players from the picker?')) {
-                availablePlayers = [];
-                excludedPlayers = [];
-                displayPlayersForPicker([]);
-                window.showNotification('All players cleared from picker', 'success');
             }
         });
     }
@@ -1459,6 +1471,53 @@ function cleanupRandomPicker() {
     }
     
     console.log('🧹 Random Picker: Cleanup complete');
+}
+
+/**
+ * Import players from team balancer
+ */
+async function importPlayersFromTeamBalancer() {
+    try {
+        const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+        
+        if (!sessionId) {
+            window.showNotification('Session expired. Please login again.', 'error');
+            return;
+        }
+
+        const response = await fetchWithAuth('/.netlify/functions/api-players?includeSessionInfo=true');
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load players: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (!data.success || !data.players || data.players.length === 0) {
+            window.showNotification('No players available to import', 'warning');
+            return;
+        }
+        
+        // Add each player to the picker
+        let importCount = 0;
+        for (const player of data.players) {
+            if (player.name && player.name.trim() !== '') {
+                // Check if player already exists
+                const existingPlayer = availablePlayers.find(p => p.name === player.name);
+                if (!existingPlayer) {
+                    availablePlayers.push(player);
+                    importCount++;
+                }
+            }
+        }
+        
+        // Refresh display
+        displayPlayersForPicker(availablePlayers);
+        
+        window.showNotification(`Imported ${importCount} players successfully`, 'success');
+    } catch (error) {
+        console.error('Error importing players:', error);
+        window.showNotification(`Failed to import players: ${error.message}`, 'error');
+    }
 }
 
 })(); // Close IIFE

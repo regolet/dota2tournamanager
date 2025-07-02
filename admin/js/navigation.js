@@ -362,7 +362,7 @@ async function loadRandomPicker() {
     updateActiveTab('random-picker-tab');
     const result = await window.adminApp.loadAndInitModule({
         htmlFile: 'random-picker.html',
-        jsFile: 'js/randomPicker.js',
+        jsFile: 'js/randompicker.js',
         contentContainer: 'main-content',
         initFunction: 'initRandomPicker',
         cleanupFunction: 'cleanupRandomPicker'
