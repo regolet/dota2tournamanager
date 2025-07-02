@@ -977,11 +977,10 @@
                 data.sessions.forEach(session => {
                     dropdown.innerHTML += `<option value="${session.sessionId}">${session.name}</option>`;
                 });
-                
-                // Auto-select the latest session (most recent by creation date)
+                // Auto-select the latest session (most recent by createdAt)
                 if (data.sessions.length > 0) {
-                    const latestSession = data.sessions.sort((a, b) => 
-                        new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
+                    const latestSession = data.sessions.slice().sort((a, b) => 
+                        new Date(b.createdAt) - new Date(a.createdAt)
                     )[0];
                     dropdown.value = latestSession.sessionId;
                     // Load players for the latest session
