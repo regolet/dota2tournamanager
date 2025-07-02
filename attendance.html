@@ -261,7 +261,9 @@
                     <div id="countdown-container" style="display: none;">
                         <div class="countdown">
                             <div class="countdown-label" id="countdown-label">Time Remaining</div>
-                            <div class="countdown-display" id="countdown-display">--:--:--</div>
+                            <div class="countdown-display" id="countdown-display">
+                                <span id="countdown-hours">--</span>:<span id="countdown-minutes">--</span>:<span id="countdown-seconds">--</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -410,7 +412,9 @@
             function startCountdown(targetTime, label) {
                 const countdownContainer = document.getElementById('countdown-container');
                 const countdownLabel = document.getElementById('countdown-label');
-                const countdownDisplay = document.getElementById('countdown-display');
+                const hoursElement = document.getElementById('countdown-hours');
+                const minutesElement = document.getElementById('countdown-minutes');
+                const secondsElement = document.getElementById('countdown-seconds');
                 
                 countdownContainer.style.display = 'block';
                 countdownLabel.textContent = label;
@@ -431,13 +435,16 @@
                     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
                     
-                    countdownDisplay.textContent = 
-                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    hoursElement.textContent = hours.toString().padStart(2, '0');
+                    minutesElement.textContent = minutes.toString().padStart(2, '0');
+                    secondsElement.textContent = seconds.toString().padStart(2, '0');
                     
                     // Add urgent styling for last 5 minutes
                     const countdown = countdownContainer.querySelector('.countdown');
                     if (timeLeft <= 5 * 60 * 1000) { // 5 minutes
                         countdown.classList.add('urgent');
+                    } else {
+                        countdown.classList.remove('urgent');
                     }
                 }
                 
