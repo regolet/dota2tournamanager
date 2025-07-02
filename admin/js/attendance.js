@@ -1022,4 +1022,46 @@
             displayPlayersWithAttendance();
         }
     }
+
+    // Real-time countdown for next upcoming session (admin)
+    function startAdminSessionCountdown(targetTime) {
+        const countdownEl = document.getElementById('admin-session-countdown');
+        if (!countdownEl) return;
+        let intervalId;
+        function updateCountdown() {
+            const now = new Date();
+            const timeLeft = targetTime - now;
+            if (timeLeft <= 0) {
+                clearInterval(intervalId);
+                countdownEl.textContent = '00:00:00';
+                // Optionally reload data to update session status
+                loadAttendanceData();
+                return;
+            }
+            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+            countdownEl.textContent = `${hours.toString().padStart(2, '0')}` + ':' +
+                                     `${minutes.toString().padStart(2, '0')}` + ':' +
+                                     `${seconds.toString().padStart(2, '0')}`;
+        }
+        updateCountdown();
+        intervalId = setInterval(updateCountdown, 1000);
+    }
+
+    // Hook into displayAttendanceSessions to show countdown for next upcoming session
+    const origDisplayAttendanceSessions = displayAttendanceSessions;
+    displayAttendanceSessions = function() {
+        origDisplayAttendanceSessions.apply(this, arguments);
+        // Find next upcoming session
+        const now = new Date();
+        const nextUpcoming = state.attendanceSessions
+            .filter(s => s.isActive && new Date(s.startTime) > now)
+            .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
+        const countdownEl = document.getElementById('admin-session-countdown');
+        if (countdownEl) countdownEl.textContent = '';
+        if (nextUpcoming) {
+            startAdminSessionCountdown(new Date(nextUpcoming.startTime));
+        }
+    };
 })(); 
