@@ -106,6 +106,7 @@ async function handleGetPlayers(event, sessionValidation) {
     const urlParams = new URLSearchParams(event.queryStringParameters || {});
     const registrationSessionId = urlParams.get('sessionId');
     const includeSessionInfo = urlParams.get('includeSessionInfo') === 'true';
+    const presentOnly = urlParams.get('presentOnly') === 'true';
 
     let players;
 
@@ -113,7 +114,7 @@ async function handleGetPlayers(event, sessionValidation) {
       // Admin is authenticated
       if (registrationSessionId) {
         // Get players for specific session
-        players = await getPlayers(registrationSessionId);
+        players = await getPlayers(registrationSessionId, presentOnly);
       } else if (sessionValidation.role === 'superadmin') {
         // Super admin can see all players
         players = await getPlayers();
@@ -124,7 +125,7 @@ async function handleGetPlayers(event, sessionValidation) {
     } else {
       // Public access - only allow specific session queries
       if (registrationSessionId) {
-        players = await getPlayers(registrationSessionId);
+        players = await getPlayers(registrationSessionId, presentOnly);
       } else {
         return {
           statusCode: 401,

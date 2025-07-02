@@ -323,28 +323,46 @@ async function createBasicIndexes() {
 }
 
 // Tournament-scoped player operations
-export async function getPlayers(registrationSessionId = null) {
+export async function getPlayers(registrationSessionId = null, presentOnly = false) {
   try {
     await initializeDatabase();
 
     let players;
     if (registrationSessionId) {
       // Get players for specific registration session
-      players = await sql`
-        SELECT 
-          id, 
-          name, 
-          dota2id, 
-          peakmmr, 
-          ip_address as "ipAddress", 
-          registration_date as "registrationDate",
-          registration_session_id as "registrationSessionId",
-          discordid,
-          present
-        FROM players 
-        WHERE registration_session_id = ${registrationSessionId}
-        ORDER BY registration_date DESC
-      `;
+      if (presentOnly) {
+        players = await sql`
+          SELECT 
+            id, 
+            name, 
+            dota2id, 
+            peakmmr, 
+            ip_address as "ipAddress", 
+            registration_date as "registrationDate",
+            registration_session_id as "registrationSessionId",
+            discordid,
+            present
+          FROM players 
+          WHERE registration_session_id = ${registrationSessionId} AND present = true
+          ORDER BY registration_date DESC
+        `;
+      } else {
+        players = await sql`
+          SELECT 
+            id, 
+            name, 
+            dota2id, 
+            peakmmr, 
+            ip_address as "ipAddress", 
+            registration_date as "registrationDate",
+            registration_session_id as "registrationSessionId",
+            discordid,
+            present
+          FROM players 
+          WHERE registration_session_id = ${registrationSessionId}
+          ORDER BY registration_date DESC
+        `;
+      }
     } else {
       // Get all players (for super admin or legacy compatibility)
       players = await sql`

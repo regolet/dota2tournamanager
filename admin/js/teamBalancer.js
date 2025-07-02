@@ -368,6 +368,8 @@ async function loadPlayersForBalancer() {
             if (window.teamBalancerData.currentSessionId) {
                 apiUrl += `&sessionId=${window.teamBalancerData.currentSessionId}`;
             }
+            // Only show present players in Team Balancer
+            apiUrl += '&presentOnly=true';
 
             const response = await fetch(apiUrl, {
                 headers: {
