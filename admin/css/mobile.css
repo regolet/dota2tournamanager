@@ -132,4 +132,45 @@
 .btn-outline-discord:hover, .btn-outline-discord:focus {
     background: #5865F2 !important;
     color: #fff !important;
-} 
+}
+
+/* --- Compact Tournament Bracket Styles (applies to all screens) --- */
+.match-card.card {
+    margin-bottom: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+}
+.match-card .d-flex {
+    padding: 0.25rem 0 !important;
+    font-size: 0.97rem !important;
+}
+.match-card span, .match-card small {
+    font-size: 0.97rem !important;
+}
+.match-card .btn, .match-card button {
+    padding: 0.15rem 0.5rem !important;
+    font-size: 0.95rem !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    border-radius: 0.35rem !important;
+}
+.match-card .btn i {
+    font-size: 1.1em !important;
+}
+.match-card .text-center {
+    margin-top: 0.25rem !important;
+    font-size: 0.92rem !important;
+}
+.bracket-round {
+    min-width: 180px !important;
+    padding: 0.25rem 0.25rem !important;
+}
+.bracket-round h6 {
+    margin-bottom: 0.5rem !important;
+    font-size: 1rem !important;
+}
+.bracket-rounds {
+    gap: 1.2rem !important;
+}
+/* --- End Compact Bracket Styles --- */ 
