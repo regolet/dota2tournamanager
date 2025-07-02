@@ -108,25 +108,38 @@
 
     async function editAttendanceSession(sessionId) {
         try {
-            // Fetch session data (replace with actual API call if needed)
             const session = state.attendanceSessions.find(s => s.sessionId === sessionId);
             if (!session) {
                 window.utils.showNotification('Attendance session not found', 'error');
                 return;
             }
-            // Fill modal fields
+            // Helper to convert UTC/ISO to PH datetime-local string
+            function toPHLocalInput(dateString) {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                const phFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'Asia/Manila',
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', hour12: false
+                });
+                const parts = phFormatter.formatToParts(date);
+                const get = type => parts.find(p => p.type === type)?.value;
+                const yyyy = get('year');
+                const mm = get('month');
+                const dd = get('day');
+                let hh = get('hour');
+                let min = get('minute');
+                return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+            }
             document.getElementById('attendance-session-name').value = session.name || '';
             document.getElementById('attendance-registration-session').value = session.registrationSessionId || '';
-            document.getElementById('attendance-start-time').value = session.startTime ? session.startTime.slice(0, 16) : '';
-            document.getElementById('attendance-end-time').value = session.endTime ? session.endTime.slice(0, 16) : '';
+            document.getElementById('attendance-start-time').value = toPHLocalInput(session.startTime);
+            document.getElementById('attendance-end-time').value = toPHLocalInput(session.endTime);
             document.getElementById('attendance-description').value = session.description || '';
             document.getElementById('attendance-status').value = session.isActive ? 'active' : 'inactive';
-            // Store sessionId for update
             document.getElementById('attendance-session-form').setAttribute('data-edit-session-id', sessionId);
-            // Update modal title/button
             document.getElementById('createAttendanceSessionModalLabel').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Attendance Session';
             document.querySelector('#attendance-session-form button[type="submit"]').textContent = 'Update Session';
-            // Show modal
             const modal = new bootstrap.Modal(document.getElementById('createAttendanceSessionModal'));
             modal.show();
         } catch (error) {
