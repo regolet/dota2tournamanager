@@ -624,22 +624,13 @@ async function initRegistration() {
     
     function formatDate(dateString) {
         if (!dateString) return '-';
-        
-        const date = new Date(dateString);
-        const now = new Date();
-        
-        // If it's today, show time only
-        if (date.toDateString() === now.toDateString()) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        try {
+            const date = new Date(dateString);
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+            return date.toLocaleString(undefined, options);
+        } catch (error) {
+            return 'Invalid date';
         }
-        
-        // If it's this year, show month and day
-        if (date.getFullYear() === now.getFullYear()) {
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        }
-        
-        // Otherwise show full date
-        return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
     }
     
     function escapeHtml(text) {

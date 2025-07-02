@@ -883,19 +883,13 @@
 
     function formatDate(dateString) {
         if (!dateString) return '-';
-        
-        const date = new Date(dateString);
-        const now = new Date();
-        
-        if (date.toDateString() === now.toDateString()) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        try {
+            const date = new Date(dateString);
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+            return date.toLocaleString(undefined, options);
+        } catch (error) {
+            return 'Invalid date';
         }
-        
-        if (date.getFullYear() === now.getFullYear()) {
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        }
-        
-        return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
     function escapeHtml(text) {

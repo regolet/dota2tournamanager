@@ -263,10 +263,11 @@ function hasPermission(requiredRole, userRole) {
 // Utility function to format dates
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    
     try {
         const date = new Date(dateString);
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        // Get local time string with timezone
+        const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+        return date.toLocaleString(undefined, options);
     } catch (error) {
         return 'Invalid date';
     }
