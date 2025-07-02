@@ -614,22 +614,33 @@
     }
 
     function showCreateAttendanceSessionModal() {
-        // Reset form
         document.getElementById('attendance-session-form').reset();
-        
-        // Get current time in PH timezone (UTC+8)
+
+        // Get current time in PH timezone (Asia/Manila)
         function getPHISOString(offsetMinutes = 0) {
             const now = new Date();
-            // Convert to PH time (UTC+8)
-            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-            const phTime = new Date(utc + (8 * 60 + offsetMinutes) * 60000);
-            return phTime.toISOString().slice(0, 16);
+            // Get PH time using Intl.DateTimeFormat
+            const phFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hour12: false
+            });
+            const parts = phFormatter.formatToParts(now);
+            const get = type => parts.find(p => p.type === type)?.value;
+            // Compose PH time string in YYYY-MM-DDTHH:mm
+            const yyyy = get('year');
+            const mm = get('month');
+            const dd = get('day');
+            let hh = get('hour');
+            let min = get('minute');
+            // Add offset if needed
+            let date = new Date(`${yyyy}-${mm}-${dd}T${hh}:${min}`);
+            if (offsetMinutes) date = new Date(date.getTime() + offsetMinutes * 60000);
+            return date.toISOString().slice(0, 16);
         }
-        // Set default times: now in PH, and +2 hours for end
         document.getElementById('attendance-start-time').value = getPHISOString();
         document.getElementById('attendance-end-time').value = getPHISOString(120);
-        
-        // Show modal
+
         const modal = new bootstrap.Modal(document.getElementById('createAttendanceSessionModal'));
         modal.show();
     }
