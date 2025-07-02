@@ -356,13 +356,6 @@
                 hideAllStates();
                 document.getElementById('attendance-content').style.display = 'block';
                 
-                // Display session information
-                document.getElementById('session-name').textContent = attendanceSession.name || 'N/A';
-                document.getElementById('tournament-name').textContent = attendanceSession.registration_session_title || 'N/A';
-                document.getElementById('start-time').textContent = formatDateTime(attendanceSession.start_time);
-                document.getElementById('end-time').textContent = formatDateTime(attendanceSession.end_time);
-                document.getElementById('session-description').textContent = attendanceSession.description || 'No description provided';
-                
                 // Check session status
                 const now = new Date();
                 const startTime = new Date(attendanceSession.start_time);
