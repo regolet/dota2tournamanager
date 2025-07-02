@@ -405,6 +405,26 @@
                 }
             } catch (apiError) {
                 console.warn('Attendance API not available, using empty state:', apiError.message);
+                
+                // Check if it's a database configuration error
+                if (apiError.message && apiError.message.includes('DATABASE_URL')) {
+                    console.error('Database not configured. Please set up the DATABASE_URL environment variable.');
+                    const tableBody = document.getElementById('attendance-sessions-table-body');
+                    if (tableBody) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    Database not configured
+                                    <br><small>Please configure the DATABASE_URL environment variable</small>
+                                    <br><small class="text-muted">Error: ${apiError.message}</small>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    return;
+                }
+                
                 // Use empty state instead of throwing error
                 state.attendanceSessions = [];
                 displayAttendanceSessions();

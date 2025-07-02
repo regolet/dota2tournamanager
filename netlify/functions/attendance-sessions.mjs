@@ -7,12 +7,36 @@ export async function handler(event, context) {
     console.log('🔧 Attendance sessions function started');
     console.log('HTTP Method:', event.httpMethod);
     console.log('Headers:', JSON.stringify(event.headers, null, 2));
+    console.log('Query parameters:', JSON.stringify(event.queryStringParameters, null, 2));
+    console.log('Body:', event.body);
+    console.log('DATABASE_URL present:', !!process.env.DATABASE_URL);
+    
+    // Check if database is configured
+    if (!process.env.DATABASE_URL) {
+        console.error('❌ DATABASE_URL environment variable is not set');
+        return {
+            statusCode: 503,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type, x-session-id, Authorization',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                success: false,
+                message: 'Database not configured',
+                error: 'DATABASE_URL environment variable is missing. Please configure the database connection.',
+                timestamp: new Date().toISOString()
+            })
+        };
+    }
     
     // Set CORS headers
     const headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, x-session-id',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+        'Access-Control-Allow-Headers': 'Content-Type, x-session-id, Authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Content-Type': 'application/json'
     };
 
     // Handle preflight requests
@@ -33,20 +57,29 @@ export async function handler(event, context) {
             // If admin session header is present, validate and use admin logic
             if (adminSessionId) {
                 console.log('🔍 Validating admin session for GET...');
-                const sessionValidation = await validateSession(adminSessionId);
-                if (!sessionValidation || !sessionValidation.valid) {
-                    console.log('❌ Invalid or expired session:', sessionValidation?.reason);
+                try {
+                    const sessionValidation = await validateSession(adminSessionId);
+                    if (!sessionValidation || !sessionValidation.valid) {
+                        console.log('❌ Invalid or expired session:', sessionValidation?.reason);
+                        return {
+                            statusCode: 401,
+                            headers,
+                            body: JSON.stringify({ success: false, message: 'Invalid or expired session' })
+                        };
+                    }
+                    console.log('✅ Session validated for user:', sessionValidation.userId);
+                    if (sessionIdParam) {
+                        return await getAttendanceSession(sessionIdParam, sessionValidation.userId);
+                    } else {
+                        return await getAttendanceSessions(sessionValidation.userId);
+                    }
+                } catch (sessionError) {
+                    console.error('❌ Session validation error:', sessionError);
                     return {
-                        statusCode: 401,
+                        statusCode: 500,
                         headers,
-                        body: JSON.stringify({ success: false, message: 'Invalid or expired session' })
+                        body: JSON.stringify({ success: false, message: 'Session validation failed', error: sessionError.message })
                     };
-                }
-                console.log('✅ Session validated for user:', sessionValidation.userId);
-                if (sessionIdParam) {
-                    return await getAttendanceSession(sessionIdParam, sessionValidation.userId);
-                } else {
-                    return await getAttendanceSessions(sessionValidation.userId);
                 }
             } else {
                 // Public GET access: only require sessionId in query string
@@ -100,6 +133,23 @@ export async function handler(event, context) {
     } catch (error) {
         console.error('💥 Attendance sessions function critical error:', error);
         console.error('Error stack:', error.stack);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        
+        // Check if it's a database connection error
+        if (error.message && error.message.includes('DATABASE_URL')) {
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ 
+                    success: false, 
+                    message: 'Database connection error',
+                    error: 'Database configuration issue',
+                    timestamp: new Date().toISOString()
+                })
+            };
+        }
+        
         return {
             statusCode: 500,
             headers,
@@ -135,6 +185,11 @@ function toCamelCaseSession(session) {
 async function getAttendanceSessions(adminUserId) {
     try {
         console.log('🔍 Getting attendance sessions for admin user:', adminUserId);
+        
+        // Ensure database is initialized
+        const { initializeDatabase } = await import('./database.mjs');
+        await initializeDatabase();
+        
         const sessions = await sql`
             SELECT 
                 att.*,
@@ -170,6 +225,23 @@ async function getAttendanceSessions(adminUserId) {
     } catch (error) {
         console.error('❌ Error getting attendance sessions:', error);
         console.error('Error stack:', error.stack);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        
+        // Check for specific database errors
+        if (error.message && error.message.includes('connection')) {
+            return {
+                statusCode: 503,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    success: false, 
+                    message: 'Database connection error',
+                    error: 'Service temporarily unavailable',
+                    timestamp: new Date().toISOString()
+                })
+            };
+        }
+        
         return {
             statusCode: 500,
             headers: { 'Content-Type': 'application/json' },

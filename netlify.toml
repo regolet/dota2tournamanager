@@ -116,6 +116,11 @@
   to = "/.netlify/functions/teams"
   status = 200
 
+[[redirects]]
+  from = "/admin/api/test-db"
+  to = "/.netlify/functions/test-db"
+  status = 200
+
 [functions]
   node_bundler = "esbuild"
 
