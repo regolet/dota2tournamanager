@@ -258,30 +258,6 @@
                 <div id="attendance-content" style="display: none;">
                     <div id="session-status"></div>
                     
-                    <div class="session-info">
-                        <h3><i class="bi bi-calendar-event me-2"></i>Session Information</h3>
-                        <div class="info-item">
-                            <span class="info-label">Session Name:</span>
-                            <span class="info-value" id="session-name">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Tournament:</span>
-                            <span class="info-value" id="tournament-name">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Start Time:</span>
-                            <span class="info-value" id="start-time">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">End Time:</span>
-                            <span class="info-value" id="end-time">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Description:</span>
-                            <span class="info-value" id="session-description">-</span>
-                        </div>
-                    </div>
-                    
                     <div id="countdown-container" style="display: none;">
                         <div class="countdown">
                             <div class="countdown-label" id="countdown-label">Time Remaining</div>
@@ -544,7 +520,7 @@
             function hideAllStates() {
                 document.getElementById('loading-state').style.display = 'none';
                 document.getElementById('error-state').style.display = 'none';
-                document.getElementById('attendance-content').style.display = 'none';
+                document.getElementById('attendance-form-container').style.display = 'none';
                 document.getElementById('success-state').style.display = 'none';
                 document.getElementById('already-marked-state').style.display = 'none';
             }
