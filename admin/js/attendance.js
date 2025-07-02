@@ -492,8 +492,7 @@
                 <tr>
                     <td colspan="8" class="text-center py-4 text-muted">
                         <i class="bi bi-people me-2"></i>
-                        No players found.
-                        <br><small>Players will appear here once they register for tournaments.</small>
+                        No players found for this session.
                     </td>
                 </tr>
             `;
@@ -969,7 +968,15 @@
         if (!dropdown) return;
         dropdown.innerHTML = '<option value="">-- Select Session --</option>';
         state.attendanceSessions.forEach(session => {
-            dropdown.innerHTML += `<option value="${session.sessionId}">${session.name}</option>`;
+            // Find registration session title
+            const regSession = state.registrationSessions.find(s => s.sessionId === session.registrationSessionId);
+            const regSessionTitle = regSession ? regSession.title : 'Unknown';
+            // Format created and expires
+            const created = session.createdAt ? formatDate(session.createdAt) : '-';
+            const expires = session.endTime ? formatDate(session.endTime) : 'Never';
+            // Build option label
+            const label = `${session.name} (ID: ${session.sessionId}) - ${regSessionTitle} - ${created} - ${expires}`;
+            dropdown.innerHTML += `<option value="${session.sessionId}">${label}</option>`;
         });
         // Auto-select the latest session
         if (state.attendanceSessions.length > 0) {
@@ -984,8 +991,9 @@
     // Fetch and display players for a selected attendance session
     async function loadPlayersForAttendanceSession(attendanceSessionId) {
         if (!attendanceSessionId) {
-            // If no session selected, load all players as before
-            await loadPlayersWithAttendance();
+            // If no session selected, show no players
+            state.players = [];
+            displayPlayersWithAttendance();
             return;
         }
         try {
