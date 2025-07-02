@@ -703,51 +703,10 @@
         try {
             const attendanceUrl = document.getElementById('attendance-url').value;
             const sessionName = document.getElementById('attendance-session-name').value;
-            
-            // Fetch webhooks from backend
-            const res = await fetch('/.netlify/functions/discord-webhooks', {
-                headers: { 'x-session-id': localStorage.getItem('adminSessionId') }
+            await sendDiscordMessage('attendance', {
+                session_name: sessionName,
+                attendance_url: attendanceUrl
             });
-            
-            if (!res.ok) {
-                window.utils.showNotification('Failed to fetch Discord webhooks', 'error');
-                return;
-            }
-            
-            const data = await res.json();
-            if (!data.success || !Array.isArray(data.webhooks)) {
-                window.utils.showNotification('No Discord webhooks found', 'warning');
-                return;
-            }
-            
-            // Find attendance webhook
-            const webhookObj = data.webhooks.find(w => w.type === 'attendance');
-            const webhookUrl = webhookObj ? webhookObj.url : '';
-            
-            if (!webhookUrl) {
-                window.utils.showNotification('No Discord webhook URL set for attendance', 'warning');
-                return;
-            }
-            
-            const message = `📋 **Attendance Session: ${sessionName}**\n\n🎯 **Attendance Link:**\n${attendanceUrl}\n\n⏰ **Please mark your attendance using the link above.**\n\n✅ Present players will be eligible for tournament participation.`;
-            
-            // Send to Discord webhook
-            const sendRes = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: message,
-                    username: 'Tournament Attendance',
-                    avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png'
-                })
-            });
-            
-            if (sendRes.ok) {
-                window.utils.showNotification('Attendance link sent to Discord!', 'success');
-            } else {
-                const errorText = await sendRes.text();
-                window.utils.showNotification('Failed to send to Discord: ' + errorText, 'error');
-            }
         } catch (error) {
             window.utils.showNotification('Error sending to Discord: ' + error.message, 'error');
         }

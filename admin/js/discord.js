@@ -315,6 +315,85 @@ async function openEditTemplateModal(type) {
   modal.show();
 }
 
+// Utility to fill variables recursively in a template object
+function fillTemplateVars(obj, vars) {
+  if (typeof obj === 'string') {
+    let result = obj;
+    for (const key in vars) {
+      result = result.replaceAll(`{${key}}`, vars[key]);
+    }
+    return result;
+  } else if (Array.isArray(obj)) {
+    return obj.map(item => fillTemplateVars(item, vars));
+  } else if (typeof obj === 'object' && obj !== null) {
+    const newObj = {};
+    for (const key in obj) {
+      newObj[key] = fillTemplateVars(obj[key], vars);
+    }
+    return newObj;
+  }
+  return obj;
+}
+
+// Generalized function to send a Discord message for any type
+async function sendDiscordMessage(type, vars) {
+  try {
+    // Fetch webhooks from backend
+    const res = await fetch('/.netlify/functions/discord-webhooks', {
+      headers: { 'x-session-id': localStorage.getItem('adminSessionId') }
+    });
+    if (!res.ok) {
+      showDiscordNotification('Failed to fetch Discord webhooks from server.', 'error');
+      return;
+    }
+    const data = await res.json();
+    if (!data.success || !Array.isArray(data.webhooks)) {
+      showDiscordNotification('No Discord webhooks found for your account.', 'warning');
+      return;
+    }
+    // Find webhook and template for this type
+    const webhookObj = data.webhooks.find(w => w.type === type);
+    const webhookUrl = webhookObj ? webhookObj.url : '';
+    const template = webhookObj && webhookObj.template ? webhookObj.template : '';
+    if (!webhookUrl) {
+      showDiscordNotification(`No Discord webhook URL set for ${type}. Please configure it in the Discord tab.`, 'warning');
+      return;
+    }
+    if (!template) {
+      showDiscordNotification(`No Discord message template set for ${type}. Please configure it in the Discord tab.`, 'warning');
+      return;
+    }
+    // Try to parse as JSON (embed)
+    let bodyToSend = null;
+    try {
+      let embedObj = JSON.parse(template);
+      embedObj = fillTemplateVars(embedObj, vars);
+      bodyToSend = embedObj;
+    } catch (e) {
+      // Not valid JSON, fallback to plain text
+      bodyToSend = {
+        content: fillTemplateVars(template, vars),
+        username: 'Tournament Manager',
+        avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png'
+      };
+    }
+    // Send to Discord webhook
+    const sendRes = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyToSend)
+    });
+    if (sendRes.ok) {
+      showDiscordNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} message sent to Discord!`, 'success');
+    } else {
+      const errorText = await sendRes.text();
+      showDiscordNotification(`Failed to send to Discord. ${errorText}`, 'error');
+    }
+  } catch (error) {
+    showDiscordNotification(`Error sending to Discord: ${error.message}`, 'error');
+  }
+}
+
 // Export for module system
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { initDiscord, cleanupDiscord };

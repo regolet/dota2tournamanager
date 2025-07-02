@@ -747,32 +747,57 @@ async function initRegistration() {
             // Find registration webhook and template
             const webhookObj = data.webhooks.find(w => w.type === 'registration');
             const webhookUrl = webhookObj ? webhookObj.url : '';
-            
-            // Use database template if available, otherwise use default
-            const template = webhookObj && webhookObj.template ? webhookObj.template : 
-                `🏆 **Available Tournaments**\nHere are the tournaments you can register for:\n\n**{tournament_name}**\n\n:man_bouncing_ball: **Players**\n{player_count}\n:calendar: **Created**\n{created_date}\n\n:id: **ID**\n{tournament_id}\n\nClick a button below to register!`;
-            
+            const template = webhookObj && webhookObj.template ? webhookObj.template : '';
             if (!webhookUrl) {
                 window.utils.showNotification('No Discord webhook URL set for registration. Please configure it in the Discord tab.', 'warning');
                 return;
             }
-            
-            // Fill template
-            const message = template
-                .replace('{tournament_name}', session.title)
-                .replace('{player_count}', `${session.playerCount}/${session.maxPlayers}`)
-                .replace('{created_date}', formatDate(session.createdAt))
-                .replace('{tournament_id}', session.sessionId);
-            
+            if (!template) {
+                window.utils.showNotification('No Discord message template set for registration. Please configure it in the Discord tab.', 'warning');
+                return;
+            }
+            // Try to parse as JSON (embed)
+            let bodyToSend = null;
+            try {
+                let embedObj = JSON.parse(template);
+                // Recursively fill variables in all string fields
+                function fillVars(obj) {
+                    if (typeof obj === 'string') {
+                        return obj
+                            .replace('{tournament_name}', session.title)
+                            .replace('{player_count}', `${session.playerCount}/${session.maxPlayers}`)
+                            .replace('{created_date}', formatDate(session.createdAt))
+                            .replace('{tournament_id}', session.sessionId);
+                    } else if (Array.isArray(obj)) {
+                        return obj.map(fillVars);
+                    } else if (typeof obj === 'object' && obj !== null) {
+                        const newObj = {};
+                        for (const key in obj) {
+                            newObj[key] = fillVars(obj[key]);
+                        }
+                        return newObj;
+                    }
+                    return obj;
+                }
+                embedObj = fillVars(embedObj);
+                bodyToSend = embedObj;
+            } catch (e) {
+                // Not valid JSON, fallback to plain text
+                bodyToSend = {
+                    content: template
+                        .replace('{tournament_name}', session.title)
+                        .replace('{player_count}', `${session.playerCount}/${session.maxPlayers}`)
+                        .replace('{created_date}', formatDate(session.createdAt))
+                        .replace('{tournament_id}', session.sessionId),
+                    username: 'Tournament Manager',
+                    avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png'
+                };
+            }
             // Send to Discord webhook
             const sendRes = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: message,
-                    username: 'Tournament Manager',
-                    avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png'
-                })
+                body: JSON.stringify(bodyToSend)
             });
             
             if (sendRes.ok) {

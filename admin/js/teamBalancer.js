@@ -1146,6 +1146,14 @@ async function saveTeams() {
         if (response.ok && result.success) {
             window.showNotification('Teams saved successfully!', 'success');
             
+            // Send Discord notification for teams
+            if (typeof sendDiscordMessage === 'function') {
+                sendDiscordMessage('teams', {
+                    title: teamSetTitle,
+                    team_count: window.teamBalancerData.balancedTeams.length,
+                    session_name: sessionTitle
+                });
+            }
             // Switch to the tournament bracket tab
             const tournamentTab = document.querySelector('a[href="#tournament-bracket"]');
             if (tournamentTab) {
