@@ -292,7 +292,8 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
         const updateValues = [];
         if (isActive !== undefined) {
             updateFields.push('is_active');
-            updateValues.push(isActive);
+            // Force boolean
+            updateValues.push(isActive === true || isActive === 'true');
         }
         if (name !== undefined) {
             updateFields.push('name');
