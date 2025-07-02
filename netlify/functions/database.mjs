@@ -2010,3 +2010,17 @@ export async function deleteDiscordWebhook(adminUserId, type) {
   await sql`DELETE FROM discord_webhooks WHERE admin_user_id = ${adminUserId} AND type = ${type}`;
   return true;
 }
+
+export async function deleteAllPlayersForSession(sessionId) {
+  try {
+    await initializeDatabase();
+    if (!sessionId) {
+      throw new Error('Session ID is required');
+    }
+    await sql`DELETE FROM players WHERE registration_session_id = ${sessionId}`;
+    return { success: true, message: 'All players deleted for session', sessionId };
+  } catch (error) {
+    console.error('Error deleting all players for session:', error);
+    throw error;
+  }
+}

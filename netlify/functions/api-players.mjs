@@ -6,7 +6,8 @@ import {
   deletePlayer, 
   savePlayers,
   getPlayersForAdmin,
-  validateSession 
+  validateSession,
+  deleteAllPlayersForSession
 } from './database.mjs';
 
 export const handler = async (event, context) => {
@@ -315,7 +316,24 @@ async function handleDeletePlayer(event, sessionValidation) {
       };
     }
 
-    const { playerId } = JSON.parse(event.body || '{}');
+    const { playerId, action, sessionId } = JSON.parse(event.body || '{}');
+
+    // Bulk delete support
+    if (action === 'removeAll' && sessionId) {
+      const result = await deleteAllPlayersForSession(sessionId);
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          message: result.message,
+          sessionId: result.sessionId
+        })
+      };
+    }
 
     if (!playerId) {
       return {
