@@ -64,10 +64,10 @@ export async function handler(event, context) {
 
         // Verify attendance session exists and is active
         const attendanceSession = await sql`
-            SELECT as.*, rs.session_id as registration_session_id
-            FROM attendance_sessions as
-            JOIN registration_sessions rs ON as.registration_session_id = rs.session_id
-            WHERE as.session_id = ${sessionId} AND as.is_active = true
+            SELECT att.*, rs.session_id as registration_session_id
+            FROM attendance_sessions att
+            JOIN registration_sessions rs ON att.registration_session_id = rs.session_id
+            WHERE att.session_id = ${sessionId} AND att.is_active = true
         `;
 
         if (attendanceSession.length === 0) {
