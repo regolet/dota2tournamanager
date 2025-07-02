@@ -439,10 +439,11 @@ async function initRegistration() {
                 document.getElementById('session-title').value = session.title;
                 document.getElementById('session-description').value = session.description || '';
                 document.getElementById('session-max-players').value = session.maxPlayers;
-                
-                if (session.expiresAt) {
-                    // Convert to local datetime-local format
-                    const date = new Date(session.expiresAt);
+
+                // Support all possible expiration field names
+                const expiresValue = session.expiry || session.expiresAt || session.expires_at;
+                if (expiresValue) {
+                    const date = new Date(expiresValue);
                     const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
                     document.getElementById('session-expires-at').value = localDateTime;
                 } else {
