@@ -326,6 +326,13 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
         // Build dynamic SQL query (no admin_user_id in WHERE)
         const setClause = updateFields.map((field, index) => `${field} = $${index + 1}`).join(', ');
         const query = `UPDATE attendance_sessions SET ${setClause} WHERE session_id = $${updateFields.length + 1} RETURNING *`;
+        // Add detailed logging
+        console.log('DEBUG: updateAttendanceSession', {
+            sessionId,
+            updateFields,
+            updateValues,
+            query
+        });
         const result = await sql.unsafe(query, ...updateValues, sessionId);
         return {
             statusCode: 200,
