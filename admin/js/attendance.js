@@ -29,6 +29,93 @@
     let attendanceInitAttempts = 0;
     const MAX_ATTENDANCE_INIT_ATTEMPTS = 10;
 
+    // Attendance session management functions
+    async function deleteAttendanceSession(sessionId, sessionName) {
+        if (!confirm(`Are you sure you want to delete the attendance session "${sessionName}"? This action cannot be undone.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/admin/api/attendance-sessions?sessionId=${sessionId}`, {
+                method: 'DELETE',
+                headers: { 'x-session-id': localStorage.getItem('adminSessionId') }
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                window.utils.showNotification(`Attendance session "${sessionName}" deleted successfully`, 'success');
+                await loadAttendanceSessions();
+            } else {
+                throw new Error(data.message || 'Failed to delete attendance session');
+            }
+        } catch (error) {
+            console.error('Error deleting attendance session:', error);
+            window.utils.showNotification(`Error deleting attendance session: ${error.message}`, 'error');
+        }
+    }
+
+    async function closeAttendanceSession(sessionId, sessionName) {
+        if (!confirm(`Are you sure you want to close the attendance session "${sessionName}"?`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/admin/api/attendance-sessions?sessionId=${sessionId}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-session-id': localStorage.getItem('adminSessionId') 
+                },
+                body: JSON.stringify({ isActive: false })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                window.utils.showNotification(`Attendance session "${sessionName}" closed successfully`, 'success');
+                await loadAttendanceSessions();
+            } else {
+                throw new Error(data.message || 'Failed to close attendance session');
+            }
+        } catch (error) {
+            console.error('Error closing attendance session:', error);
+            window.utils.showNotification(`Error closing attendance session: ${error.message}`, 'error');
+        }
+    }
+
+    async function reopenAttendanceSession(sessionId, sessionName) {
+        try {
+            const response = await fetch(`/admin/api/attendance-sessions?sessionId=${sessionId}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-session-id': localStorage.getItem('adminSessionId') 
+                },
+                body: JSON.stringify({ isActive: true })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                window.utils.showNotification(`Attendance session "${sessionName}" reopened successfully`, 'success');
+                await loadAttendanceSessions();
+            } else {
+                throw new Error(data.message || 'Failed to reopen attendance session');
+            }
+        } catch (error) {
+            console.error('Error reopening attendance session:', error);
+            window.utils.showNotification(`Error reopening attendance session: ${error.message}`, 'error');
+        }
+    }
+
+    function editAttendanceSession(sessionId) {
+        // For now, show a simple alert. This could be expanded to show an edit modal
+        window.utils.showNotification('Edit functionality coming soon!', 'info');
+    }
+
+    function viewAttendanceStats(sessionId) {
+        // For now, show a simple alert. This could be expanded to show detailed statistics
+        window.utils.showNotification('Statistics view coming soon!', 'info');
+    }
+
     // Initialize attendance module
     async function initAttendance() {
         try {
