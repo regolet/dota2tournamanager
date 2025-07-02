@@ -410,6 +410,9 @@
         
         tableBody.innerHTML = '';
         
+        // Always sort players by MMR (high to low)
+        state.players.sort((a, b) => (b.peakmmr || 0) - (a.peakmmr || 0));
+        
         state.players.forEach(player => {
             const row = document.createElement('tr');
             
@@ -584,18 +587,6 @@
     function showAttendanceLinkModal(session) {
         const attendanceUrl = `${window.location.origin}/attendance/?session=${session.sessionId}`;
         document.getElementById('attendance-url').value = attendanceUrl;
-        
-        // Generate QR code (you can add a QR code library later)
-        const qrCodeDiv = document.getElementById('attendance-qr-code');
-        if (qrCodeDiv) {
-            qrCodeDiv.innerHTML = `
-                <div class="bg-light p-3 rounded">
-                    <i class="bi bi-qr-code display-4"></i>
-                    <br><small class="text-muted">QR Code for: ${session.name}</small>
-                </div>
-            `;
-        }
-        
         const modal = new bootstrap.Modal(document.getElementById('attendanceLinkModal'));
         modal.show();
     }
@@ -868,4 +859,83 @@
     window.resetAttendanceModule = resetAttendanceModule;
     window.loadAttendance = loadAttendance;
     
+    // Add missing attendance link functions
+    function openAttendanceSessionLink(sessionId) {
+        const attendanceUrl = `${window.location.origin}/attendance/?session=${sessionId}`;
+        window.open(attendanceUrl, '_blank');
+    }
+
+    function copyAttendanceSessionLink(sessionId) {
+        const attendanceUrl = `${window.location.origin}/attendance/?session=${sessionId}`;
+        copyToClipboard(attendanceUrl);
+        window.utils.showNotification('Attendance link copied to clipboard!', 'success');
+    }
+
+    // Load attendance sessions into the dropdown
+    async function populateAttendanceSessionDropdown() {
+        try {
+            const dropdown = document.getElementById('attendance-session-select');
+            if (!dropdown) return;
+            // Fetch attendance sessions from API
+            const response = await fetch('/admin/api/attendance-sessions', {
+                headers: { 'x-session-id': localStorage.getItem('adminSessionId') }
+            });
+            const data = await response.json();
+            if (data.success && Array.isArray(data.sessions)) {
+                state.attendanceSessions = data.sessions;
+                dropdown.innerHTML = '<option value="">-- Select Session --</option>';
+                data.sessions.forEach(session => {
+                    dropdown.innerHTML += `<option value="${session.sessionId}">${session.name}</option>`;
+                });
+                
+                // Auto-select the latest session (most recent by creation date)
+                if (data.sessions.length > 0) {
+                    const latestSession = data.sessions.sort((a, b) => 
+                        new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
+                    )[0];
+                    dropdown.value = latestSession.sessionId;
+                    // Load players for the latest session
+                    await loadPlayersForAttendanceSession(latestSession.sessionId);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading attendance sessions for dropdown:', error);
+        }
+    }
+
+    // Fetch and display players for a selected attendance session
+    async function loadPlayersForAttendanceSession(attendanceSessionId) {
+        if (!attendanceSessionId) {
+            // If no session selected, load all players as before
+            await loadPlayersWithAttendance();
+            return;
+        }
+        try {
+            const response = await fetch(`/.netlify/functions/attendance-session-players?attendanceSessionId=${attendanceSessionId}`);
+            const data = await response.json();
+            if (data.success && Array.isArray(data.players)) {
+                state.players = data.players;
+                displayPlayersWithAttendance();
+            } else {
+                state.players = [];
+                displayPlayersWithAttendance();
+            }
+        } catch (error) {
+            console.error('Error loading players for attendance session:', error);
+            state.players = [];
+            displayPlayersWithAttendance();
+        }
+    }
+
+    // Add event listener to the dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        populateAttendanceSessionDropdown();
+        const dropdown = document.getElementById('attendance-session-select');
+        if (dropdown) {
+            dropdown.addEventListener('change', function() {
+                const sessionId = dropdown.value;
+                loadPlayersForAttendanceSession(sessionId);
+            });
+        }
+    });
 })(); 

@@ -101,10 +101,10 @@ async function getAttendanceSessions(adminUserId) {
             LEFT JOIN (
                 SELECT 
                     rs.session_id,
-                    COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
-                    COUNT(p.id) as total_count
+                COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
+                COUNT(p.id) as total_count
                 FROM registration_sessions rs
-                LEFT JOIN players p ON rs.session_id = p.registration_session_id
+            LEFT JOIN players p ON rs.session_id = p.registration_session_id
                 GROUP BY rs.session_id
             ) present_stats ON att.registration_session_id = present_stats.session_id
             WHERE att.admin_user_id = ${adminUserId}
@@ -150,10 +150,10 @@ async function getAttendanceSession(sessionId, adminUserId) {
             LEFT JOIN (
                 SELECT 
                     rs.session_id,
-                    COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
-                    COUNT(p.id) as total_count
+                COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
+                COUNT(p.id) as total_count
                 FROM registration_sessions rs
-                LEFT JOIN players p ON rs.session_id = p.registration_session_id
+            LEFT JOIN players p ON rs.session_id = p.registration_session_id
                 GROUP BY rs.session_id
             ) present_stats ON att.registration_session_id = present_stats.session_id
             WHERE att.session_id = ${sessionId} AND att.admin_user_id = ${adminUserId}
