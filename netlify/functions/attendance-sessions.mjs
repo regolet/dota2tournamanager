@@ -86,6 +86,25 @@ export async function handler(event, context) {
     }
 }
 
+function toCamelCaseSession(session) {
+    return {
+        ...session,
+        sessionId: session.session_id,
+        adminUserId: session.admin_user_id,
+        adminUsername: session.admin_username,
+        registrationSessionId: session.registration_session_id,
+        startTime: session.start_time,
+        endTime: session.end_time,
+        isActive: session.is_active,
+        createdAt: session.created_at,
+        updatedAt: session.updated_at,
+        presentCount: session.present_count,
+        totalCount: session.total_count,
+        registrationSessionTitle: session.registration_session_title,
+        registrationPlayerCount: session.registration_player_count,
+    };
+}
+
 async function getAttendanceSessions(adminUserId) {
     try {
         console.log('🔍 Getting attendance sessions for admin user:', adminUserId);
@@ -112,12 +131,13 @@ async function getAttendanceSessions(adminUserId) {
         `;
 
         console.log('✅ Found', sessions.length, 'attendance sessions');
+        const camelSessions = sessions.map(toCamelCaseSession);
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 success: true, 
-                sessions: sessions 
+                sessions: camelSessions 
             })
         };
     } catch (error) {
@@ -170,12 +190,13 @@ async function getAttendanceSession(sessionId, adminUserId) {
             };
         }
 
+        const camelSession = toCamelCaseSession(sessions[0]);
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 success: true, 
-                session: sessions[0] 
+                session: camelSession 
             })
         };
     } catch (error) {
