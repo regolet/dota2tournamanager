@@ -74,55 +74,74 @@ function updateRegistrationStatus() {
     const now = new Date();
     const startTime = currentSession.startTime ? new Date(currentSession.startTime) : null;
     const expiresAt = currentSession.expiresAt ? new Date(currentSession.expiresAt) : null;
-    // Debug log for registration timing
-    console.log('[DEBUG] now:', now.toString(), 'startTime:', startTime ? startTime.toString() : null, 'expiresAt:', expiresAt ? expiresAt.toString() : null, 'raw:', {now, startTime, expiresAt, currentSession});
+    let status = '';
+    // Determine status (attendance-style)
     if (!currentSession.isActive) {
-        statusInfo.style.backgroundColor = '#f8d7da';
-        statusInfo.style.color = '#721c24';
-        statusTitle.textContent = 'Registration Closed';
-        statusMessage.textContent = 'This registration session has been deactivated';
-        playerForm.classList.add('hidden');
-        countdownSection.style.display = 'none';
+        status = 'inactive';
     } else if (expiresAt && now > expiresAt) {
-        statusInfo.style.backgroundColor = '#fff3cd';
-        statusInfo.style.color = '#856404';
-        statusTitle.textContent = 'Registration Expired';
-        statusMessage.textContent = 'The registration deadline has passed';
-        playerForm.classList.add('hidden');
-        countdownSection.style.display = 'none';
+        status = 'expired';
     } else if (startTime && now < startTime) {
-        statusInfo.style.backgroundColor = '#cce5ff';
-        statusInfo.style.color = '#004085';
-        statusTitle.textContent = 'Registration Not Yet Open';
-        statusMessage.textContent = 'Registration will open soon for this tournament.';
-        playerForm.classList.add('hidden');
-        countdownSection.style.display = 'block';
-        startRegistrationCountdown(startTime.getTime(), true); // true = countdown to start
+        status = 'upcoming';
     } else if (currentSession.playerCount >= currentSession.maxPlayers) {
-        statusInfo.style.backgroundColor = '#f8d7da';
-        statusInfo.style.color = '#721c24';
-        statusTitle.textContent = 'Registration Full';
-        statusMessage.textContent = `Tournament is full (${currentSession.maxPlayers} players maximum)`;
-        playerForm.classList.add('hidden');
-        countdownSection.style.display = 'none';
+        status = 'full';
     } else {
-        statusInfo.style.backgroundColor = '#d4edda';
-        statusInfo.style.color = '#155724';
-        statusTitle.textContent = 'Registration Open';
-        statusMessage.textContent = 'You can register for this tournament';
-        playerForm.classList.remove('hidden');
-        if (expiresAt) {
-            const expiryTime = expiresAt.getTime();
-            const timeRemaining = expiryTime - now.getTime();
-            if (timeRemaining > 0) {
-                countdownSection.style.display = 'block';
-                startRegistrationCountdown(expiryTime, false); // false = countdown to expiry
+        status = 'open';
+    }
+    // Apply UI based on status
+    switch (status) {
+        case 'inactive':
+            statusInfo.style.backgroundColor = '#f8d7da';
+            statusInfo.style.color = '#721c24';
+            statusTitle.textContent = 'Registration Closed';
+            statusMessage.textContent = 'This registration session has been deactivated';
+            playerForm.classList.add('hidden');
+            countdownSection.style.display = 'none';
+            break;
+        case 'expired':
+            statusInfo.style.backgroundColor = '#fff3cd';
+            statusInfo.style.color = '#856404';
+            statusTitle.textContent = 'Registration Expired';
+            statusMessage.textContent = 'The registration deadline has passed';
+            playerForm.classList.add('hidden');
+            countdownSection.style.display = 'none';
+            break;
+        case 'upcoming':
+            statusInfo.style.backgroundColor = '#cce5ff';
+            statusInfo.style.color = '#004085';
+            statusTitle.textContent = 'Registration Not Yet Open';
+            statusMessage.textContent = 'Registration will open soon for this tournament.';
+            playerForm.classList.add('hidden');
+            countdownSection.style.display = 'block';
+            startRegistrationCountdown(startTime.getTime(), true); // true = countdown to start
+            break;
+        case 'full':
+            statusInfo.style.backgroundColor = '#f8d7da';
+            statusInfo.style.color = '#721c24';
+            statusTitle.textContent = 'Registration Full';
+            statusMessage.textContent = `Tournament is full (${currentSession.maxPlayers} players maximum)`;
+            playerForm.classList.add('hidden');
+            countdownSection.style.display = 'none';
+            break;
+        case 'open':
+        default:
+            statusInfo.style.backgroundColor = '#d4edda';
+            statusInfo.style.color = '#155724';
+            statusTitle.textContent = 'Registration Open';
+            statusMessage.textContent = 'You can register for this tournament';
+            playerForm.classList.remove('hidden');
+            if (expiresAt) {
+                const expiryTime = expiresAt.getTime();
+                const timeRemaining = expiryTime - now.getTime();
+                if (timeRemaining > 0) {
+                    countdownSection.style.display = 'block';
+                    startRegistrationCountdown(expiryTime, false); // false = countdown to expiry
+                } else {
+                    countdownSection.style.display = 'none';
+                }
             } else {
                 countdownSection.style.display = 'none';
             }
-        } else {
-            countdownSection.style.display = 'none';
-        }
+            break;
     }
 }
 

@@ -397,6 +397,13 @@ async function initRegistration() {
         const expiryInput = document.getElementById('session-expires-at').value;
         const startTime = toUTCISOStringFromPHLocal(startInput);
         const expiry = toUTCISOStringFromPHLocal(expiryInput);
+
+        // --- ADDED VALIDATION ---
+        if (!startInput || !startTime) {
+            showSessionAlert('Please select a valid start time for registration.', 'danger');
+            return;
+        }
+        // --- END VALIDATION ---
         
         console.log('[Registration Save] Input values:', {
             startInput,
