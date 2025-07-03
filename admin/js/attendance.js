@@ -139,7 +139,7 @@
             }
             document.getElementById('attendance-session-name').value = session.name || '';
             document.getElementById('attendance-registration-session').value = session.registrationSessionId || '';
-            document.getElementById('attendance-start-time').value = toPHLocalInput(session.createdAt);
+            document.getElementById('attendance-start-time').value = toPHLocalInput(session.startTime);
             document.getElementById('attendance-end-time').value = toPHLocalInput(session.endTime);
             document.getElementById('attendance-description').value = session.description || '';
             document.getElementById('attendance-status').value = session.isActive ? 'active' : 'inactive';
@@ -320,6 +320,17 @@
                 editAttendanceSession(sessionId);
             }
         });
+
+        // Add modal backdrop cleanup to cancel/close
+        const createAttendanceSessionModal = document.getElementById('createAttendanceSessionModal');
+        if (createAttendanceSessionModal) {
+            createAttendanceSessionModal.addEventListener('hidden.bs.modal', function () {
+                setTimeout(() => {
+                    document.body.classList.remove('modal-open');
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                }, 500);
+            });
+        }
     }
 
     async function loadAttendanceData() {
@@ -536,6 +547,7 @@
                 <td>${escapeHtml(regSessionTitle)}</td>
                 <td><span class="badge ${statusClass}">${statusBadge}</span></td>
                 <td>${session.presentCount}/${session.totalCount}</td>
+                <td><small>${session.startTime ? formatDate(session.startTime) : '-'}</small></td>
                 <td><small>${formatDate(session.createdAt)}</small></td>
                 <td><small>${session.endTime ? formatDate(session.endTime) : 'Never'}</small></td>
                 <td>
