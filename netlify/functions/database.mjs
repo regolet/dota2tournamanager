@@ -1140,7 +1140,12 @@ export async function updateRegistrationSession(sessionId, updates) {
     if (updates.isActive !== undefined) updateFields.is_active = updates.isActive;
     if (updates.expiresAt !== undefined) updateFields.expires_at = updates.expiresAt;
     if (updates.startTime !== undefined) updateFields.start_time = updates.startTime;
-    
+
+    // DEBUG LOGGING
+    console.log('[updateRegistrationSession] Received updates:', updates);
+    console.log('[updateRegistrationSession] Final updateFields:', updateFields);
+    // END DEBUG LOGGING
+
     if (Object.keys(updateFields).length === 0) {
       return { success: false, message: 'No fields to update' };
     }
