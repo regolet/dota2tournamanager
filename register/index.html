@@ -142,15 +142,13 @@
                     <div class="note">Each Dota 2 ID can only register once per tournament.</div>
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group mmr-group">
-                        <label for="peakmmr">Peak MMR:</label>
-                        <input type="number" id="peakmmr" name="peakmmr" required min="0" max="15000" placeholder="Your highest MMR">
-                        <div class="note">MMR will be verified against masterlist if available.</div>
-                    </div>
-                    
-                    <button type="submit" id="submit-btn">Register for Tournament</button>
+                <div class="form-group">
+                    <label for="peakmmr">Peak MMR:</label>
+                    <input type="number" id="peakmmr" name="peakmmr" required min="0" max="15000" placeholder="Your highest MMR">
+                    <div class="note">MMR will be verified against masterlist if available.</div>
                 </div>
+                
+                <button type="submit" id="submit-btn" class="full-width-btn">Register for Tournament</button>
             </form>
             
             <div id="message" class="hidden"></div>
