@@ -286,7 +286,10 @@ async function initRegistration() {
                     <small>${formatDate(session.createdAt)}</small>
                 </td>
                 <td>
-                    <small>${session.expiresAt ? formatDate(session.expiresAt) : 'Never'}</small>
+                    <small>${session.startTime ? formatDate(session.startTime) : '-'}</small>
+                </td>
+                <td>
+                    <small>${session.expiresAt ? formatDate(session.expiresAt) : session.expiry ? formatDate(session.expiry) : 'Never'}</small>
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
