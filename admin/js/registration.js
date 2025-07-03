@@ -342,31 +342,43 @@ async function initRegistration() {
         modal.show();
     }
     
-    // Helper to convert PH local datetime-local input to UTC ISO string (treat input as PH time, output UTC/ISO)
-    function toUTCISOStringFromPHLocal(input) {
-        if (!input) return null;
-        // input: 'YYYY-MM-DDTHH:mm' (assume PH time)
-        const [date, time] = input.split('T');
-        const [year, month, day] = date.split('-');
-        const [hour, minute] = time.split(':');
-        // Date.UTC uses month 0-based
-        // PH is UTC+8, so subtract 8 hours to get UTC
-        const phMillis = Date.UTC(year, month - 1, day, hour, minute) - (8 * 60 * 60 * 1000);
-        return new Date(phMillis).toISOString();
-    }
-    // Helper to convert UTC/ISO to PH local datetime-local string for input
+    // Helper to convert UTC/ISO to PH datetime-local string (copied from attendance.js)
     function toPHLocalInput(dateString) {
         if (!dateString) return '';
-        const date = new Date(dateString);
-        // Add 8 hours to get PH time
-        const phMillis = date.getTime() + (8 * 60 * 60 * 1000);
-        const phDate = new Date(phMillis);
-        const year = phDate.getUTCFullYear();
-        const month = String(phDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(phDate.getUTCDate()).padStart(2, '0');
-        const hours = String(phDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(phDate.getUTCMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid date string:', dateString);
+                return '';
+            }
+            // Use a more reliable method to get PH time
+            const phDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
+            const year = phDate.getFullYear();
+            const month = String(phDate.getMonth() + 1).padStart(2, '0');
+            const day = String(phDate.getDate()).padStart(2, '0');
+            const hours = String(phDate.getHours()).padStart(2, '0');
+            const minutes = String(phDate.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (error) {
+            console.error('Error converting date to PH local:', error, dateString);
+            return '';
+        }
+    }
+    // Helper to convert PH local datetime-local input to UTC ISO string (copied from attendance.js pattern)
+    function toUTCISOStringFromPHLocal(input) {
+        if (!input) return null;
+        try {
+            // Treat input as PH time
+            const [date, time] = input.split('T');
+            const [year, month, day] = date.split('-');
+            const [hour, minute] = time.split(':');
+            // Create a Date object in PH time
+            const phDate = new Date(`${year}-${month}-${day}T${hour}:${minute}:00+08:00`);
+            return phDate.toISOString();
+        } catch (error) {
+            console.error('Error converting PH local input to UTC ISO:', error, input);
+            return null;
+        }
     }
     
     async function handleSessionSave(e) {
@@ -393,6 +405,8 @@ async function initRegistration() {
         
         const saveButton = document.getElementById('save-session-btn');
         const originalText = saveButton.textContent;
+        
+        console.log('[Registration Save] Payload:', sessionData);
         
         try {
             saveButton.disabled = true;
