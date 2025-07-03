@@ -363,11 +363,27 @@ async function initRegistration() {
                 return;
             }
         }
+        const startInput = document.getElementById('session-start-time').value;
+        let startTime = null;
+        if (startInput) {
+            try {
+                const localDate = new Date(startInput);
+                if (isNaN(localDate.getTime())) {
+                    throw new Error('Invalid date input');
+                }
+                startTime = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+            } catch (error) {
+                console.error('Error processing start date:', error);
+                window.utils.showNotification('Invalid start date format', 'error');
+                return;
+            }
+        }
         const sessionData = {
             title: document.getElementById('session-title').value,
             description: document.getElementById('session-description').value,
             maxPlayers: parseInt(document.getElementById('session-max-players').value),
-            expiry
+            expiry,
+            startTime
         };
         
         if (isEdit) {
@@ -460,6 +476,14 @@ async function initRegistration() {
                     document.getElementById('session-expires-at').value = localDateTime;
                 } else {
                     document.getElementById('session-expires-at').value = '';
+                }
+                
+                if (session.startTime) {
+                    const date = new Date(session.startTime);
+                    const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    document.getElementById('session-start-time').value = localDateTime;
+                } else {
+                    document.getElementById('session-start-time').value = '';
                 }
                 
                 // Update modal title and button

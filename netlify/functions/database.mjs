@@ -139,12 +139,14 @@ export async function initializeDatabase() {
         description TEXT,
         max_players INTEGER DEFAULT 100,
         is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
+        start_time TIMESTAMP,
         expires_at TIMESTAMP,
         player_count INTEGER DEFAULT 0
       )
     `;
+
+    // Add start_time column to registration_sessions if not exists
+    await sql`ALTER TABLE registration_sessions ADD COLUMN IF NOT EXISTS start_time TIMESTAMP`;
 
     // Create teams table for storing generated team configurations
     await sql`
@@ -1004,7 +1006,7 @@ export async function createRegistrationSession(adminUserId, adminUsername, sess
     await sql`
       INSERT INTO registration_sessions (
         session_id, admin_user_id, admin_username, title, description, 
-        max_players, is_active, expires_at
+        max_players, is_active, start_time, expires_at
       )
       VALUES (
         ${sessionId}, 
@@ -1014,6 +1016,7 @@ export async function createRegistrationSession(adminUserId, adminUsername, sess
         ${sessionData.description || ''}, 
         ${sessionData.maxPlayers || 100}, 
         true,
+        ${sessionData.startTime || null},
         ${sessionData.expiresAt || null}
       )
     `;
@@ -1073,7 +1076,8 @@ export async function getRegistrationSessions(adminUserId = null) {
       createdAt: session.created_at,
       updatedAt: session.updated_at,
       expiresAt: session.expires_at,
-      playerCount: session.actual_player_count // Use actual count from players table
+      playerCount: session.actual_player_count, // Use actual count from players table
+      startTime: session.start_time
     }));
   } catch (error) {
     console.error('Error getting registration sessions:', error);
@@ -1116,7 +1120,8 @@ export async function getRegistrationSessionBySessionId(sessionId) {
       createdAt: session.created_at,
       updatedAt: session.updated_at,
       expiresAt: session.expires_at,
-      playerCount: session.actual_player_count // Use actual count from players table
+      playerCount: session.actual_player_count, // Use actual count from players table
+      startTime: session.start_time
     };
   } catch (error) {
     console.error('Error getting registration session:', error);
@@ -1134,6 +1139,7 @@ export async function updateRegistrationSession(sessionId, updates) {
     if (updates.maxPlayers !== undefined) updateFields.max_players = updates.maxPlayers;
     if (updates.isActive !== undefined) updateFields.is_active = updates.isActive;
     if (updates.expiresAt !== undefined) updateFields.expires_at = updates.expiresAt;
+    if (updates.startTime !== undefined) updateFields.start_time = updates.startTime;
     
     if (Object.keys(updateFields).length === 0) {
       return { success: false, message: 'No fields to update' };
@@ -1154,6 +1160,9 @@ export async function updateRegistrationSession(sessionId, updates) {
     }
     if (updateFields.expires_at !== undefined) {
       await sql`UPDATE registration_sessions SET expires_at = ${updateFields.expires_at}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+    }
+    if (updateFields.start_time !== undefined) {
+      await sql`UPDATE registration_sessions SET start_time = ${updateFields.start_time}, updated_at = NOW() WHERE session_id = ${sessionId}`;
     }
     
     return { success: true };
