@@ -740,7 +740,9 @@
             saveButton.innerHTML = isEdit ? '<span class="spinner-border spinner-border-sm me-2"></span>Updating...' : '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
             let response, data;
             if (isEdit) {
-                response = await fetch(`/admin/api/attendance-sessions?sessionId=${encodeURIComponent(sessionId)}`, {
+                const url = `/admin/api/attendance-sessions?sessionId=${encodeURIComponent(sessionId)}`;
+                console.log('[Update Attendance] PUT', url, sessionData);
+                response = await fetch(url, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -748,8 +750,11 @@
                     },
                     body: JSON.stringify(sessionData)
                 });
+                console.log('[Update Attendance] Response', response);
             } else {
-                response = await fetch('/admin/api/attendance-sessions', {
+                const url = '/admin/api/attendance-sessions';
+                console.log('[Create Attendance] POST', url, sessionData);
+                response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -757,6 +762,7 @@
                     },
                     body: JSON.stringify(sessionData)
                 });
+                console.log('[Create Attendance] Response', response);
             }
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -777,6 +783,7 @@
                 throw new Error(data.message || (isEdit ? 'Failed to update attendance session' : 'Failed to create attendance session'));
             }
         } catch (error) {
+            console.error('[Attendance Save Error]', error);
             window.utils.showNotification(error.message || (isEdit ? 'Error updating attendance session' : 'Error creating attendance session'), 'error');
         } finally {
             saveButton.disabled = false;
