@@ -281,6 +281,9 @@
             const startTime = currentSession.startTime ? new Date(currentSession.startTime) : null;
             const expiresAt = currentSession.expiresAt ? new Date(currentSession.expiresAt) : null;
 
+            // Debug log for registration timing
+            console.log('[DEBUG] now:', now.toString(), 'startTime:', startTime ? startTime.toString() : null, 'expiresAt:', expiresAt ? expiresAt.toString() : null, 'raw:', {now, startTime, expiresAt, currentSession});
+
             if (!currentSession.isActive) {
                 statusInfo.style.backgroundColor = '#f8d7da';
                 statusInfo.style.color = '#721c24';
@@ -603,5 +606,6 @@
             document.getElementById('error-section').classList.remove('hidden');
         }
     </script>
+    <script src="../js/registration.js"></script>
 </body>
 </html> 
