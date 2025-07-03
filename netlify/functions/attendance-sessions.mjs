@@ -396,6 +396,9 @@ async function createAttendanceSession(sessionData, adminUserId, adminUsername) 
 
 async function updateAttendanceSession(sessionId, updates, adminUserId) {
     try {
+        console.log('[UpdateAttendanceSession] sessionId:', sessionId);
+        console.log('[UpdateAttendanceSession] updates:', updates);
+        console.log('[UpdateAttendanceSession] adminUserId:', adminUserId);
         let { isActive, name, startTime, endTime, description } = updates;
         const fields = [];
         const values = [];
@@ -405,7 +408,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             try {
                 startTime = convertPHTimeToUTC(startTime);
             } catch (error) {
-                console.error('Error converting start time:', error);
+                console.error('[UpdateAttendanceSession] Error converting start time:', error);
                 return {
                     statusCode: 400,
                     headers: { 'Content-Type': 'application/json' },
@@ -422,7 +425,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             try {
                 endTime = convertPHTimeToUTC(endTime);
             } catch (error) {
-                console.error('Error converting end time:', error);
+                console.error('[UpdateAttendanceSession] Error converting end time:', error);
                 return {
                     statusCode: 400,
                     headers: { 'Content-Type': 'application/json' },
@@ -449,6 +452,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
         }
 
         if (fields.length === 0) {
+            console.error('[UpdateAttendanceSession] No valid fields to update');
             return {
                 statusCode: 400,
                 headers: { 'Content-Type': 'application/json' },
@@ -465,6 +469,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             WHERE session_id = ${sessionId}
         `;
         if (existingSession.length === 0) {
+            console.error('[UpdateAttendanceSession] Attendance session not found:', sessionId);
             return {
                 statusCode: 404,
                 headers: { 'Content-Type': 'application/json' },
@@ -478,10 +483,25 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
         // Build dynamic update query
         const setClauses = fields.map((field, idx) => `${field} = $${idx + 1}`).join(', ');
         values.push(sessionId); // for WHERE clause
-        const result = await sql.unsafe(
-            `UPDATE attendance_sessions SET ${setClauses}, updated_at = NOW() WHERE session_id = $${fields.length + 1} RETURNING *`,
-            values
-        );
+        const sqlQuery = `UPDATE attendance_sessions SET ${setClauses}, updated_at = NOW() WHERE session_id = $${fields.length + 1} RETURNING *`;
+        console.log('[UpdateAttendanceSession] SQL Query:', sqlQuery);
+        console.log('[UpdateAttendanceSession] Values:', values);
+        let result;
+        try {
+            result = await sql.unsafe(sqlQuery, values);
+        } catch (sqlError) {
+            console.error('[UpdateAttendanceSession] SQL Error:', sqlError);
+            return {
+                statusCode: 500,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    success: false, 
+                    message: 'Failed to update attendance session',
+                    error: sqlError.message,
+                    stack: sqlError.stack
+                })
+            };
+        }
 
         return {
             statusCode: 200,
@@ -493,7 +513,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             })
         };
     } catch (error) {
-        console.error('Error updating attendance session:', error);
+        console.error('[UpdateAttendanceSession] General Error:', error);
         console.error('Error stack:', error.stack);
         return {
             statusCode: 500,
@@ -501,7 +521,8 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             body: JSON.stringify({ 
                 success: false, 
                 message: 'Failed to update attendance session',
-                error: error.message 
+                error: error.message,
+                stack: error.stack
             })
         };
     }
