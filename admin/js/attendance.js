@@ -765,6 +765,13 @@
                 console.log('[Create Attendance] Response', response);
             }
             if (!response.ok) {
+                let errorBody = null;
+                try {
+                    errorBody = await response.json();
+                } catch (parseErr) {
+                    errorBody = { parseErr, raw: await response.text() };
+                }
+                console.error('[Update Attendance] Error Response Body:', errorBody);
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             data = await response.json();
