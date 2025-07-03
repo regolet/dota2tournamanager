@@ -1,6 +1,5 @@
 // Input validation utilities for security and data integrity
 import DOMPurify from 'isomorphic-dompurify';
-import { DateTime } from 'luxon';
 
 /**
  * Sanitize HTML content to prevent XSS attacks
@@ -419,11 +418,15 @@ export function convertPHTimeToUTC(phTime) {
     }
     
     try {
-        const utcTime = DateTime.fromISO(phTime, { zone: 'Asia/Manila' }).toUTC().toISO();
-        if (!utcTime) {
+        // Simple conversion: assume PH time is UTC+8
+        const date = new Date(phTime);
+        if (isNaN(date.getTime())) {
             throw new Error('Invalid time format');
         }
-        return utcTime;
+        
+        // Convert to UTC by subtracting 8 hours
+        const utcDate = new Date(date.getTime() - (8 * 60 * 60 * 1000));
+        return utcDate.toISOString();
     } catch (error) {
         throw new Error(`Invalid time format: ${error.message}. Please use YYYY-MM-DDTHH:mm format.`);
     }
@@ -463,10 +466,10 @@ export function validateTimeRange(startTime, endTime) {
         throw new Error('Both start and end times are required');
     }
     
-    const start = DateTime.fromISO(startTime);
-    const end = DateTime.fromISO(endTime);
+    const start = new Date(startTime);
+    const end = new Date(endTime);
     
-    if (!start.isValid || !end.isValid) {
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
         throw new Error('Invalid time format');
     }
     
@@ -489,12 +492,20 @@ export function formatDateForDisplay(dateString, timezone = 'Asia/Manila') {
     }
     
     try {
-        const date = DateTime.fromISO(dateString);
-        if (!date.isValid) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
             return 'Invalid date';
         }
         
-        return date.setZone(timezone).toFormat('yyyy-MM-dd HH:mm z');
+        // Simple formatting without timezone conversion
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: timezone
+        });
     } catch (error) {
         console.error('Error formatting date:', error);
         return 'Invalid date';
@@ -508,10 +519,10 @@ export function formatDateForDisplay(dateString, timezone = 'Asia/Manila') {
  */
 export function getCurrentTimeInTimezone(timezone = 'Asia/Manila') {
     try {
-        return DateTime.now().setZone(timezone).toISO();
+        return new Date().toISOString();
     } catch (error) {
         console.error('Error getting current time in timezone:', error);
-        return DateTime.now().toISO();
+        return new Date().toISOString();
     }
 }
 

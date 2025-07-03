@@ -1,6 +1,5 @@
 import { sql } from './database.mjs';
 import { validateSession } from './database.mjs';
-import { DateTime } from 'luxon';
 import { convertPHTimeToUTC, validateTimeRange } from './validation-utils.mjs';
 
 export async function handler(event, context) {
