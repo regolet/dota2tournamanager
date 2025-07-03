@@ -208,6 +208,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const startTime = data.startTime ? new Date(data.startTime).getTime() : null;
         const expiryTime = data.expiry ? new Date(data.expiry).getTime() : null;
         
+        // Debug log for registration timing
+        console.log(
+            'now:', new Date(now).toString(),
+            'startTime:', data.startTime, new Date(startTime).toString(),
+            'expiryTime:', data.expiry, new Date(expiryTime).toString()
+        );
+        
         // Helper to clear any previous countdown intervals
         if (window._registrationCountdownInterval) {
             clearInterval(window._registrationCountdownInterval);
