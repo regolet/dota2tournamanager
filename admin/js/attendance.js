@@ -1114,6 +1114,10 @@
             )[0];
             dropdown.value = latestSession.sessionId;
             loadPlayersForAttendanceSession(latestSession.sessionId);
+        } else {
+            // No sessions: show empty player list
+            state.players = [];
+            displayPlayersWithAttendance();
         }
     }
 
