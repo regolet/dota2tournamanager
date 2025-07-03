@@ -1,5 +1,4 @@
 // Input validation utilities for security and data integrity
-import DOMPurify from 'isomorphic-dompurify';
 
 /**
  * Sanitize HTML content to prevent XSS attacks
@@ -8,10 +7,8 @@ import DOMPurify from 'isomorphic-dompurify';
  */
 export function sanitizeHtml(input) {
     if (typeof input !== 'string') return '';
-    return DOMPurify.sanitize(input, { 
-        ALLOWED_TAGS: [], 
-        ALLOWED_ATTR: [] 
-    });
+    // Simple HTML tag removal
+    return input.replace(/<[^>]*>/g, '').trim();
 }
 
 /**
