@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageDiv = document.getElementById('message');
     
     // Registration status elements
-    const countdownContainer = document.getElementById('countdown-container');
+    const countdownSection = document.getElementById('countdown-section');
     const registrationClosedDiv = document.getElementById('registration-closed');
     const registrationNotOpenDiv = document.getElementById('registration-not-open');
     
@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update UI based on registration status
     function updateRegistrationUI(data) {
         // Hide all registration status containers
-        countdownContainer.classList.add('hidden');
+        countdownSection.classList.add('hidden');
         registrationClosedDiv.classList.add('hidden');
         registrationNotOpenDiv.classList.add('hidden');
         
@@ -208,19 +208,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const startTime = data.startTime ? new Date(data.startTime).getTime() : null;
         const expiryTime = data.expiry ? new Date(data.expiry).getTime() : null;
         
+        // Helper to clear any previous countdown intervals
+        if (window._registrationCountdownInterval) {
+            clearInterval(window._registrationCountdownInterval);
+        }
+        
         // If registration has a future start time
         if (startTime && now < startTime) {
-            // Show a 'Registration starts in...' countdown
+            // Show a 'Registration opens in...' countdown
             showRegistrationNotOpen();
-            // Optionally, show a countdown to start time
-            showCountdown(startTime);
-            startCountdown(startTime);
-            // Hide the form
-            playerForm.classList.add('hidden');
+            showCountdown(startTime, 'opens');
+            startCountdown(startTime, 'opens', () => {
+                // When countdown to open ends, refresh UI to switch to open state
+                updateRegistrationUI({ ...data, isOpen: true });
+            });
             // Optionally, update the not open message
             if (registrationNotOpenDiv) {
-                registrationNotOpenDiv.innerHTML = '<div class="alert alert-info"><b>Registration starts soon!</b><br>Registration will open in:</div>';
+                registrationNotOpenDiv.innerHTML = '<div class="alert alert-info"><b>Registration opens soon!</b><br>Registration will open in:</div>';
             }
+            // Hide the form
+            playerForm.classList.add('hidden');
             return;
         }
         
@@ -233,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // First check if registration is explicitly marked as closed
-        if (!data.isOpen) {
+        if (!data.isOpen || (expiryTime && now >= expiryTime)) {
             // Registration is closed (either manually by admin or due to expiry)
             showRegistrationClosed();
             // Disable the form
@@ -244,9 +251,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add clear visual indication that form is disabled
             playerForm.classList.add('disabled-form');
         } else {
-            // Registration is open with countdown
-            showCountdown(expiryTime);
-            startCountdown(expiryTime);
+            // Registration is open with countdown to closing
+            showCountdown(expiryTime, 'closes');
+            startCountdown(expiryTime, 'closes', () => {
+                // When countdown to close ends, refresh UI to switch to closed state
+                updateRegistrationUI({ ...data, isOpen: false });
+            });
             playerForm.classList.remove('hidden');
             // Check if we need to monitor player limit
             if (data.enablePlayerLimit && data.playerLimit) {
@@ -263,25 +273,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Start countdown timer
-    function startCountdown(expiryTime) {
-        // Validate expiryTime
-        if (!expiryTime || isNaN(new Date(expiryTime).getTime())) {
-            console.error('Invalid expiry time for countdown:', expiryTime);
+    // Start countdown timer (now supports both open and close countdowns)
+    function startCountdown(targetTime, mode, onComplete) {
+        // Validate targetTime
+        if (!targetTime || isNaN(new Date(targetTime).getTime())) {
+            console.error('Invalid target time for countdown:', targetTime);
             return;
         }
-        
-        // Update countdown every second
-        const countdownInterval = setInterval(() => {
+        if (window._registrationCountdownInterval) {
+            clearInterval(window._registrationCountdownInterval);
+        }
+        window._registrationCountdownInterval = setInterval(() => {
             try {
                 const now = new Date().getTime();
-                const target = new Date(expiryTime).getTime();
+                const target = new Date(targetTime).getTime();
                 const timeRemaining = target - now;
                 
                 if (timeRemaining <= 0) {
-                    // Time expired
-                    clearInterval(countdownInterval);
-                    showRegistrationClosed();
+                    clearInterval(window._registrationCountdownInterval);
+                    if (typeof onComplete === 'function') onComplete();
                     return;
                 }
                 
@@ -296,9 +306,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 hoursElement.textContent = formatTime(hours);
                 minutesElement.textContent = formatTime(minutes);
                 secondsElement.textContent = formatTime(seconds);
+                
+                // Update the countdown label
+                const countdownLabel = document.getElementById('countdown-label');
+                if (countdownLabel) {
+                    countdownLabel.textContent = mode === 'opens' ? 'Registration opens in:' : 'Registration closes in:';
+                }
+                // Optionally, update the soon message
+                const soonMsg = document.getElementById('countdown-soon-msg');
+                if (soonMsg) {
+                    soonMsg.textContent = (mode === 'opens') ? '' : 'Hurry! Registration closes soon!';
+                }
             } catch (error) {
                 console.error('Error updating countdown:', error);
-                clearInterval(countdownInterval);
+                clearInterval(window._registrationCountdownInterval);
             }
         }, 1000);
     }
@@ -320,9 +341,19 @@ document.addEventListener('DOMContentLoaded', function() {
         playerForm.classList.add('hidden');
     }
     
-    // Show countdown timer
-    function showCountdown(expiryTime) {
-        countdownContainer.classList.remove('hidden');
+    // Show countdown timer (now supports both open and close modes)
+    function showCountdown(targetTime, mode) {
+        countdownSection.classList.remove('hidden');
         playerForm.classList.remove('hidden');
+        // Update the countdown label immediately
+        const countdownLabel = document.getElementById('countdown-label');
+        if (countdownLabel) {
+            countdownLabel.textContent = mode === 'opens' ? 'Registration opens in:' : 'Registration closes in:';
+        }
+        // Optionally, update the soon message
+        const soonMsg = document.getElementById('countdown-soon-msg');
+        if (soonMsg) {
+            soonMsg.textContent = (mode === 'opens') ? '' : 'Hurry! Registration closes soon!';
+        }
     }
 });
