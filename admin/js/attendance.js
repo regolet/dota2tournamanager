@@ -251,7 +251,19 @@
         if (dropdown) {
             dropdown.addEventListener('change', function() {
                 const sessionId = dropdown.value;
-                loadPlayersForAttendanceSession(sessionId);
+                if (!sessionId) {
+                    // No session selected: clear player list and disable controls
+                    state.players = [];
+                    displayPlayersWithAttendance();
+                    if (markAllPresentBtn) markAllPresentBtn.disabled = true;
+                    if (markAllAbsentBtn) markAllAbsentBtn.disabled = true;
+                    if (exportBtn) exportBtn.disabled = true;
+                } else {
+                    loadPlayersForAttendanceSession(sessionId);
+                    if (markAllPresentBtn) markAllPresentBtn.disabled = false;
+                    if (markAllAbsentBtn) markAllAbsentBtn.disabled = false;
+                    if (exportBtn) exportBtn.disabled = false;
+                }
             });
         }
         
