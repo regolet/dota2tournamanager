@@ -781,6 +781,11 @@
                 if (modal) {
                     modal.hide();
                 }
+                // Extra cleanup for stuck modal backdrop
+                setTimeout(() => {
+                    document.body.classList.remove('modal-open');
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                }, 500);
                 // Clear edit state
                 form.removeAttribute('data-edit-session-id');
                 // Reload data
