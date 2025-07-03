@@ -7,7 +7,9 @@ import {
   savePlayers,
   getPlayersForAdmin,
   validateSession,
-  deleteAllPlayersForSession
+  deleteAllPlayersForSession,
+  getRegistrationSessionBySessionId,
+  getPlayerById
 } from './database.mjs';
 
 export const handler = async (event, context) => {
@@ -114,6 +116,24 @@ async function handleGetPlayers(event, sessionValidation) {
     if (sessionValidation) {
       // Admin is authenticated
       if (registrationSessionId) {
+        // Get players for specific session - validate admin ownership
+        if (sessionValidation.role !== 'superadmin') {
+          // For regular admins, verify they own this session
+          const session = await getRegistrationSessionBySessionId(registrationSessionId);
+          if (!session || session.adminUserId !== sessionValidation.userId) {
+            return {
+              statusCode: 403,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: JSON.stringify({
+                success: false,
+                message: 'Access denied: You can only view players from your own tournaments'
+              })
+            };
+          }
+        }
         // Get players for specific session
         players = await getPlayers(registrationSessionId, presentOnly);
       } else if (sessionValidation.role === 'superadmin') {
@@ -204,6 +224,24 @@ async function handleAddPlayer(event, sessionValidation) {
       };
     }
 
+    // Validate admin ownership for regular admins
+    if (sessionValidation.role !== 'superadmin' && playerData.registrationSessionId) {
+      const session = await getRegistrationSessionBySessionId(playerData.registrationSessionId);
+      if (!session || session.adminUserId !== sessionValidation.userId) {
+        return {
+          statusCode: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Access denied: You can only add players to your own tournaments'
+          })
+        };
+      }
+    }
+
     // Add the player
     const players = await addPlayer(playerData);
 
@@ -269,6 +307,39 @@ async function handleUpdatePlayer(event, sessionValidation) {
       };
     }
 
+    // Validate admin ownership for regular admins
+    if (sessionValidation.role !== 'superadmin') {
+      const player = await getPlayerById(playerId);
+      if (!player || !player.registrationSessionId) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Player not found'
+          })
+        };
+      }
+      
+      const session = await getRegistrationSessionBySessionId(player.registrationSessionId);
+      if (!session || session.adminUserId !== sessionValidation.userId) {
+        return {
+          statusCode: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Access denied: You can only modify players from your own tournaments'
+          })
+        };
+      }
+    }
+
     const players = await updatePlayer(playerId, updates);
 
     return {
@@ -320,6 +391,24 @@ async function handleDeletePlayer(event, sessionValidation) {
 
     // Bulk delete support
     if (action === 'removeAll' && sessionId) {
+      // Validate admin ownership for bulk delete
+      if (sessionValidation.role !== 'superadmin') {
+        const session = await getRegistrationSessionBySessionId(sessionId);
+        if (!session || session.adminUserId !== sessionValidation.userId) {
+          return {
+            statusCode: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: false,
+              message: 'Access denied: You can only delete players from your own tournaments'
+            })
+          };
+        }
+      }
+      
       const result = await deleteAllPlayersForSession(sessionId);
       return {
         statusCode: 200,
@@ -347,6 +436,39 @@ async function handleDeletePlayer(event, sessionValidation) {
           message: 'Player ID is required'
         })
       };
+    }
+
+    // Validate admin ownership for regular admins
+    if (sessionValidation.role !== 'superadmin') {
+      const player = await getPlayerById(playerId);
+      if (!player || !player.registrationSessionId) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Player not found'
+          })
+        };
+      }
+      
+      const session = await getRegistrationSessionBySessionId(player.registrationSessionId);
+      if (!session || session.adminUserId !== sessionValidation.userId) {
+        return {
+          statusCode: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'Access denied: You can only delete players from your own tournaments'
+          })
+        };
+      }
     }
 
     const players = await deletePlayer(playerId);

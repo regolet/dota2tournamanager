@@ -623,8 +623,8 @@ export async function getPlayersForAdmin(adminUserId, includeSessionInfo = false
           rs.title as "sessionTitle",
           rs.admin_username as "sessionAdmin"
         FROM players p
-        LEFT JOIN registration_sessions rs ON p.registration_session_id = rs.session_id
-        WHERE rs.admin_user_id = ${adminUserId} OR p.registration_session_id IS NULL
+        INNER JOIN registration_sessions rs ON p.registration_session_id = rs.session_id
+        WHERE rs.admin_user_id = ${adminUserId}
         ORDER BY p.registration_date DESC
       `;
       return players;
@@ -639,8 +639,8 @@ export async function getPlayersForAdmin(adminUserId, includeSessionInfo = false
           p.registration_date as "registrationDate",
           p.registration_session_id as "registrationSessionId"
         FROM players p
-        LEFT JOIN registration_sessions rs ON p.registration_session_id = rs.session_id
-        WHERE rs.admin_user_id = ${adminUserId} OR p.registration_session_id IS NULL
+        INNER JOIN registration_sessions rs ON p.registration_session_id = rs.session_id
+        WHERE rs.admin_user_id = ${adminUserId}
         ORDER BY p.registration_date DESC
       `;
       return players;
@@ -2043,6 +2043,31 @@ export async function deleteAllPlayersForSession(sessionId) {
     return { success: true, message: 'All players deleted for session', sessionId };
   } catch (error) {
     console.error('Error deleting all players for session:', error);
+    throw error;
+  }
+}
+
+// Helper function to get a single player by ID
+export async function getPlayerById(playerId) {
+  try {
+    await initializeDatabase();
+    
+    const players = await sql`
+      SELECT 
+        p.id, 
+        p.name, 
+        p.dota2id, 
+        p.peakmmr, 
+        p.ip_address as "ipAddress", 
+        p.registration_date as "registrationDate",
+        p.registration_session_id as "registrationSessionId"
+      FROM players p
+      WHERE p.id = ${playerId}
+    `;
+    
+    return players.length > 0 ? players[0] : null;
+  } catch (error) {
+    console.error('Error getting player by ID:', error);
     throw error;
   }
 }
