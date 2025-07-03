@@ -488,7 +488,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
         console.log('[UpdateAttendanceSession] Values:', values);
         let result;
         try {
-            result = await sql.unsafe(sqlQuery, values);
+            result = await sql`${sql.raw(sqlQuery, ...values)}`;
         } catch (sqlError) {
             console.error('[UpdateAttendanceSession] SQL Error:', sqlError);
             return {
