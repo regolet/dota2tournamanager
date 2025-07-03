@@ -400,8 +400,6 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
         console.log('[UpdateAttendanceSession] updates:', updates);
         console.log('[UpdateAttendanceSession] adminUserId:', adminUserId);
         let { isActive, name, startTime, endTime, description } = updates;
-        const fields = [];
-        const values = [];
 
         // Convert from PH time to UTC with better error handling
         if (startTime !== undefined) {
@@ -418,8 +416,6 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
                     })
                 };
             }
-            fields.push('start_time');
-            values.push(startTime);
         }
         if (endTime !== undefined) {
             try {
@@ -435,32 +431,6 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
                     })
                 };
             }
-            fields.push('end_time');
-            values.push(endTime);
-        }
-        if (isActive !== undefined) {
-            fields.push('is_active');
-            values.push(isActive === true || isActive === 'true');
-        }
-        if (name !== undefined) {
-            fields.push('name');
-            values.push(name);
-        }
-        if (description !== undefined) {
-            fields.push('description');
-            values.push(description);
-        }
-
-        if (fields.length === 0) {
-            console.error('[UpdateAttendanceSession] No valid fields to update');
-            return {
-                statusCode: 400,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    success: false, 
-                    message: 'No valid fields to update' 
-                })
-            };
         }
 
         // Check if session exists
@@ -480,35 +450,41 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             };
         }
 
-        // Build dynamic update query
-        const setClauses = fields.map((field, idx) => `${field} = $${idx + 1}`).join(', ');
-        values.push(sessionId); // for WHERE clause
-        const sqlQuery = `UPDATE attendance_sessions SET ${setClauses}, updated_at = NOW() WHERE session_id = $${fields.length + 1} RETURNING *`;
-        console.log('[UpdateAttendanceSession] SQL Query:', sqlQuery);
-        console.log('[UpdateAttendanceSession] Values:', values);
-        let result;
-        try {
-            result = await sql`${sql.raw(sqlQuery, ...values)}`;
-        } catch (sqlError) {
-            console.error('[UpdateAttendanceSession] SQL Error:', sqlError);
-            return {
-                statusCode: 500,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    success: false, 
-                    message: 'Failed to update attendance session',
-                    error: sqlError.message,
-                    stack: sqlError.stack
-                })
-            };
+        // Perform individual updates following the pattern used in other functions
+        if (name !== undefined) {
+            await sql`UPDATE attendance_sessions SET name = ${name}, updated_at = NOW() WHERE session_id = ${sessionId}`;
         }
+        if (startTime !== undefined) {
+            await sql`UPDATE attendance_sessions SET start_time = ${startTime}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+        }
+        if (endTime !== undefined) {
+            await sql`UPDATE attendance_sessions SET end_time = ${endTime}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+        }
+        if (description !== undefined) {
+            await sql`UPDATE attendance_sessions SET description = ${description}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+        }
+        if (isActive !== undefined) {
+            const isActiveBool = isActive === true || isActive === 'true';
+            await sql`UPDATE attendance_sessions SET is_active = ${isActiveBool}, updated_at = NOW() WHERE session_id = ${sessionId}`;
+        }
+
+        // Get the updated session
+        const result = await sql`
+            SELECT 
+                att.*,
+                COALESCE(rs.title, 'Unknown') as registration_session_title,
+                COALESCE(rs.player_count, 0) as registration_player_count
+            FROM attendance_sessions att
+            LEFT JOIN registration_sessions rs ON att.registration_session_id = rs.session_id
+            WHERE att.session_id = ${sessionId}
+        `;
 
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 success: true, 
-                session: result[0],
+                session: toCamelCaseSession(result[0]),
                 message: 'Attendance session updated successfully' 
             })
         };
