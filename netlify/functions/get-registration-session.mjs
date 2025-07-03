@@ -74,6 +74,7 @@ export const handler = async (event, context) => {
       playerCount: session.playerCount,
       isActive: session.isActive,
       expiresAt: session.expiresAt,
+      startTime: session.startTime,
       createdAt: session.createdAt,
       adminUsername: session.adminUsername // Safe to show organizer name
     };
