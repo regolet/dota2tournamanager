@@ -329,6 +329,27 @@ async function initRegistration() {
     }
     
     function showCreateSessionModal() {
+        // Set default start time to now in PH timezone
+        function getPHISOString(offsetMinutes = 0) {
+            try {
+                const now = new Date();
+                const phDate = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
+                if (offsetMinutes) phDate.setMinutes(phDate.getMinutes() + offsetMinutes);
+                const year = phDate.getFullYear();
+                const month = String(phDate.getMonth() + 1).padStart(2, '0');
+                const day = String(phDate.getDate()).padStart(2, '0');
+                const hours = String(phDate.getHours()).padStart(2, '0');
+                const minutes = String(phDate.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            } catch (error) {
+                const now = new Date();
+                if (offsetMinutes) now.setMinutes(now.getMinutes() + offsetMinutes);
+                return now.toISOString().slice(0, 16);
+            }
+        }
+        document.getElementById('session-start-time').value = getPHISOString();
+        document.getElementById('session-expires-at').value = getPHISOString(120);
+        
         // Reset form
         document.getElementById('registration-session-form').reset();
         document.getElementById('edit-session-id').value = '';
@@ -516,10 +537,26 @@ async function initRegistration() {
                 if (session.startTime) {
                     const phStartTime = toPHLocalInput(session.startTime);
                     document.getElementById('session-start-time').value = phStartTime;
-                    console.log('[Registration Edit] Set start time input to:', phStartTime);
                 } else {
-                    document.getElementById('session-start-time').value = '';
-                    console.log('[Registration Edit] No start time, cleared input');
+                    // PATCH: Always set to now if missing
+                    function getPHISOString(offsetMinutes = 0) {
+                        try {
+                            const now = new Date();
+                            const phDate = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
+                            if (offsetMinutes) phDate.setMinutes(phDate.getMinutes() + offsetMinutes);
+                            const year = phDate.getFullYear();
+                            const month = String(phDate.getMonth() + 1).padStart(2, '0');
+                            const day = String(phDate.getDate()).padStart(2, '0');
+                            const hours = String(phDate.getHours()).padStart(2, '0');
+                            const minutes = String(phDate.getMinutes()).padStart(2, '0');
+                            return `${year}-${month}-${day}T${hours}:${minutes}`;
+                        } catch (error) {
+                            const now = new Date();
+                            if (offsetMinutes) now.setMinutes(now.getMinutes() + offsetMinutes);
+                            return now.toISOString().slice(0, 16);
+                        }
+                    }
+                    document.getElementById('session-start-time').value = getPHISOString();
                 }
                 
                 if (expiresValue) {
