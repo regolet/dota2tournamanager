@@ -213,54 +213,29 @@ document.addEventListener('DOMContentLoaded', function() {
             clearInterval(window._registrationCountdownInterval);
         }
         
-        // If registration has a future start time
         if (startTime && now < startTime) {
-            // Show a 'Registration opens in...' countdown
+            // Registration not open yet
             showRegistrationNotOpen();
             showCountdown(startTime, 'opens');
             startCountdown(startTime, 'opens', () => {
-                // When countdown to open ends, refresh UI to switch to open state
                 updateRegistrationUI({ ...data, isOpen: true });
             });
-            // Optionally, update the not open message
+            playerForm.classList.add('hidden');
             if (registrationNotOpenDiv) {
                 registrationNotOpenDiv.innerHTML = '<div class="alert alert-info"><b>Registration opens soon!</b><br>Registration will open in:</div>';
             }
-            // Hide the form
-            playerForm.classList.add('hidden');
             return;
         }
         
-        // Enable/disable the form
-        playerForm.disabled = !data.isOpen;
-        
-        // Update player limit if available
-        if (data.playerLimit && maxPlayerCountElement) {
-            maxPlayerCountElement.textContent = data.playerLimit;
-        }
-        
-        // First check if registration is explicitly marked as closed
-        if (!data.isOpen || (expiryTime && now >= expiryTime)) {
-            // Registration is closed (either manually by admin or due to expiry)
-            showRegistrationClosed();
-            // Disable the form
-            const submitButton = document.getElementById('submit-btn');
-            if (submitButton) {
-                submitButton.disabled = true;
-            }
-            // Add clear visual indication that form is disabled
-            playerForm.classList.add('disabled-form');
-        } else {
-            // Registration is open with countdown to closing
+        if (expiryTime && now < expiryTime) {
+            // Registration is open
             showCountdown(expiryTime, 'closes');
             startCountdown(expiryTime, 'closes', () => {
-                // When countdown to close ends, refresh UI to switch to closed state
                 updateRegistrationUI({ ...data, isOpen: false });
             });
             playerForm.classList.remove('hidden');
             // Check if we need to monitor player limit
             if (data.enablePlayerLimit && data.playerLimit) {
-                // Set up interval to check player count for limit
                 const playerLimitInterval = setInterval(async () => {
                     const count = await checkPlayerCount();
                     if (count >= data.playerLimit) {
@@ -270,7 +245,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }, 30000); // Check every 30 seconds
             }
+            return;
         }
+        
+        // Registration closed
+        showRegistrationClosed();
+        playerForm.classList.add('hidden');
     }
     
     // Start countdown timer (now supports both open and close countdowns)
