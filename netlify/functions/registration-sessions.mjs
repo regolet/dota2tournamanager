@@ -197,6 +197,8 @@ async function handlePost(event, adminUserId, adminUsername, headers) {
 async function handlePut(event, adminRole, adminUserId, headers) {
     const { sessionId } = event.queryStringParameters || {};
     const updates = JSON.parse(event.body);
+    
+    console.log('📡 Registration-sessions PUT: Received updates:', updates);
 
     if (!sessionId) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Session ID is required' }) };

@@ -351,13 +351,19 @@ async function initRegistration() {
                 console.warn('Invalid date string:', dateString);
                 return '';
             }
-            // Use a more reliable method to get PH time
-            const phDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
-            const year = phDate.getFullYear();
-            const month = String(phDate.getMonth() + 1).padStart(2, '0');
-            const day = String(phDate.getDate()).padStart(2, '0');
-            const hours = String(phDate.getHours()).padStart(2, '0');
-            const minutes = String(phDate.getMinutes()).padStart(2, '0');
+            
+            // Convert to PH timezone properly
+            const phTime = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
+            
+            // Get components in PH time
+            const year = phTime.getFullYear();
+            const month = String(phTime.getMonth() + 1).padStart(2, '0');
+            const day = String(phTime.getDate()).padStart(2, '0');
+            const hours = String(phTime.getHours()).padStart(2, '0');
+            const minutes = String(phTime.getMinutes()).padStart(2, '0');
+            
+            console.log('[toPHLocalInput] Converting:', dateString, 'to PH time:', `${year}-${month}-${day}T${hours}:${minutes}`);
+            
             return `${year}-${month}-${day}T${hours}:${minutes}`;
         } catch (error) {
             console.error('Error converting date to PH local:', error, dateString);
@@ -391,12 +397,20 @@ async function initRegistration() {
         const expiryInput = document.getElementById('session-expires-at').value;
         const startTime = toUTCISOStringFromPHLocal(startInput);
         const expiry = toUTCISOStringFromPHLocal(expiryInput);
+        
+        console.log('[Registration Save] Input values:', {
+            startInput,
+            expiryInput,
+            startTime,
+            expiry
+        });
+        
         const sessionData = {
             title: document.getElementById('session-title').value,
             description: document.getElementById('session-description').value,
             maxPlayers: parseInt(document.getElementById('session-max-players').value),
             startTime,
-            expiry
+            expiresAt: expiry  // Backend expects expiresAt, not expiry
         };
         
         if (isEdit) {
@@ -406,7 +420,7 @@ async function initRegistration() {
         const saveButton = document.getElementById('save-session-btn');
         const originalText = saveButton.textContent;
         
-        console.log('[Registration Save] Payload:', sessionData);
+        console.log('[Registration Save] Final payload:', sessionData);
         
         try {
             saveButton.disabled = true;
@@ -485,16 +499,29 @@ async function initRegistration() {
 
                 // Support all possible expiration field names
                 const expiresValue = session.expiry || session.expiresAt || session.expires_at;
+                
+                console.log('[Registration Edit] Session data:', {
+                    sessionId: session.sessionId,
+                    startTime: session.startTime,
+                    expiresValue: expiresValue
+                });
+                
                 if (session.startTime) {
-                    document.getElementById('session-start-time').value = toPHLocalInput(session.startTime);
+                    const phStartTime = toPHLocalInput(session.startTime);
+                    document.getElementById('session-start-time').value = phStartTime;
+                    console.log('[Registration Edit] Set start time input to:', phStartTime);
                 } else {
                     document.getElementById('session-start-time').value = '';
+                    console.log('[Registration Edit] No start time, cleared input');
                 }
                 
                 if (expiresValue) {
-                    document.getElementById('session-expires-at').value = toPHLocalInput(expiresValue);
+                    const phExpiryTime = toPHLocalInput(expiresValue);
+                    document.getElementById('session-expires-at').value = phExpiryTime;
+                    console.log('[Registration Edit] Set expiry time input to:', phExpiryTime);
                 } else {
                     document.getElementById('session-expires-at').value = '';
+                    console.log('[Registration Edit] No expiry time, cleared input');
                 }
                 
                 // Update modal title and button
