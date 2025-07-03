@@ -74,13 +74,20 @@ function updateRegistrationStatus() {
     const now = new Date();
     const startTime = currentSession.startTime ? new Date(currentSession.startTime) : null;
     const expiresAt = currentSession.expiresAt ? new Date(currentSession.expiresAt) : null;
+
+    // --- PATCH: Always compare in UTC ---
+    const nowUTC = now.getTime();
+    const startTimeUTC = startTime ? startTime.getTime() : null;
+    const expiresAtUTC = expiresAt ? expiresAt.getTime() : null;
+    // --- END PATCH ---
+
     let status = '';
-    // Determine status (attendance-style)
+    // Determine status (attendance-style, using UTC)
     if (!currentSession.isActive) {
         status = 'inactive';
-    } else if (expiresAt && now > expiresAt) {
+    } else if (expiresAtUTC && nowUTC > expiresAtUTC) {
         status = 'expired';
-    } else if (startTime && now < startTime) {
+    } else if (startTimeUTC && nowUTC < startTimeUTC) {
         status = 'upcoming';
     } else if (currentSession.playerCount >= currentSession.maxPlayers) {
         status = 'full';
@@ -112,7 +119,7 @@ function updateRegistrationStatus() {
             statusMessage.textContent = 'Registration will open soon for this tournament.';
             playerForm.classList.add('hidden');
             countdownSection.style.display = 'block';
-            startRegistrationCountdown(startTime.getTime(), true); // true = countdown to start
+            startRegistrationCountdown(startTimeUTC, true); // true = countdown to start
             break;
         case 'full':
             statusInfo.style.backgroundColor = '#f8d7da';
@@ -129,12 +136,11 @@ function updateRegistrationStatus() {
             statusTitle.textContent = 'Registration Open';
             statusMessage.textContent = 'You can register for this tournament';
             playerForm.classList.remove('hidden');
-            if (expiresAt) {
-                const expiryTime = expiresAt.getTime();
-                const timeRemaining = expiryTime - now.getTime();
+            if (expiresAtUTC) {
+                const timeRemaining = expiresAtUTC - nowUTC;
                 if (timeRemaining > 0) {
                     countdownSection.style.display = 'block';
-                    startRegistrationCountdown(expiryTime, false); // false = countdown to expiry
+                    startRegistrationCountdown(expiresAtUTC, false); // false = countdown to expiry
                 } else {
                     countdownSection.style.display = 'none';
                 }
