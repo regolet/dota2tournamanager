@@ -348,19 +348,19 @@
     async function loadAttendanceData() {
         try {
             console.log('🔄 Attendance: Loading attendance data...');
-            
             // Load registration sessions for dropdown
             await loadRegistrationSessions();
-            
             // Load attendance sessions
             await loadAttendanceSessions();
-            
-            // Load players with attendance status
-            await loadPlayersWithAttendance();
-            
+            // Only load players if there is at least one attendance session
+            if (state.attendanceSessions && state.attendanceSessions.length > 0) {
+                await loadPlayersWithAttendance();
+            } else {
+                state.players = [];
+                displayPlayersWithAttendance();
+            }
             // Update dashboard statistics
             updateAttendanceStatistics();
-            
             console.log('✅ Attendance: Data loaded successfully');
         } catch (error) {
             console.error('❌ Attendance: Error loading data:', error);
