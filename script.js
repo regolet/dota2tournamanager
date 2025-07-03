@@ -203,6 +203,27 @@ document.addEventListener('DOMContentLoaded', function() {
         registrationClosedDiv.classList.add('hidden');
         registrationNotOpenDiv.classList.add('hidden');
         
+        // Get start time and expiry time
+        const now = Date.now();
+        const startTime = data.startTime ? new Date(data.startTime).getTime() : null;
+        const expiryTime = data.expiry ? new Date(data.expiry).getTime() : null;
+        
+        // If registration has a future start time
+        if (startTime && now < startTime) {
+            // Show a 'Registration starts in...' countdown
+            showRegistrationNotOpen();
+            // Optionally, show a countdown to start time
+            showCountdown(startTime);
+            startCountdown(startTime);
+            // Hide the form
+            playerForm.classList.add('hidden');
+            // Optionally, update the not open message
+            if (registrationNotOpenDiv) {
+                registrationNotOpenDiv.innerHTML = '<div class="alert alert-info"><b>Registration starts soon!</b><br>Registration will open in:</div>';
+            }
+            return;
+        }
+        
         // Enable/disable the form
         playerForm.disabled = !data.isOpen;
         
@@ -215,21 +236,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!data.isOpen) {
             // Registration is closed (either manually by admin or due to expiry)
             showRegistrationClosed();
-            
             // Disable the form
             const submitButton = document.getElementById('submit-btn');
             if (submitButton) {
                 submitButton.disabled = true;
             }
-            
             // Add clear visual indication that form is disabled
             playerForm.classList.add('disabled-form');
         } else {
             // Registration is open with countdown
-            const expiryTime = new Date(data.expiry).getTime();
             showCountdown(expiryTime);
             startCountdown(expiryTime);
-            
+            playerForm.classList.remove('hidden');
             // Check if we need to monitor player limit
             if (data.enablePlayerLimit && data.playerLimit) {
                 // Set up interval to check player count for limit
