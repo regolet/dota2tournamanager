@@ -1,8 +1,6 @@
 // Fix admin user password with proper bcrypt hash
-import { neon } from '@netlify/neon';
+import { sql } from './database.mjs';
 import bcrypt from 'bcrypt';
-
-const sql = neon(process.env.DATABASE_URL);
 
 export const handler = async (event, context) => {
   // Handle CORS

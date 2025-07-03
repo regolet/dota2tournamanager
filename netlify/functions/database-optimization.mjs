@@ -1,11 +1,5 @@
 // Database optimization and performance utilities
-import { neon } from '@netlify/neon';
-
-// Note: Configuration options may not be available in this version of @netlify/neon
-// Configuration would be handled in environment variables or connection string
-
-// Initialize optimized database connection
-const sql = neon(process.env.DATABASE_URL);
+import { sql } from './database.mjs';
 
 /**
  * Database performance monitoring

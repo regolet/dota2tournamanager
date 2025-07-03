@@ -1,7 +1,5 @@
 // Database reset function to initialize default users
-import { neon } from '@netlify/neon';
-
-const sql = neon(process.env.DATABASE_URL);
+import { sql } from './database.mjs';
 
 export const handler = async (event, context) => {
   // Handle CORS

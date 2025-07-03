@@ -7,10 +7,7 @@ import {
   sanitizeForLogging,
   validateFutureDate
 } from './validation-utils.mjs';
-import { neon } from '@netlify/neon';
-
-// Initialize Neon database connection
-const sql = neon();
+import { sql } from './database.mjs';
 
 export const handler = async (event, context) => {
   try {

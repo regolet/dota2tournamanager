@@ -3,7 +3,7 @@ import { neon } from '@netlify/neon';
 import { hashPassword, verifyPassword, validatePasswordStrength } from './password-utils.mjs';
 
 // Initialize Neon database connection
-const sql = neon(process.env.DATABASE_URL);
+const sql = neon(process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL);
 
 // Export sql instance for use in other modules
 export { sql };

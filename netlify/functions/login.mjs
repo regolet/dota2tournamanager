@@ -1,9 +1,6 @@
 // Admin login function - Simplified for debugging
-import { neon } from '@netlify/neon';
+import { sql } from './database.mjs';
 import bcrypt from 'bcrypt';
-
-// Initialize database connection
-const sql = neon(process.env.DATABASE_URL);
 
 export const handler = async (event, context) => {
   // Handle CORS

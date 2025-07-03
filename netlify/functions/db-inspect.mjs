@@ -1,8 +1,5 @@
 // Database inspection endpoint to check table structure
-import { neon } from '@netlify/neon';
-
-// Initialize Neon database connection
-const sql = neon(process.env.DATABASE_URL);
+import { sql } from './database.mjs';
 
 export async function handler(event, context) {
   // CORS headers

@@ -1,7 +1,5 @@
 // One-time cleanup function to remove default players from database
-import { neon } from '@netlify/neon';
-
-const sql = neon(process.env.DATABASE_URL);
+import { sql } from './database.mjs';
 
 export const handler = async (event, context) => {
   try {
