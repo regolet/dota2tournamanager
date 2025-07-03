@@ -645,17 +645,13 @@
         
         state.players.forEach(player => {
             const row = document.createElement('tr');
-            
-            // Find registration session
-            const regSession = state.registrationSessions.find(s => s.sessionId === player.registration_session_id);
-            const regSessionTitle = regSession ? regSession.title : 'Unknown';
-            
+            // Use registrationSessionTitle from backend if available
+            const regSessionTitle = player.registrationSessionTitle || 'Unknown';
             // Attendance status
             const isPresent = player.present === true;
             const statusBadge = isPresent ? 
                 '<span class="badge bg-success">Present</span>' : 
                 '<span class="badge bg-danger">Absent</span>';
-            
             row.innerHTML = `
                 <td>
                     <input type="checkbox" class="form-check-input player-checkbox" data-player-id="${player.id}">

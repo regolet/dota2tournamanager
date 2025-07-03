@@ -1,5 +1,4 @@
 import { sql } from './database.mjs';
-import { getPlayers } from './database.mjs';
 
 export const handler = async (event) => {
   try {
@@ -25,8 +24,24 @@ export const handler = async (event) => {
     }
     const registrationSessionId = result[0].registration_session_id;
 
-    // Fetch players for this registration session
-    const players = await getPlayers(registrationSessionId);
+    // Fetch players for this registration session, joining registration_sessions for title
+    const players = await sql`
+      SELECT 
+        p.id, 
+        p.name, 
+        p.dota2id, 
+        p.peakmmr, 
+        p.ip_address as "ipAddress", 
+        p.registration_date as "registrationDate",
+        p.registration_session_id as "registrationSessionId",
+        rs.title as "registrationSessionTitle",
+        p.discordid,
+        p.present
+      FROM players p
+      LEFT JOIN registration_sessions rs ON p.registration_session_id = rs.session_id
+      WHERE p.registration_session_id = ${registrationSessionId}
+      ORDER BY p.registration_date DESC
+    `;
     return {
       statusCode: 200,
       body: JSON.stringify({ success: true, players }),
