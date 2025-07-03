@@ -277,7 +277,10 @@
             const playerForm = document.getElementById('playerForm');
             const countdownSection = document.getElementById('countdown-section');
 
-            // Check registration status
+            const now = new Date();
+            const startTime = currentSession.startTime ? new Date(currentSession.startTime) : null;
+            const expiresAt = currentSession.expiresAt ? new Date(currentSession.expiresAt) : null;
+
             if (!currentSession.isActive) {
                 statusInfo.style.backgroundColor = '#f8d7da';
                 statusInfo.style.color = '#721c24';
@@ -285,13 +288,21 @@
                 statusMessage.textContent = 'This registration session has been deactivated';
                 playerForm.classList.add('hidden');
                 countdownSection.style.display = 'none';
-            } else if (currentSession.expiresAt && new Date() > new Date(currentSession.expiresAt)) {
+            } else if (expiresAt && now > expiresAt) {
                 statusInfo.style.backgroundColor = '#fff3cd';
                 statusInfo.style.color = '#856404';
                 statusTitle.textContent = 'Registration Expired';
                 statusMessage.textContent = 'The registration deadline has passed';
                 playerForm.classList.add('hidden');
                 countdownSection.style.display = 'none';
+            } else if (startTime && now < startTime) {
+                statusInfo.style.backgroundColor = '#cce5ff';
+                statusInfo.style.color = '#004085';
+                statusTitle.textContent = 'Registration Not Yet Open';
+                statusMessage.textContent = 'Registration will open soon for this tournament.';
+                playerForm.classList.add('hidden');
+                countdownSection.style.display = 'block';
+                startRegistrationCountdown(startTime.getTime(), true); // true = countdown to start
             } else if (currentSession.playerCount >= currentSession.maxPlayers) {
                 statusInfo.style.backgroundColor = '#f8d7da';
                 statusInfo.style.color = '#721c24';
@@ -305,15 +316,12 @@
                 statusTitle.textContent = 'Registration Open';
                 statusMessage.textContent = 'You can register for this tournament';
                 playerForm.classList.remove('hidden');
-                
-                // Show countdown timer if there's an expiry date
-                if (currentSession.expiresAt) {
-                    const expiryTime = new Date(currentSession.expiresAt).getTime();
-                    const timeRemaining = expiryTime - new Date().getTime();
-                    
+                if (expiresAt) {
+                    const expiryTime = expiresAt.getTime();
+                    const timeRemaining = expiryTime - now.getTime();
                     if (timeRemaining > 0) {
                         countdownSection.style.display = 'block';
-                        startRegistrationCountdown(expiryTime);
+                        startRegistrationCountdown(expiryTime, false); // false = countdown to expiry
                     } else {
                         countdownSection.style.display = 'none';
                     }
@@ -325,64 +333,69 @@
         
         let countdownInterval = null;
         
-        function startRegistrationCountdown(expiryTime) {
-            // Validate expiryTime
-            if (!expiryTime || isNaN(new Date(expiryTime).getTime())) {
-                console.error('Invalid expiry time for countdown:', expiryTime);
+        function startRegistrationCountdown(targetTime, isStartCountdown) {
+            // Validate targetTime
+            if (!targetTime || isNaN(new Date(targetTime).getTime())) {
+                console.error('Invalid target time for countdown:', targetTime);
                 return;
             }
-            
             // Clear existing interval
             if (countdownInterval) {
                 clearInterval(countdownInterval);
             }
-            
             const countdownSection = document.getElementById('countdown-section');
             const daysElement = document.getElementById('countdown-days');
             const hoursElement = document.getElementById('countdown-hours');
             const minutesElement = document.getElementById('countdown-minutes');
             const secondsElement = document.getElementById('countdown-seconds');
             const messageElement = document.getElementById('countdown-message');
-            
+            const titleElement = countdownSection.querySelector('.countdown-title');
             function updateCountdown() {
                 try {
                     const now = new Date().getTime();
-                    const target = new Date(expiryTime).getTime();
+                    const target = new Date(targetTime).getTime();
                     const timeRemaining = target - now;
-                    
                     if (timeRemaining <= 0) {
-                        // Registration has expired
                         clearInterval(countdownInterval);
                         countdownSection.style.display = 'none';
-                        
                         // Reload the session to update status
                         loadRegistrationSession();
                         return;
                     }
-                    
                     // Calculate time units
                     const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
                     const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                     const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-                    
                     // Update display
                     daysElement.textContent = String(days).padStart(2, '0');
                     hoursElement.textContent = String(hours).padStart(2, '0');
                     minutesElement.textContent = String(minutes).padStart(2, '0');
                     secondsElement.textContent = String(seconds).padStart(2, '0');
-                    
                     // Update styling and message based on time remaining
                     countdownSection.className = 'countdown-section';
-                    
-                    if (timeRemaining <= 24 * 60 * 60 * 1000) { // Less than 1 day
-                        countdownSection.classList.add('critical');
-                        messageElement.textContent = '🚨 Hurry! Registration closes soon!';
-                    } else if (timeRemaining <= 3 * 24 * 60 * 60 * 1000) { // Less than 3 days
-                        countdownSection.classList.add('urgent');
-                        messageElement.textContent = '⚡ Don\'t wait too long to register!';
+                    if (isStartCountdown) {
+                        titleElement.textContent = '⏳ Registration starts in:';
+                        if (timeRemaining <= 60 * 60 * 1000) { // Less than 1 hour
+                            countdownSection.classList.add('critical');
+                            messageElement.textContent = '🎉 Registration opens very soon!';
+                        } else if (timeRemaining <= 24 * 60 * 60 * 1000) { // Less than 1 day
+                            countdownSection.classList.add('urgent');
+                            messageElement.textContent = '⏰ Registration opens within 24 hours!';
+                        } else {
+                            messageElement.textContent = '📅 Registration will open soon.';
+                        }
                     } else {
-                        messageElement.textContent = '📅 Plenty of time to register';
+                        titleElement.textContent = '⏰ Registration closes in:';
+                        if (timeRemaining <= 24 * 60 * 60 * 1000) { // Less than 1 day
+                            countdownSection.classList.add('critical');
+                            messageElement.textContent = '🚨 Hurry! Registration closes soon!';
+                        } else if (timeRemaining <= 3 * 24 * 60 * 60 * 1000) { // Less than 3 days
+                            countdownSection.classList.add('urgent');
+                            messageElement.textContent = '⚡ Don\'t wait too long to register!';
+                        } else {
+                            messageElement.textContent = '📅 Plenty of time to register';
+                        }
                     }
                 } catch (error) {
                     console.error('Error updating countdown:', error);
@@ -390,10 +403,8 @@
                     countdownSection.style.display = 'none';
                 }
             }
-            
             // Update immediately
             updateCountdown();
-            
             // Update every second
             countdownInterval = setInterval(updateCountdown, 1000);
         }
