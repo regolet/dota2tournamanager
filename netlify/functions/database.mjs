@@ -1869,7 +1869,7 @@ export async function saveTournament(tournamentData) {
       return { success: false, message: 'Tournament data must be an object or string.' };
     }
 
-    console.log('[DB] Attempting to insert tournament with ID:', id);
+
     console.log('[DB] Tournament data string length:', tournamentDataString.length);
 
     const result = await sql`
@@ -2002,14 +2002,14 @@ export async function getDiscordWebhooks(adminUserId) {
 
 export async function setDiscordWebhook(adminUserId, type, url, template = null) {
   await initializeDatabase();
-  console.log('[setDiscordWebhook] Saving webhook:', { adminUserId, type, url, template });
+  
   const result = await sql`
     INSERT INTO discord_webhooks (admin_user_id, type, url, template, created_at, updated_at)
     VALUES (${adminUserId}, ${type}, ${url}, ${template}, NOW(), NOW())
     ON CONFLICT (admin_user_id, type)
     DO UPDATE SET url = EXCLUDED.url, template = EXCLUDED.template, updated_at = NOW()
   `;
-  console.log('[setDiscordWebhook] SQL result:', result);
+
   return true;
 }
 

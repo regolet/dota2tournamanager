@@ -1,4 +1,4 @@
-// Admin login function - Simplified for debugging
+// Admin login function
 import { sql } from './database.mjs';
 import bcrypt from 'bcrypt';
 

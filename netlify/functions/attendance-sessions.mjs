@@ -530,11 +530,7 @@ async function updateAttendanceSession(sessionId, updates, adminUserId) {
             };
         }
 
-        console.log('DEBUG: updateAttendanceSession success', {
-            sessionId,
-            updates,
-            result: result[0]
-        });
+
 
         return {
             statusCode: 200,
