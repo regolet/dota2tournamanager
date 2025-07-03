@@ -342,48 +342,54 @@ async function initRegistration() {
         modal.show();
     }
     
+    // Helper to convert PH local datetime-local input to UTC ISO string
+    function toUTCISOStringFromPHLocal(input) {
+        if (!input) return null;
+        try {
+            // Parse as local time, then treat as PH time
+            const localDate = new Date(input);
+            // Get PH offset
+            const phDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+            // Convert PH time to UTC
+            return new Date(phDate.getTime() - phDate.getTimezoneOffset() * 60000).toISOString();
+        } catch (e) {
+            return null;
+        }
+    }
+    // Helper to convert UTC/ISO to PH local datetime-local string
+    function toPHLocalInput(dateString) {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            const phDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+            const year = phDate.getFullYear();
+            const month = String(phDate.getMonth() + 1).padStart(2, '0');
+            const day = String(phDate.getDate()).padStart(2, '0');
+            const hours = String(phDate.getHours()).padStart(2, '0');
+            const minutes = String(phDate.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (e) {
+            return '';
+        }
+    }
+    
     async function handleSessionSave(e) {
         e.preventDefault();
         
         const sessionId = document.getElementById('edit-session-id').value;
         const isEdit = !!sessionId;
         
-        const expiresInput = document.getElementById('session-expires-at').value;
-        let expiry = null;
-        if (expiresInput) {
-            try {
-                const localDate = new Date(expiresInput);
-                if (isNaN(localDate.getTime())) {
-                    throw new Error('Invalid date input');
-                }
-                expiry = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
-            } catch (error) {
-                console.error('Error processing expiry date:', error);
-                window.utils.showNotification('Invalid expiry date format', 'error');
-                return;
-            }
-        }
         const startInput = document.getElementById('session-start-time').value;
-        let startTime = null;
-        if (startInput) {
-            try {
-                const localDate = new Date(startInput);
-                if (isNaN(localDate.getTime())) {
-                    throw new Error('Invalid date input');
-                }
-                startTime = new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
-            } catch (error) {
-                console.error('Error processing start date:', error);
-                window.utils.showNotification('Invalid start date format', 'error');
-                return;
-            }
-        }
+        const expiryInput = document.getElementById('session-expires-at').value;
+        const startTime = toUTCISOStringFromPHLocal(startInput);
+        const expiry = toUTCISOStringFromPHLocal(expiryInput);
         const sessionData = {
             title: document.getElementById('session-title').value,
             description: document.getElementById('session-description').value,
             maxPlayers: parseInt(document.getElementById('session-max-players').value),
-            expiry,
-            startTime
+            startTime,
+            expiry
         };
         
         if (isEdit) {
@@ -470,20 +476,16 @@ async function initRegistration() {
 
                 // Support all possible expiration field names
                 const expiresValue = session.expiry || session.expiresAt || session.expires_at;
-                if (expiresValue) {
-                    const date = new Date(expiresValue);
-                    const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                    document.getElementById('session-expires-at').value = localDateTime;
-                } else {
-                    document.getElementById('session-expires-at').value = '';
-                }
-                
                 if (session.startTime) {
-                    const date = new Date(session.startTime);
-                    const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                    document.getElementById('session-start-time').value = localDateTime;
+                    document.getElementById('session-start-time').value = toPHLocalInput(session.startTime);
                 } else {
                     document.getElementById('session-start-time').value = '';
+                }
+                
+                if (expiresValue) {
+                    document.getElementById('session-expires-at').value = toPHLocalInput(expiresValue);
+                } else {
+                    document.getElementById('session-expires-at').value = '';
                 }
                 
                 // Update modal title and button
