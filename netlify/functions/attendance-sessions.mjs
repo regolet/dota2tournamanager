@@ -9,11 +9,11 @@ export async function handler(event, context) {
     console.log('Headers:', JSON.stringify(event.headers, null, 2));
     console.log('Query parameters:', JSON.stringify(event.queryStringParameters, null, 2));
     console.log('Body:', event.body);
-    console.log('DATABASE_URL present:', !!process.env.DATABASE_URL);
+    console.log('Database URL present:', !!(process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL));
     
     // Check if database is configured
-    if (!process.env.DATABASE_URL) {
-        console.error('❌ DATABASE_URL environment variable is not set');
+    if (!process.env.NETLIFY_DATABASE_URL && !process.env.DATABASE_URL) {
+        console.error('❌ Database environment variable is not set');
         return {
             statusCode: 503,
             headers: {
@@ -25,7 +25,7 @@ export async function handler(event, context) {
             body: JSON.stringify({
                 success: false,
                 message: 'Database not configured',
-                error: 'DATABASE_URL environment variable is missing. Please configure the database connection.',
+                error: 'Database environment variable is missing. Please configure the database connection.',
                 timestamp: new Date().toISOString()
             })
         };
@@ -175,8 +175,8 @@ function toCamelCaseSession(session) {
         isActive: session.is_active,
         createdAt: session.created_at,
         updatedAt: session.updated_at,
-        presentCount: session.present_count,
-        totalCount: session.total_count,
+        presentCount: session.present_count || 0,
+        totalCount: session.total_count || 0,
         registrationSessionTitle: session.registration_session_title,
         registrationPlayerCount: session.registration_player_count,
     };
@@ -194,20 +194,9 @@ async function getAttendanceSessions(adminUserId) {
             SELECT 
                 att.*,
                 COALESCE(rs.title, 'Unknown') as registration_session_title,
-                COALESCE(rs.player_count, 0) as registration_player_count,
-                COALESCE(present_stats.present_count, 0) as present_count,
-                COALESCE(present_stats.total_count, 0) as total_count
+                COALESCE(rs.player_count, 0) as registration_player_count
             FROM attendance_sessions att
             LEFT JOIN registration_sessions rs ON att.registration_session_id = rs.session_id
-            LEFT JOIN (
-                SELECT 
-                    rs.session_id,
-                COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
-                COUNT(p.id) as total_count
-                FROM registration_sessions rs
-            LEFT JOIN players p ON rs.session_id = p.registration_session_id
-                GROUP BY rs.session_id
-            ) present_stats ON att.registration_session_id = present_stats.session_id
             WHERE att.admin_user_id = ${adminUserId}
             ORDER BY att.created_at DESC
         `;
@@ -261,20 +250,9 @@ async function getAttendanceSession(sessionId, adminUserId) {
             SELECT 
                 att.*,
                 COALESCE(rs.title, 'Unknown') as registration_session_title,
-                COALESCE(rs.player_count, 0) as registration_player_count,
-                COALESCE(present_stats.present_count, 0) as present_count,
-                COALESCE(present_stats.total_count, 0) as total_count
+                COALESCE(rs.player_count, 0) as registration_player_count
             FROM attendance_sessions att
             LEFT JOIN registration_sessions rs ON att.registration_session_id = rs.session_id
-            LEFT JOIN (
-                SELECT 
-                    rs.session_id,
-                COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
-                COUNT(p.id) as total_count
-                FROM registration_sessions rs
-            LEFT JOIN players p ON rs.session_id = p.registration_session_id
-                GROUP BY rs.session_id
-            ) present_stats ON att.registration_session_id = present_stats.session_id
             WHERE att.session_id = ${sessionId} AND att.admin_user_id = ${adminUserId}
         `;
 
@@ -610,20 +588,9 @@ async function getAttendanceSessionPublic(sessionId) {
             SELECT 
                 att.*,
                 COALESCE(rs.title, 'Unknown') as registration_session_title,
-                COALESCE(rs.player_count, 0) as registration_player_count,
-                COALESCE(present_stats.present_count, 0) as present_count,
-                COALESCE(present_stats.total_count, 0) as total_count
+                COALESCE(rs.player_count, 0) as registration_player_count
             FROM attendance_sessions att
             LEFT JOIN registration_sessions rs ON att.registration_session_id = rs.session_id
-            LEFT JOIN (
-                SELECT 
-                    rs.session_id,
-                COUNT(CASE WHEN p.present = true THEN 1 END) as present_count,
-                COUNT(p.id) as total_count
-                FROM registration_sessions rs
-            LEFT JOIN players p ON rs.session_id = p.registration_session_id
-                GROUP BY rs.session_id
-            ) present_stats ON att.registration_session_id = present_stats.session_id
             WHERE att.session_id = ${sessionId}
         `;
 
