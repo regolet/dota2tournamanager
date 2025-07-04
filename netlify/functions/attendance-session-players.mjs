@@ -1,7 +1,28 @@
-import { sql } from './database.mjs';
+import { sql, validateSession } from './database.mjs';
 
 export const handler = async (event) => {
   try {
+    // 1. Validate admin session
+    const sessionId = event.headers['x-session-id'] || event.headers['X-Session-Id'];
+    if (!sessionId) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ success: false, message: 'Missing admin session' }),
+        headers: { 'Content-Type': 'application/json' }
+      };
+    }
+    const session = await validateSession(sessionId);
+    if (!session.valid) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ success: false, message: 'Invalid or expired session' }),
+        headers: { 'Content-Type': 'application/json' }
+      };
+    }
+    const isSuperadmin = session.role === 'superadmin';
+    const adminUserId = session.user.id;
+
+    // 2. Get attendance session and check ownership
     const attendanceSessionId = event.queryStringParameters?.attendanceSessionId;
     if (!attendanceSessionId) {
       return {
@@ -10,10 +31,8 @@ export const handler = async (event) => {
         headers: { 'Content-Type': 'application/json' }
       };
     }
-
-    // Look up the registration_session_id for this attendance session
     const result = await sql`
-      SELECT registration_session_id FROM attendance_sessions WHERE session_id = ${attendanceSessionId}
+      SELECT registration_session_id, admin_user_id FROM attendance_sessions WHERE session_id = ${attendanceSessionId}
     `;
     if (!result || result.length === 0) {
       return {
@@ -23,8 +42,18 @@ export const handler = async (event) => {
       };
     }
     const registrationSessionId = result[0].registration_session_id;
+    const sessionOwnerId = result[0].admin_user_id;
 
-    // Fetch players for this registration session, joining registration_sessions for title
+    // 3. Restrict access: only owner or superadmin can view
+    if (!isSuperadmin && adminUserId !== sessionOwnerId) {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({ success: false, message: 'Access denied: You can only view players from your own attendance sessions' }),
+        headers: { 'Content-Type': 'application/json' }
+      };
+    }
+
+    // 4. Fetch players for this registration session
     const players = await sql`
       SELECT 
         p.id, 
