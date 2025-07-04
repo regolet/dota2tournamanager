@@ -427,6 +427,7 @@
                 const data = await response.json();
                 if (data.success && data.sessions) {
                     state.attendanceSessions = data.sessions;
+                    await updateAllSessionAttendanceCounts();
                     displayAttendanceSessions();
                 } else {
                     throw new Error(data.message || 'Failed to load attendance sessions');
@@ -1247,6 +1248,33 @@
         updateCountdown();
         window.adminCountdownInterval = setInterval(updateCountdown, 1000);
         console.log('Countdown interval started');
+    }
+
+    // After loading attendance sessions, update presentCount and totalCount for all sessions
+    async function updateAllSessionAttendanceCounts() {
+        if (!state.attendanceSessions || state.attendanceSessions.length === 0) return;
+        for (const session of state.attendanceSessions) {
+            try {
+                const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+                const response = await fetch(`/.netlify/functions/attendance-session-players?attendanceSessionId=${session.sessionId}`, {
+                    headers: {
+                        'x-session-id': sessionId
+                    }
+                });
+                const data = await response.json();
+                if (data.success && Array.isArray(data.players)) {
+                    session.presentCount = data.players.filter(p => p.present === true).length;
+                    session.totalCount = data.players.length;
+                } else {
+                    session.presentCount = 0;
+                    session.totalCount = 0;
+                }
+            } catch (error) {
+                session.presentCount = 0;
+                session.totalCount = 0;
+            }
+        }
+        displayAttendanceSessions();
     }
 
 })(); 
