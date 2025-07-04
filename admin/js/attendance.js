@@ -1149,14 +1149,38 @@
             const data = await response.json();
             if (data.success && Array.isArray(data.players)) {
                 state.players = data.players;
+                // Update presentCount and totalCount for the selected session
+                const presentCount = data.players.filter(p => p.present === true).length;
+                const totalCount = data.players.length;
+                const session = state.attendanceSessions.find(s => s.sessionId === attendanceSessionId);
+                if (session) {
+                    session.presentCount = presentCount;
+                    session.totalCount = totalCount;
+                    // Re-render the sessions table to update the Present/Absent column
+                    displayAttendanceSessions();
+                }
                 displayPlayersWithAttendance();
             } else {
                 state.players = [];
+                // Also reset counts if no players found
+                const session = state.attendanceSessions.find(s => s.sessionId === attendanceSessionId);
+                if (session) {
+                    session.presentCount = 0;
+                    session.totalCount = 0;
+                    displayAttendanceSessions();
+                }
                 displayPlayersWithAttendance();
             }
         } catch (error) {
             console.error('Error loading players for attendance session:', error);
             state.players = [];
+            // Also reset counts on error
+            const session = state.attendanceSessions.find(s => s.sessionId === attendanceSessionId);
+            if (session) {
+                session.presentCount = 0;
+                session.totalCount = 0;
+                displayAttendanceSessions();
+            }
             displayPlayersWithAttendance();
         }
     }
