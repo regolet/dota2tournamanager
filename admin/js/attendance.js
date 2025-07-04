@@ -29,6 +29,9 @@
     let attendanceInitAttempts = 0;
     const MAX_ATTENDANCE_INIT_ATTEMPTS = 10;
 
+    // Add a variable to track the last loaded session
+    let lastLoadedAttendanceSessionId = null;
+
     // Attendance session management functions
     async function deleteAttendanceSession(sessionId, sessionName) {
         if (!confirm(`Are you sure you want to delete the attendance session "${sessionName}"? This action cannot be undone.`)) {
@@ -258,8 +261,10 @@
                     if (markAllPresentBtn) markAllPresentBtn.disabled = true;
                     if (markAllAbsentBtn) markAllAbsentBtn.disabled = true;
                     if (exportBtn) exportBtn.disabled = true;
-                } else {
+                    lastLoadedAttendanceSessionId = null;
+                } else if (sessionId !== lastLoadedAttendanceSessionId) {
                     loadPlayersForAttendanceSession(sessionId);
+                    lastLoadedAttendanceSessionId = sessionId;
                     if (markAllPresentBtn) markAllPresentBtn.disabled = false;
                     if (markAllAbsentBtn) markAllAbsentBtn.disabled = false;
                     if (exportBtn) exportBtn.disabled = false;
