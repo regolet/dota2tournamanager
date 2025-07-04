@@ -104,7 +104,8 @@ function getModuleKeyFromFunctionName(functionName) {
         'initPlayerList': 'module_playerList',
         'initRegistration': 'module_registration',
         'initMasterlist': 'module_masterlist',
-        'initDiscord': 'module_discord'
+        'initDiscord': 'module_discord',
+        'initBans': 'module_bans'
     };
     
     return mapping[functionName] || null;

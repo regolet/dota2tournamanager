@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Ban Management - Tournament Admin</title>
+    <link rel="stylesheet" href="css/mobile.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Player Ban Management</h1>
+            <nav id="mainNav">
+                <button onclick="loadModule('registration')">Registration</button>
+                <button onclick="loadModule('player-list')">Player List</button>
+                <button onclick="loadModule('team-balancer')">Team Balancer</button>
+                <button onclick="loadModule('tournament-bracket')">Tournament</button>
+                <button onclick="loadModule('attendance')">Attendance</button>
+                <button onclick="loadModule('discord')">Discord</button>
+                <button onclick="loadModule('bans')" class="active">Bans</button>
+                <button onclick="logout()">Logout</button>
+            </nav>
+        </header>
+
+        <main id="mainContent">
+            <div class="ban-management">
+                <div class="ban-section">
+                    <h2>Ban a Player</h2>
+                    <form id="banForm" class="ban-form">
+                        <div class="form-group">
+                            <label for="banDota2Id">Dota 2 ID:</label>
+                            <input type="text" id="banDota2Id" name="dota2id" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="banPlayerName">Player Name:</label>
+                            <input type="text" id="banPlayerName" name="playerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="banReason">Reason:</label>
+                            <textarea id="banReason" name="reason" required rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="banType">Ban Type:</label>
+                            <select id="banType" name="banType">
+                                <option value="permanent">Permanent</option>
+                                <option value="temporary">Temporary</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="expiresAtGroup" style="display: none;">
+                            <label for="banExpiresAt">Expires At:</label>
+                            <input type="datetime-local" id="banExpiresAt" name="expiresAt">
+                        </div>
+                        <button type="submit" class="btn btn-danger">Ban Player</button>
+                    </form>
+                </div>
+
+                <div class="ban-section">
+                    <h2>Currently Banned Players</h2>
+                    <div id="bannedPlayersList" class="banned-players">
+                        <div class="loading">Loading banned players...</div>
+                    </div>
+                </div>
+
+                <div class="ban-section">
+                    <h2>Ban History</h2>
+                    <div id="banHistoryList" class="ban-history">
+                        <div class="loading">Loading ban history...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/navigation.js"></script>
+    <script src="js/security.js"></script>
+    <script src="js/bans.js"></script>
+</body>
+</html> 

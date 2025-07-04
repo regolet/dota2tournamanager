@@ -173,4 +173,231 @@
 .bracket-rounds {
     gap: 1.2rem !important;
 }
-/* --- End Compact Bracket Styles --- */ 
+/* --- End Compact Bracket Styles --- */
+
+/* --- Ban Management Styles --- */
+.ban-management {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.ban-section {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+}
+
+.ban-section h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.ban-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-1px);
+}
+
+.banned-players,
+.ban-history {
+    display: grid;
+    gap: 1rem;
+}
+
+.banned-player-card,
+.ban-history-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.active-ban {
+    border-left: 4px solid #dc3545;
+    background: #fff5f5;
+}
+
+.inactive-ban {
+    border-left: 4px solid #6c757d;
+    background: #f8f9fa;
+    opacity: 0.8;
+}
+
+.player-info,
+.ban-info {
+    flex: 1;
+}
+
+.player-info h3,
+.ban-info h3 {
+    margin: 0 0 0.5rem 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.player-info p,
+.ban-info p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.player-actions,
+.ban-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.error {
+    text-align: center;
+    padding: 1rem;
+    color: #dc3545;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+}
+
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 4px;
+    color: white;
+    font-weight: 600;
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+}
+
+.message-success {
+    background-color: #28a745;
+}
+
+.message-error {
+    background-color: #dc3545;
+}
+
+.message-info {
+    background-color: #17a2b8;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Mobile responsive adjustments for ban management */
+@media (max-width: 767.98px) {
+    .ban-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .banned-player-card,
+    .ban-history-card {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .player-actions,
+    .ban-actions {
+        width: 100%;
+    }
+    
+    .player-actions .btn,
+    .ban-actions .btn {
+        width: 100%;
+    }
+    
+    .message {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        text-align: center;
+    }
+} 

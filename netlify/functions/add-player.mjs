@@ -6,7 +6,8 @@ import {
   updateMasterlistPlayer, 
   addMasterlistPlayer,
   getRegistrationSessionBySessionId,
-  incrementRegistrationPlayerCount
+  incrementRegistrationPlayerCount,
+  isPlayerBanned
 } from './database.mjs';
 
 // Simplified validation functions to avoid dependency issues
@@ -167,6 +168,32 @@ export const handler = async (event, context) => {
     }
     
     console.log('✅ Player validation passed');
+    
+    // Check if player is banned
+    try {
+      console.log('🔍 Checking if player is banned...');
+      const isBanned = await isPlayerBanned(playerValidation.player.dota2id);
+      if (isBanned) {
+        console.log('❌ Player is banned from registration');
+        return {
+          statusCode: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'This player is banned and cannot register for tournaments. Please contact an administrator if you believe this is an error.',
+            errorType: 'PLAYER_BANNED'
+          })
+        };
+      }
+      console.log('✅ Player is not banned');
+    } catch (banCheckError) {
+      console.warn('⚠️ Error checking player ban status (non-critical):', banCheckError.message);
+      // Continue with registration if ban check fails
+    }
+    
     console.log('🎯 About to call addPlayer with data:', {
       name: playerValidation.player.name,
       dota2id: playerValidation.player.dota2id,

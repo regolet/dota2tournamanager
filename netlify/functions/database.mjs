@@ -273,6 +273,29 @@ export async function initializeDatabase() {
       // Ignore if already exists
     }
     
+    // Create banned_players table for player banning system
+    await sql`
+      CREATE TABLE IF NOT EXISTS banned_players (
+        id SERIAL PRIMARY KEY,
+        dota2id VARCHAR(255) NOT NULL,
+        player_name VARCHAR(255) NOT NULL,
+        reason TEXT NOT NULL,
+        banned_by VARCHAR(255) NOT NULL,
+        banned_by_username VARCHAR(255) NOT NULL,
+        ban_type VARCHAR(50) NOT NULL DEFAULT 'permanent',
+        expires_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(dota2id)
+      )
+    `;
+    
+    // Create indexes for banned_players table
+    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_dota2id ON banned_players(dota2id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_active ON banned_players(is_active)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_expires ON banned_players(expires_at)`;
+    
   } catch (error) {
     throw error;
   }
@@ -380,6 +403,14 @@ export async function addPlayer(player) {
 
     if (!player.name) {
       throw new Error('Player must have a name');
+    }
+    
+    // Check if player is banned
+    if (player.dota2id) {
+      const isBanned = await isPlayerBanned(player.dota2id);
+      if (isBanned) {
+        throw new Error('This player is banned and cannot register for tournaments');
+      }
     }
     
     // Generate ID if not provided
@@ -1922,6 +1953,166 @@ export async function getPlayerById(playerId) {
     `;
     
     return players.length > 0 ? players[0] : null;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Banning System Functions
+export async function banPlayer(banData) {
+  try {
+    await initializeDatabase();
+    
+    const { dota2id, playerName, reason, bannedBy, bannedByUsername, banType = 'permanent', expiresAt = null } = banData;
+    
+    if (!dota2id || !playerName || !reason || !bannedBy || !bannedByUsername) {
+      throw new Error('Missing required fields for banning player');
+    }
+    
+    // Check if player is already banned
+    const existingBan = await sql`
+      SELECT id, is_active FROM banned_players 
+      WHERE dota2id = ${dota2id}
+    `;
+    
+    if (existingBan.length > 0) {
+      if (existingBan[0].is_active) {
+        throw new Error('Player is already banned');
+      } else {
+        // Reactivate existing ban
+        await sql`
+          UPDATE banned_players 
+          SET reason = ${reason}, banned_by = ${bannedBy}, banned_by_username = ${bannedByUsername},
+              ban_type = ${banType}, expires_at = ${expiresAt}, is_active = true, updated_at = NOW()
+          WHERE dota2id = ${dota2id}
+        `;
+        return { success: true, message: 'Player ban reactivated' };
+      }
+    }
+    
+    // Create new ban
+    await sql`
+      INSERT INTO banned_players (dota2id, player_name, reason, banned_by, banned_by_username, ban_type, expires_at)
+      VALUES (${dota2id}, ${playerName}, ${reason}, ${bannedBy}, ${bannedByUsername}, ${banType}, ${expiresAt})
+    `;
+    
+    return { success: true, message: 'Player banned successfully' };
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function unbanPlayer(dota2id) {
+  try {
+    await initializeDatabase();
+    
+    if (!dota2id) {
+      throw new Error('Dota2 ID is required');
+    }
+    
+    const result = await sql`
+      UPDATE banned_players 
+      SET is_active = false, updated_at = NOW()
+      WHERE dota2id = ${dota2id} AND is_active = true
+    `;
+    
+    if (result.count === 0) {
+      throw new Error('Player is not currently banned');
+    }
+    
+    return { success: true, message: 'Player unbanned successfully' };
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function getBannedPlayers() {
+  try {
+    await initializeDatabase();
+    
+    const bannedPlayers = await sql`
+      SELECT 
+        id, dota2id, player_name, reason, banned_by, banned_by_username,
+        ban_type, expires_at, is_active, created_at, updated_at
+      FROM banned_players 
+      WHERE is_active = true
+      ORDER BY created_at DESC
+    `;
+    
+    return bannedPlayers;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function isPlayerBanned(dota2id) {
+  try {
+    await initializeDatabase();
+    
+    if (!dota2id) {
+      return false;
+    }
+    
+    const ban = await sql`
+      SELECT id, ban_type, expires_at 
+      FROM banned_players 
+      WHERE dota2id = ${dota2id} AND is_active = true
+    `;
+    
+    if (ban.length === 0) {
+      return false;
+    }
+    
+    const banRecord = ban[0];
+    
+    // Check if temporary ban has expired
+    if (banRecord.ban_type === 'temporary' && banRecord.expires_at) {
+      const now = new Date();
+      const expiresAt = new Date(banRecord.expires_at);
+      
+      if (now > expiresAt) {
+        // Ban has expired, deactivate it
+        await sql`
+          UPDATE banned_players 
+          SET is_active = false, updated_at = NOW()
+          WHERE id = ${banRecord.id}
+        `;
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    // If there's an error, assume player is not banned to avoid blocking legitimate registrations
+    return false;
+  }
+}
+
+export async function getBanHistory(dota2id = null) {
+  try {
+    await initializeDatabase();
+    
+    let query;
+    if (dota2id) {
+      query = sql`
+        SELECT 
+          id, dota2id, player_name, reason, banned_by, banned_by_username,
+          ban_type, expires_at, is_active, created_at, updated_at
+        FROM banned_players 
+        WHERE dota2id = ${dota2id}
+        ORDER BY created_at DESC
+      `;
+    } else {
+      query = sql`
+        SELECT 
+          id, dota2id, player_name, reason, banned_by, banned_by_username,
+          ban_type, expires_at, is_active, created_at, updated_at
+        FROM banned_players 
+        ORDER BY created_at DESC
+      `;
+    }
+    
+    return await query;
   } catch (error) {
     throw error;
   }

@@ -131,6 +131,9 @@ async function enableActiveTabAfterInit() {
                 case 'attendance-tab':
                     loadResult = await loadAttendance();
                     break;
+                case 'bans-tab':
+                    loadResult = await loadBans();
+                    break;
                 default:
                     // Unknown tab, fallback to team balancer
                     loadResult = await loadTeamBalancer();
@@ -1557,6 +1560,21 @@ async function loadAttendance() {
         contentContainer: 'main-content',
         initFunction: 'initAttendance',
         cleanupFunction: 'resetAttendanceModule'
+    });
+    return result;
+}
+
+/**
+ * Load Bans content
+ */
+async function loadBans() {
+    updateActiveTab('bans-tab');
+    const result = await window.adminApp.loadAndInitModule({
+        htmlFile: '/admin/bans.html',
+        jsFile: '/admin/js/bans.js',
+        contentContainer: 'main-content',
+        initFunction: 'initBans',
+        cleanupFunction: 'cleanupBans'
     });
     return result;
 }
