@@ -564,7 +564,7 @@
                 </td>
                 <td>${escapeHtml(regSessionTitle)}</td>
                 <td><span class="badge ${statusClass}">${statusBadge}</span></td>
-                <td>${session.presentCount}/${session.totalCount}</td>
+                <td>${session.presentCount}/${session.totalCount - session.presentCount}</td>
                 <td><small>${session.startTime ? formatDate(session.startTime) : '-'}</small></td>
                 <td><small>${formatDate(session.createdAt)}</small></td>
                 <td><small>${session.endTime ? formatDate(session.endTime) : 'Never'}</small></td>
