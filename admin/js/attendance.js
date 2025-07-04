@@ -1139,6 +1139,8 @@
         }
         try {
             const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+            // Debug logging for sessionId and attendanceSessionId
+            console.debug('[DEBUG] loadPlayersForAttendanceSession - attendanceSessionId:', attendanceSessionId, 'sessionId:', sessionId);
             const response = await fetch(`/.netlify/functions/attendance-session-players?attendanceSessionId=${attendanceSessionId}`, {
                 headers: {
                     'x-session-id': sessionId
