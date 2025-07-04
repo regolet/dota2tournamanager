@@ -1115,14 +1115,15 @@
             const label = `${session.name} (ID: ${session.sessionId}) - ${regSessionTitle} - ${created} - ${expires}`;
             dropdown.innerHTML += `<option value="${session.sessionId}">${label}</option>`;
         });
-        // Auto-select the latest session only if not already selected
+        // Auto-select the latest session only if not already selected, but do NOT call loadPlayersForAttendanceSession here
         if (state.attendanceSessions.length > 0) {
             const latestSession = state.attendanceSessions.slice().sort((a, b) =>
                 new Date(b.createdAt) - new Date(a.createdAt)
             )[0];
             if (dropdown.value !== latestSession.sessionId) {
                 dropdown.value = latestSession.sessionId;
-                loadPlayersForAttendanceSession(latestSession.sessionId);
+                // Instead of calling loadPlayersForAttendanceSession, trigger the change event
+                dropdown.dispatchEvent(new Event('change'));
             }
         } else {
             // No sessions: show empty player list
