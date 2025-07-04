@@ -1138,7 +1138,12 @@
             return;
         }
         try {
-            const response = await fetch(`/.netlify/functions/attendance-session-players?attendanceSessionId=${attendanceSessionId}`);
+            const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+            const response = await fetch(`/.netlify/functions/attendance-session-players?attendanceSessionId=${attendanceSessionId}`, {
+                headers: {
+                    'x-session-id': sessionId
+                }
+            });
             const data = await response.json();
             if (data.success && Array.isArray(data.players)) {
                 state.players = data.players;
