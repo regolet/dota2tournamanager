@@ -78,7 +78,7 @@ export const handler = async (event) => {
       console.log('[attendance-session-players] Players query result:', players);
       return {
         statusCode: 200,
-        body: JSON.stringify({ success: true, players }),
+        body: JSON.stringify({ success: true, players: Array.isArray(players) ? players : [] }),
         headers: { 'Content-Type': 'application/json' }
       };
     } catch (queryError) {
