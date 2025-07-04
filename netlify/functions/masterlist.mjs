@@ -104,8 +104,6 @@ export const handler = async (event, context) => {
       // Calculate stats
       const stats = calculateMasterlistStats(responseData);
       
-      console.log(`Returning ${responseData.length} masterlist players from database (auth: ${isAuthenticated})`);
-      
       return {
         statusCode: 200,
         headers: {
@@ -159,7 +157,6 @@ export const handler = async (event, context) => {
           })
         };
       } catch (error) {
-        console.error('Error adding player to masterlist:', error);
         return {
           statusCode: 500,
           headers: {
@@ -209,7 +206,6 @@ export const handler = async (event, context) => {
           })
         };
       } catch (error) {
-        console.error('Error updating player in masterlist:', error);
         return {
           statusCode: 500,
           headers: {
@@ -258,7 +254,6 @@ export const handler = async (event, context) => {
           })
         };
       } catch (error) {
-        console.error('Error deleting player from masterlist:', error);
         return {
           statusCode: 500,
           headers: {
@@ -287,7 +282,6 @@ export const handler = async (event, context) => {
     };
     
   } catch (error) {
-    console.error('Masterlist function error:', error);
     return {
       statusCode: 500,
       headers: {

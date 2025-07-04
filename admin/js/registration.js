@@ -39,8 +39,6 @@ let lastLoadedSessionCount = null;
 // Initialize registration module
 async function initRegistration() {
     try {
-        console.log('🚀 Registration: Starting initRegistration...');
-        
         // Always re-initialize when called (for tab switching)
         state.initialized = false;
         state.registrationSessions = [];
@@ -48,7 +46,6 @@ async function initRegistration() {
         window.registrationModuleLoaded = false;
         registrationInitAttempts = 0;
         
-        console.log('🚀 Registration: Setting up event listeners...');
         setupEventListeners();
         
         try {
@@ -56,22 +53,17 @@ async function initRegistration() {
         } catch (e) {
             registrationInitAttempts++;
             if (registrationInitAttempts < MAX_REGISTRATION_INIT_ATTEMPTS) {
-                console.warn('Registration: Table body not found, retrying initRegistration...');
                 setTimeout(initRegistration, 200);
                 return;
             } else {
-                console.error('Registration: Table body not found after multiple attempts. Giving up.');
                 return;
             }
         }
         
-        console.log('🚀 Registration: Loading registration sessions...');
         await loadRegistrationSessions();
         state.initialized = true;
         window.registrationModuleLoaded = true;
-        console.log('✅ Registration: Initialization complete');
     } catch (error) {
-        console.error('❌ Registration: Error in initRegistration:', error);
     }
 }
     
@@ -131,7 +123,6 @@ async function initRegistration() {
     
     async function loadRegistrationSessions() {
         try {
-            console.log('🔄 Registration: Starting loadRegistrationSessions...');
             const tableBody = document.getElementById('registration-sessions-table-body');
             if (tableBody) {
                 tableBody.innerHTML = `
@@ -189,7 +180,6 @@ async function initRegistration() {
         const tableBody = document.getElementById('registration-sessions-table-body');
         
         if (!tableBody) {
-            console.warn('Registration sessions table body not found');
             return;
         }
         
@@ -211,14 +201,6 @@ async function initRegistration() {
         // Get current user info for permission checks
         const currentUser = window.sessionManager?.getUser();
         const isSuperAdmin = currentUser?.role === 'superadmin';
-        
-        console.log('🔍 Registration: Permission check debug:', {
-            currentUser: currentUser,
-            isSuperAdmin: isSuperAdmin,
-            userRole: currentUser?.role,
-            userId: currentUser?.id,
-            username: currentUser?.username
-        });
         
         state.registrationSessions.forEach(session => {
             const row = document.createElement('tr');
@@ -247,16 +229,6 @@ async function initRegistration() {
             // Permission checks
             const canModify = isSuperAdmin || session.adminUserId === currentUser?.userId;
             const canDelete = isSuperAdmin; // Only superadmins can delete
-            
-            console.log('🔍 Registration: Session permission check:', {
-                sessionId: session.sessionId,
-                sessionTitle: session.title,
-                sessionAdminUserId: session.adminUserId,
-                sessionAdminUsername: session.adminUsername,
-                canModify: canModify,
-                canDelete: canDelete,
-                isActive: session.isActive
-            });
             
             row.innerHTML = `
                 <td>
@@ -369,7 +341,6 @@ async function initRegistration() {
         try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) {
-                console.warn('Invalid date string:', dateString);
                 return '';
             }
             
@@ -383,11 +354,8 @@ async function initRegistration() {
             const hours = String(phTime.getHours()).padStart(2, '0');
             const minutes = String(phTime.getMinutes()).padStart(2, '0');
             
-            console.log('[toPHLocalInput] Converting:', dateString, 'to PH time:', `${year}-${month}-${day}T${hours}:${minutes}`);
-            
             return `${year}-${month}-${day}T${hours}:${minutes}`;
         } catch (error) {
-            console.error('Error converting date to PH local:', error, dateString);
             return '';
         }
     }
@@ -403,7 +371,6 @@ async function initRegistration() {
             const phDate = new Date(`${year}-${month}-${day}T${hour}:${minute}:00+08:00`);
             return phDate.toISOString();
         } catch (error) {
-            console.error('Error converting PH local input to UTC ISO:', error, input);
             return null;
         }
     }
@@ -426,13 +393,6 @@ async function initRegistration() {
         }
         // --- END VALIDATION ---
         
-        console.log('[Registration Save] Input values:', {
-            startInput,
-            expiryInput,
-            startTime,
-            expiry
-        });
-        
         const sessionData = {
             title: document.getElementById('session-title').value,
             description: document.getElementById('session-description').value,
@@ -447,8 +407,6 @@ async function initRegistration() {
         
         const saveButton = document.getElementById('save-session-btn');
         const originalText = saveButton.textContent;
-        
-        console.log('[Registration Save] Final payload:', sessionData);
         
         try {
             saveButton.disabled = true;
@@ -489,7 +447,6 @@ async function initRegistration() {
                 showSessionAlert(data.message || `Failed to ${isEdit ? 'update' : 'create'} registration link`, 'danger');
             }
         } catch (error) {
-            console.error('Error saving registration session:', error);
             showSessionAlert('Error saving registration link', 'danger');
         } finally {
             saveButton.disabled = false;
@@ -528,12 +485,6 @@ async function initRegistration() {
                 // Support all possible expiration field names
                 const expiresValue = session.expiry || session.expiresAt || session.expires_at;
                 
-                console.log('[Registration Edit] Session data:', {
-                    sessionId: session.sessionId,
-                    startTime: session.startTime,
-                    expiresValue: expiresValue
-                });
-                
                 if (session.startTime) {
                     const phStartTime = toPHLocalInput(session.startTime);
                     document.getElementById('session-start-time').value = phStartTime;
@@ -562,10 +513,8 @@ async function initRegistration() {
                 if (expiresValue) {
                     const phExpiryTime = toPHLocalInput(expiresValue);
                     document.getElementById('session-expires-at').value = phExpiryTime;
-                    console.log('[Registration Edit] Set expiry time input to:', phExpiryTime);
                 } else {
                     document.getElementById('session-expires-at').value = '';
-                    console.log('[Registration Edit] No expiry time, cleared input');
                 }
                 
                 // Update modal title and button
@@ -582,7 +531,6 @@ async function initRegistration() {
             if (error.message.includes('Forbidden') || error.message.includes('403')) {
                 showAlert('You do not have permission to edit this registration session. You can only edit your own sessions.', 'warning');
             } else {
-                console.error('Error loading registration session:', error);
                 showAlert('Error loading registration session', 'danger');
             }
         }
@@ -745,7 +693,6 @@ async function initRegistration() {
         try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) {
-                console.warn('Invalid date string in formatDate:', dateString);
                 return 'Invalid date';
             }
             
@@ -762,7 +709,6 @@ async function initRegistration() {
             
             return date.toLocaleString(undefined, options);
         } catch (error) {
-            console.error('Error formatting date:', error, dateString);
             return 'Invalid date';
         }
     }
@@ -776,8 +722,6 @@ async function initRegistration() {
     
     // Function to reset registration module (for cleanup)
     function resetRegistrationModule() {
-        console.log('🧹 Registration: Starting cleanup...');
-        
         // Reset state variables
         state.initialized = false;
         state.registrationSessions = [];
@@ -797,8 +741,6 @@ async function initRegistration() {
                 modalInstance.hide();
             }
         });
-        
-        console.log('🧹 Registration: Cleanup complete');
     }
     
     /**
@@ -806,8 +748,6 @@ async function initRegistration() {
      * This ensures all player-related components stay in sync when registration settings change
      */
     function notifyPlayerListsToRefresh(actionType = 'updated') {
-        console.log(`🔄 Registration ${actionType}: Notifying player list components to refresh`);
-        
         // Create a custom event for player list refresh
         const refreshEvent = new CustomEvent('registrationUpdated', {
             detail: {
@@ -823,40 +763,32 @@ async function initRegistration() {
         setTimeout(() => {
             // Refresh Player List if loaded and DOM elements exist
             if (typeof window.loadPlayers === 'function' && document.getElementById('players-table-body')) {
-                console.log('📋 Refreshing Player List...');
                 window.loadPlayers(true);
             } else if (window.playerListModule && typeof window.playerListModule.loadPlayers === 'function' && document.getElementById('players-table-body')) {
-                console.log('📋 Refreshing Player List module...');
                 window.playerListModule.loadPlayers(true);
             }
             
             // Refresh Team Balancer if loaded and DOM elements exist
             if (typeof window.loadPlayersForBalancer === 'function' && document.getElementById('available-players-list')) {
-                console.log('⚖️ Refreshing Team Balancer...');
                 window.loadPlayersForBalancer();
             } else if (window.teamBalancerModule && typeof window.teamBalancerModule.loadPlayersForBalancer === 'function' && document.getElementById('available-players-list')) {
-                console.log('⚖️ Refreshing Team Balancer module...');
                 window.teamBalancerModule.loadPlayersForBalancer();
             }
             
             // Refresh Random Picker if loaded and DOM elements exist
             if (typeof window.loadPlayersForPicker === 'function' && document.getElementById('random-picker-players')) {
-                console.log('🎲 Refreshing Random Picker...');
                 window.loadPlayersForPicker();
             } else if (window.randomPickerModule && typeof window.randomPickerModule.loadPlayersForPicker === 'function' && document.getElementById('random-picker-players')) {
-                console.log('🎲 Refreshing Random Picker module...');
                 window.randomPickerModule.loadPlayersForPicker();
             }
             
             // Refresh main tournament index page if it's open (for public users)
             if (typeof window.loadTournaments === 'function') {
-                console.log('🏠 Refreshing main tournament index...');
                 window.loadTournaments();
             }
             
             // Refresh navigation tournament counter if available
             if (typeof window.updateNavigationStats === 'function') {
-                console.log('📊 Updating navigation statistics...');
                 window.updateNavigationStats();
             }
             

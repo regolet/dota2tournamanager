@@ -23,7 +23,7 @@ export async function handler(event, context) {
     console.log('Force initializing database...');
     
     // This will create all tables including the teams table
-    await initializeDatabase();
+    // await initializeDatabase();
     
     console.log('Database initialization completed successfully');
     

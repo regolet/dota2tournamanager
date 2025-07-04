@@ -114,7 +114,6 @@ function showNotification(message, type = 'info', duration = 3000) {
         return window.notificationSystem.show(message, type, duration);
     }
     // Fallback to console if notification system not available
-    console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
 // Enhanced fetchWithAuth with better error handling
@@ -222,12 +221,9 @@ async function loadRegistrationSessionsWithRetry(maxRetries = 3, delay = 1000) {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            console.log(`🔄 Attempting to load registration sessions (attempt ${attempt}/${maxRetries})`);
-            
             const response = await fetchWithAuth('/.netlify/functions/registration-sessions');
             
             if (response.success && Array.isArray(response.sessions)) {
-                console.log(`✅ Registration sessions loaded successfully on attempt ${attempt}`);
                 return response;
             } else {
                 throw new Error(response.message || 'Invalid response format');
@@ -363,12 +359,9 @@ async function loadPlayersWithRetry(maxRetries = 3, delay = 1000) {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            console.log(`🔄 Attempting to load players (attempt ${attempt}/${maxRetries})`);
-            
             const response = await fetchWithAuth('/.netlify/functions/players');
             
             if (response.success && Array.isArray(response.players)) {
-                console.log(`✅ Players loaded successfully on attempt ${attempt}`);
                 return response;
             } else {
                 throw new Error(response.message || 'Invalid response format');

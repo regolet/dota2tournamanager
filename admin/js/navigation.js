@@ -343,8 +343,8 @@ async function loadContentFromFile(filename, sectionId, title, initFunc = null) 
 async function loadTeamBalancer() {
     updateActiveTab('team-balancer-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'team-balancer.html',
-        jsFile: 'js/teamBalancer.js',
+        htmlFile: '/admin/team-balancer.html',
+        jsFile: '/admin/js/teamBalancer.js',
         contentContainer: 'main-content',
         initFunction: 'initTeamBalancer',
         cleanupFunction: 'cleanupTeamBalancer'
@@ -361,8 +361,8 @@ async function loadTeamBalancer() {
 async function loadRandomPicker() {
     updateActiveTab('random-picker-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'random-picker.html',
-        jsFile: 'js/randompicker.js',
+        htmlFile: '/admin/random-picker.html',
+        jsFile: '/admin/js/randompicker.js',
         contentContainer: 'main-content',
         initFunction: 'initRandomPicker',
         cleanupFunction: 'cleanupRandomPicker'
@@ -379,8 +379,8 @@ async function loadRandomPicker() {
 async function loadMasterlist() {
     updateActiveTab('masterlist-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'masterlist.html',
-        jsFile: 'js/masterlist.js',
+        htmlFile: '/admin/masterlist.html',
+        jsFile: '/admin/js/masterlist.js',
         contentContainer: 'main-content',
         initFunction: 'initMasterlist',
         cleanupFunction: 'cleanupMasterlist'
@@ -394,8 +394,8 @@ async function loadMasterlist() {
 async function loadPlayerList() {
     updateActiveTab('player-list-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'player-list.html',
-        jsFile: 'js/playerList.js',
+        htmlFile: '/admin/player-list.html',
+        jsFile: '/admin/js/playerList.js',
         contentContainer: 'main-content',
         initFunction: 'initPlayerList',
         cleanupFunction: 'cleanupPlayerList'
@@ -412,8 +412,8 @@ async function loadPlayerList() {
 async function loadRegistration() {
     updateActiveTab('registration-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'registration.html',
-        jsFile: 'js/registration.js',
+        htmlFile: '/admin/registration.html',
+        jsFile: '/admin/js/registration.js',
         contentContainer: 'main-content',
         initFunction: 'initRegistration',
         cleanupFunction: 'cleanupRegistration'
@@ -427,8 +427,8 @@ async function loadRegistration() {
 async function loadTournamentBracket() {
     updateActiveTab('tournament-bracket-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'tournament-bracket.html',
-        jsFile: 'js/tournamentBrackets.js',
+        htmlFile: '/admin/tournament-bracket.html',
+        jsFile: '/admin/js/tournamentBrackets.js',
         contentContainer: 'main-content',
         initFunction: 'initTournamentBrackets',
         cleanupFunction: 'cleanupTournamentBrackets'
@@ -1537,8 +1537,8 @@ window.deleteUser = deleteUser;
 async function loadDiscord() {
     updateActiveTab('discord-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'discord.html',
-        jsFile: 'js/discord.js',
+        htmlFile: '/admin/discord.html',
+        jsFile: '/admin/js/discord.js',
         contentContainer: 'main-content',
         initFunction: 'initDiscord',
         cleanupFunction: 'cleanupDiscord'
@@ -1552,8 +1552,8 @@ async function loadDiscord() {
 async function loadAttendance() {
     updateActiveTab('attendance-tab');
     const result = await window.adminApp.loadAndInitModule({
-        htmlFile: 'attendance.html',
-        jsFile: 'js/attendance.js',
+        htmlFile: '/admin/attendance.html',
+        jsFile: '/admin/js/attendance.js',
         contentContainer: 'main-content',
         initFunction: 'initAttendance',
         cleanupFunction: 'resetAttendanceModule'

@@ -91,8 +91,6 @@ if (typeof fetchWithAuth === 'undefined') {
  */
 async function initPlayerList() {
     try {
-        console.log('📋 Player List: Starting initialization...');
-        
         // Always re-initialize when called (for tab switching)
         // Reset state to ensure fresh start
         currentSessionId = null;
@@ -114,8 +112,6 @@ async function initPlayerList() {
         
         // Listen for registration updates to refresh player data
         setupRegistrationUpdateListener();
-        
-        console.log('✅ Player List: Initialization complete');
     } catch (error) {
         console.error('❌ Player List: Error initializing:', error);
         window.showNotification('Failed to initialize player list module', 'error');
@@ -129,7 +125,6 @@ async function createSessionSelector() {
     // Check if session selector already exists
     const existingSelector = document.getElementById('session-selector');
     if (existingSelector) {
-        console.log('Session selector already exists, skipping creation');
         return;
     }
     
@@ -137,7 +132,6 @@ async function createSessionSelector() {
                                 document.getElementById('main-content');
     
     if (!playerListContainer) {
-        console.error('No container found for player list');
         return;
     }
     
@@ -1127,8 +1121,6 @@ window.cleanupPlayerList = cleanupPlayerList;
  * Cleanup function for player list when switching tabs
  */
 function cleanupPlayerList() {
-    console.log('🧹 Player List: Starting cleanup...');
-    
     // Reset state variables
     currentSessionId = null;
     registrationSessions = [];
@@ -1171,7 +1163,5 @@ function cleanupPlayerList() {
     
     // Clear any custom event listeners
     window.removeEventListener('registrationUpdated', window.playerListRegistrationListener);
-    
-    console.log('🧹 Player List: Cleanup complete');
 }
 

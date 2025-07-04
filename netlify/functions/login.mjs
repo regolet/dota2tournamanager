@@ -30,15 +30,11 @@ export const handler = async (event, context) => {
   }
 
   try {
-    console.log('Login function starting...');
-    
     // Parse request body
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
-      console.log('Request body parsed successfully');
     } catch (parseError) {
-      console.error('JSON parse error:', parseError);
       return {
         statusCode: 400,
         headers: {
@@ -53,7 +49,6 @@ export const handler = async (event, context) => {
     }
     
     const { username, password } = requestBody;
-    console.log('Login attempt for username:', username);
     
     // Basic validation
     if (!username || !password) {
@@ -71,7 +66,6 @@ export const handler = async (event, context) => {
     }
     
     // Authenticate user
-    console.log('Attempting database authentication...');
     
     // Get user from database
     const users = await sql`
@@ -80,10 +74,7 @@ export const handler = async (event, context) => {
       WHERE username = ${username} AND is_active = true
     `;
     
-    console.log(`Database query completed. Found ${users.length} users.`);
-    
     if (users.length === 0) {
-      console.log('User not found or inactive');
       return {
         statusCode: 401,
         headers: {
@@ -98,11 +89,9 @@ export const handler = async (event, context) => {
     }
     
     const user = users[0];
-    console.log('User found, verifying password...');
     
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    console.log('Password verification result:', isPasswordValid);
     
     if (!isPasswordValid) {
       return {
@@ -126,50 +115,11 @@ export const handler = async (event, context) => {
     // Ensure we're working with UTC for consistency
     const expiresAtUTC = new Date(expiresAt.toISOString());
     
-    console.log('Creating session...', {
-      sessionId,
-      userId: user.id,
-      role: user.role,
-      expiresAt: expiresAt.toISOString()
-    });
-    
     // Create session in database
     await sql`
       INSERT INTO admin_sessions (id, user_id, role, expires_at)
       VALUES (${sessionId}, ${user.id}, ${user.role}, ${expiresAtUTC.toISOString()})
     `;
-    
-    console.log('Session created successfully:', sessionId);
-    
-    // Add small delay to ensure database consistency
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Verify session was created properly by checking it immediately
-    try {
-      const verifySession = await sql`
-        SELECT s.id, s.user_id, s.role, s.expires_at, u.username, u.full_name, u.is_active
-        FROM admin_sessions s
-        JOIN admin_users u ON s.user_id = u.id
-        WHERE s.id = ${sessionId} AND u.is_active = true
-      `;
-      
-      if (verifySession.length > 0) {
-        const session = verifySession[0];
-        const now = new Date();
-        const sessionExpires = new Date(session.expires_at);
-        console.log('Session verification successful:', {
-          sessionId: session.id,
-          username: session.username,
-          expiresAt: sessionExpires.toISOString(),
-          currentTime: now.toISOString(),
-          isValid: sessionExpires > now
-        });
-      } else {
-        console.error('Session verification failed - session not found in database');
-      }
-    } catch (verifyError) {
-      console.error('Error verifying session after creation:', verifyError);
-    }
     
     return {
       statusCode: 200,
@@ -192,9 +142,6 @@ export const handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Login error:', error);
-    console.error('Error stack:', error.stack);
-    
     return {
       statusCode: 500,
       headers: {

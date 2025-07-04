@@ -185,10 +185,6 @@ async function getAttendanceSessions(adminUserId) {
     try {
         console.log('🔍 Getting attendance sessions for admin user:', adminUserId);
         
-        // Ensure database is initialized
-        const { initializeDatabase } = await import('./database.mjs');
-        await initializeDatabase();
-        
         const sessions = await sql`
             SELECT 
                 att.*,

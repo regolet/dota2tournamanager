@@ -19,7 +19,6 @@ export const handler = async (event, context) => {
     const rateLimit = checkRateLimit(`registration-${clientIP}`, 30, 60000); // 30 requests per minute
     
     if (!rateLimit.allowed) {
-      console.warn(`Rate limit exceeded for IP: ${clientIP}`);
       return {
         statusCode: 429,
         headers: {
@@ -97,9 +96,6 @@ export const handler = async (event, context) => {
           body: JSON.stringify(response)
         };
       } catch (dbError) {
-        console.error('Database error in GET request:', dbError);
-        console.error('Error stack:', dbError.stack);
-        
         // Return a fallback response instead of error
         return {
           statusCode: 200,
@@ -131,16 +127,7 @@ export const handler = async (event, context) => {
       let requestBody = {};
       try {
         requestBody = JSON.parse(body || '{}');
-        
-        // Log sanitized request for debugging (without sensitive data)
-        console.log('Registration request:', {
-          method: httpMethod,
-          body: sanitizeForLogging(requestBody),
-          ip: clientIP
-        });
-        
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
         return {
           statusCode: 400,
           headers: corsHeaders,
@@ -258,8 +245,6 @@ export const handler = async (event, context) => {
           };
           
         } catch (createError) {
-          console.error('Error creating registration:', createError);
-          console.error('Error stack:', createError.stack);
           return {
             statusCode: 500,
             headers: corsHeaders,
@@ -307,8 +292,6 @@ export const handler = async (event, context) => {
           };
           
         } catch (closeError) {
-          console.error('Error closing registration:', closeError);
-          console.error('Error stack:', closeError.stack);
           return {
             statusCode: 500,
             headers: corsHeaders,
@@ -365,8 +348,6 @@ export const handler = async (event, context) => {
           };
           
         } catch (updateError) {
-          console.error('Error updating registration:', updateError);
-          console.error('Error stack:', updateError.stack);
           return {
             statusCode: 500,
             headers: corsHeaders,
@@ -390,9 +371,6 @@ export const handler = async (event, context) => {
     }
     
   } catch (error) {
-    console.error('Registration API error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Event data:', JSON.stringify(event, null, 2));
     return {
       statusCode: 500,
       headers: {

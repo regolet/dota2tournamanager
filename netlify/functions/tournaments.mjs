@@ -43,7 +43,6 @@ export async function handler(event, context) {
 
             try {
                 const clientData = JSON.parse(event.body);
-                console.log('Received tournament data:', JSON.stringify(clientData, null, 2));
 
                 // Fetch the existing tournament if it exists
                 let existingTournament = null;
@@ -70,9 +69,7 @@ export async function handler(event, context) {
                     tournament_data: mergedTournament.tournament_data
                 };
 
-                console.log('Saving tournament with payload:', JSON.stringify(dbPayload, null, 2));
                 const result = await saveTournament(dbPayload);
-                console.log('Save tournament result:', result);
 
                 if (result.success) {
                     return {
@@ -81,7 +78,6 @@ export async function handler(event, context) {
                         headers
                     };
                 } else {
-                    console.error('Tournament save failed:', result.message);
                     return {
                         statusCode: 500,
                         body: JSON.stringify({ message: result.message }),
@@ -89,7 +85,6 @@ export async function handler(event, context) {
                     };
                 }
             } catch (error) {
-                console.error('Error in POST tournament:', error);
                 return {
                     statusCode: 500,
                     body: JSON.stringify({ message: 'Error saving tournament', error: error.message }),
@@ -105,18 +100,9 @@ export async function handler(event, context) {
                 // Public: fetch a specific tournament by ID (no session required)
                 const tournament = await getTournament(tournamentId);
                 if (tournament) {
-                    // Parse tournament_data if it's a string
-                    let parsedTournament = { ...tournament };
-                    if (parsedTournament.tournament_data && typeof parsedTournament.tournament_data === 'string') {
-                        try {
-                            parsedTournament.tournament_data = JSON.parse(parsedTournament.tournament_data);
-                        } catch (e) {
-                            console.error('Error parsing tournament_data:', e);
-                        }
-                    }
                     return {
                         statusCode: 200,
-                        body: JSON.stringify(parsedTournament),
+                        body: JSON.stringify(tournament),
                         headers
                     };
                 } else {
@@ -138,7 +124,6 @@ export async function handler(event, context) {
                                 try {
                                     tournamentData = JSON.parse(tournamentData);
                                 } catch (e) {
-                                    console.error('Error parsing tournament_data', e);
                                     tournamentData = null;
                                 }
                             }
@@ -162,7 +147,6 @@ export async function handler(event, context) {
                         headers
                     };
                 } catch (error) {
-                    console.error('Error getting tournaments:', error);
                     return {
                         statusCode: 200,
                         body: JSON.stringify([]),
@@ -234,7 +218,6 @@ export async function handler(event, context) {
             headers
         };
     } catch (error) {
-        console.error('Error in tournaments function:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ message: 'Internal Server Error', error: error.message }),

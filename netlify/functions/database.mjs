@@ -11,8 +11,6 @@ export { sql };
 // Database schema initialization
 export async function initializeDatabase() {
   try {
-    console.log('Starting database initialization...');
-    
     // Create players table with registration session support
     await sql`
       CREATE TABLE IF NOT EXISTS players (
@@ -83,7 +81,7 @@ export async function initializeDatabase() {
     try {
       await sql`ALTER TABLE masterlist ADD COLUMN IF NOT EXISTS discordid VARCHAR(255) DEFAULT NULL`;
     } catch (error) {
-      console.warn('Could not add discordid column to masterlist table:', error.message);
+      // Ignore if already exists
     }
 
     // Create registration_settings table
@@ -205,7 +203,7 @@ export async function initializeDatabase() {
     try {
       await sql`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS admin_user_id VARCHAR(255)`;
     } catch (error) {
-      console.warn('Could not add admin_user_id column to tournaments table:', error.message);
+      // Ignore if already exists
     }
 
     // Insert default registration settings if table is empty
@@ -251,11 +249,6 @@ export async function initializeDatabase() {
           true
         )
       `;
-      
-      console.log('🔐 Default admin users created with secure passwords:');
-      console.log('   • superadmin / SuperAdmin123!');
-      console.log('   • admin / Admin123!');
-      console.log('⚠️  Please change these passwords after first login!');
     }
 
     // Create optimal indexes for performance
@@ -280,10 +273,7 @@ export async function initializeDatabase() {
       // Ignore if already exists
     }
     
-    console.log('Database initialization completed successfully');
-
   } catch (error) {
-    console.error('Error initializing database:', error);
     throw error;
   }
 }
@@ -291,8 +281,6 @@ export async function initializeDatabase() {
 // Create basic database indexes for performance
 async function createBasicIndexes() {
   try {
-    console.log('Creating basic database indexes...');
-    
     // Players table indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_players_session ON players(registration_session_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_players_dota2id ON players(dota2id)`;
@@ -316,10 +304,7 @@ async function createBasicIndexes() {
     await sql`CREATE INDEX IF NOT EXISTS idx_tournaments_team_set ON tournaments(team_set_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_tournaments_active ON tournaments(is_active)`;
     
-    console.log('Basic database indexes created successfully');
-    
   } catch (error) {
-    console.error('Error creating indexes:', error);
     // Don't throw error as indexes might already exist
   }
 }
@@ -385,7 +370,6 @@ export async function getPlayers(registrationSessionId = null, presentOnly = fal
 
     return players;
   } catch (error) {
-    console.error('Error getting players:', error);
     throw error;
   }
 }
@@ -405,9 +389,6 @@ export async function addPlayer(player) {
     
     // Check if player already exists in the same registration session
     if (player.registrationSessionId) {
-      console.log('[addPlayer] Checking for duplicates in session:', player.registrationSessionId);
-      console.log('[addPlayer] Checking name:', player.name, 'and dota2id:', player.dota2id);
-      
       // Check for name duplicates first
       const nameExisting = await sql`
         SELECT id, name FROM players 
@@ -416,7 +397,6 @@ export async function addPlayer(player) {
       `;
       
       if (nameExisting.length > 0) {
-        console.log('[addPlayer] Name duplicate found:', player.name);
         throw new Error(`A player with the name "${player.name}" is already registered in this tournament`);
       }
       
@@ -428,15 +408,11 @@ export async function addPlayer(player) {
       `;
       
       if (dota2idExisting.length > 0) {
-        console.log('[addPlayer] Dota 2 ID duplicate found:', player.dota2id);
         throw new Error(`A player with the Dota 2 ID "${player.dota2id}" is already registered in this tournament`);
       }
       
     } else {
       // Legacy check for players without session (global scope)
-      console.log('[addPlayer] Checking for global duplicates (no session)');
-      console.log('[addPlayer] Checking name:', player.name, 'and dota2id:', player.dota2id);
-      
       // Check for name duplicates first
       const nameExisting = await sql`
         SELECT id, name FROM players 
@@ -445,7 +421,6 @@ export async function addPlayer(player) {
       `;
       
       if (nameExisting.length > 0) {
-        console.log('[addPlayer] Global name duplicate found:', player.name);
         throw new Error(`A player with the name "${player.name}" is already registered`);
       }
       
@@ -457,21 +432,18 @@ export async function addPlayer(player) {
       `;
       
       if (dota2idExisting.length > 0) {
-        console.log('[addPlayer] Global Dota 2 ID duplicate found:', player.dota2id);
         throw new Error(`A player with the Dota 2 ID "${player.dota2id}" is already registered`);
       }
     }
     
     // Check if player with same discordId is already registered in this session
     if (player.discordId) {
-      console.log('[addPlayer] Checking for duplicate discordId:', player.discordId, 'in session:', player.registrationSessionId);
       const discordExisting = await sql`
         SELECT id FROM players 
         WHERE discordid = ${player.discordId} 
         AND registration_session_id = ${player.registrationSessionId || null}
       `;
       if (discordExisting.length > 0) {
-        console.warn('[addPlayer] Duplicate discordId found:', player.discordId, 'in session:', player.registrationSessionId);
         throw new Error(`A player with the Discord account "${player.discordId}" is already registered in this tournament`);
       }
     }
@@ -492,7 +464,6 @@ export async function addPlayer(player) {
 
     return await getPlayers(player.registrationSessionId);
   } catch (error) {
-    console.error('Error adding player:', error);
     throw error;
   }
 }
@@ -541,7 +512,6 @@ export async function updatePlayer(playerId, updates) {
 
     return await getPlayers(sessionId);
   } catch (error) {
-    console.error('Error updating player:', error);
     throw error;
   }
 }
@@ -562,7 +532,6 @@ export async function deletePlayer(playerId) {
 
     return await getPlayers(sessionId);
   } catch (error) {
-    console.error('Error deleting player:', error);
     throw error;
   }
 }
@@ -600,7 +569,6 @@ export async function savePlayers(players) {
 
     return await getPlayers();
   } catch (error) {
-    console.error('Error saving players:', error);
     throw error;
   }
 }
@@ -646,7 +614,6 @@ export async function getPlayersForAdmin(adminUserId, includeSessionInfo = false
       return players;
     }
   } catch (error) {
-    console.error('Error getting players for admin:', error);
     throw error;
   }
 }
@@ -666,7 +633,6 @@ export async function getMasterlist() {
 
     return masterlist;
   } catch (error) {
-    console.error('Error getting masterlist:', error);
     throw error;
   }
 }
@@ -697,7 +663,6 @@ export async function saveMasterlist(masterlist) {
 
     return await getMasterlist();
   } catch (error) {
-    console.error('Error saving masterlist:', error);
     throw error;
   }
 }
@@ -706,24 +671,9 @@ export async function addMasterlistPlayer(player) {
   try {
     await initializeDatabase();
 
-    // Debug logging
-    console.log('addMasterlistPlayer called with:', {
-      player: player,
-      name: player.name,
-      nameType: typeof player.name,
-      nameLength: player.name ? player.name.length : 'null',
-      nameTrimmed: player.name ? player.name.trim() : 'null',
-      nameTrimmedLength: player.name ? player.name.trim().length : 'null'
-    });
-
     // Enhanced validation - consistent with bulk import
     const trimmedName = player.name ? player.name.trim() : '';
     if (!trimmedName || trimmedName.length < 2) {
-      console.log('Name validation failed:', {
-        hasName: !!player.name,
-        nameType: typeof player.name,
-        nameTrimLength: player.name ? player.name.trim().length : 'null'
-      });
       throw new Error('Player must have a valid name (at least 2 characters)');
     }
     
@@ -757,12 +707,6 @@ export async function addMasterlistPlayer(player) {
       
       // If player exists and has Discord ID, update it
       if (player.discordid && existing.dota2id === trimmedDota2Id) {
-        console.log('🔄 Updating existing masterlist player with Discord ID:', {
-          existingId: existing.id,
-          existingDiscordId: existing.discordid,
-          newDiscordId: player.discordid
-        });
-        
         const updateResult = await sql`
           UPDATE masterlist 
           SET 
@@ -771,7 +715,6 @@ export async function addMasterlistPlayer(player) {
           WHERE id = ${existing.id}
         `;
         
-        console.log('✅ Updated masterlist player with Discord ID');
         return await getMasterlist();
       }
       
@@ -790,12 +733,8 @@ export async function addMasterlistPlayer(player) {
       RETURNING *
     `;
     
-    console.log('✅ Added new player to masterlist with Discord ID:', player.discordid || 'none');
-
     return await getMasterlist();
   } catch (error) {
-    console.error('Error adding masterlist player:', error);
-    
     // Handle database constraint errors
     if (error.message && error.message.includes('unique constraint')) {
       if (error.message.includes('dota2id')) {
@@ -878,12 +817,8 @@ export async function updateMasterlistPlayer(playerId, updates) {
       throw new Error('Player not found in masterlist');
     }
     
-    console.log('✅ Updated masterlist player with Discord ID:', discordid || 'none');
-
     return await getMasterlist();
   } catch (error) {
-    console.error('Error updating masterlist player:', error);
-    
     // Handle database constraint errors
     if (error.message && error.message.includes('unique constraint')) {
       if (error.message.includes('dota2id')) {
@@ -915,7 +850,6 @@ export async function deleteMasterlistPlayer(playerId) {
 
     return await getMasterlist();
   } catch (error) {
-    console.error('Error deleting masterlist player:', error);
     throw error;
   }
 }
@@ -962,7 +896,6 @@ export async function getRegistrationSettings() {
       autoClose: setting.auto_close || false
     };
   } catch (error) {
-    console.error('Error getting registration settings:', error);
     throw error;
   }
 }
@@ -991,7 +924,6 @@ export async function saveRegistrationSettings(settings) {
 
     return await getRegistrationSettings();
   } catch (error) {
-    console.error('Error saving registration settings:', error);
     throw error;
   }
 }
@@ -1023,7 +955,6 @@ export async function createRegistrationSession(adminUserId, adminUsername, sess
     
     return { success: true, sessionId };
   } catch (error) {
-    console.error('Error creating registration session:', error);
     return { success: false, message: 'Error creating registration session' };
   }
 }
@@ -1080,7 +1011,6 @@ export async function getRegistrationSessions(adminUserId = null) {
       startTime: session.start_time
     }));
   } catch (error) {
-    console.error('Error getting registration sessions:', error);
     throw error;
   }
 }
@@ -1124,7 +1054,6 @@ export async function getRegistrationSessionBySessionId(sessionId) {
       startTime: session.start_time
     };
   } catch (error) {
-    console.error('Error getting registration session:', error);
     return null;
   }
 }
@@ -1140,11 +1069,6 @@ export async function updateRegistrationSession(sessionId, updates) {
     if (updates.isActive !== undefined) updateFields.is_active = updates.isActive;
     if (updates.expiresAt !== undefined) updateFields.expires_at = updates.expiresAt;
     if (updates.startTime !== undefined) updateFields.start_time = updates.startTime;
-
-    // DEBUG LOGGING
-    console.log('[updateRegistrationSession] Received updates:', updates);
-    console.log('[updateRegistrationSession] Final updateFields:', updateFields);
-    // END DEBUG LOGGING
 
     if (Object.keys(updateFields).length === 0) {
       return { success: false, message: 'No fields to update' };
@@ -1172,7 +1096,6 @@ export async function updateRegistrationSession(sessionId, updates) {
     
     return { success: true };
   } catch (error) {
-    console.error('Error updating registration session:', error);
     return { success: false, message: 'Error updating registration session' };
   }
 }
@@ -1189,7 +1112,6 @@ export async function deleteRegistrationSession(sessionId) {
     
     return { success: true };
   } catch (error) {
-    console.error('Error deleting registration session:', error);
     return { success: false, message: 'Error deleting registration session' };
   }
 }
@@ -1206,7 +1128,6 @@ export async function incrementRegistrationPlayerCount(sessionId) {
     
     return { success: true };
   } catch (error) {
-    console.error('Error incrementing player count:', error);
     return { success: false, message: 'Error updating player count' };
   }
 }
@@ -1225,7 +1146,6 @@ export async function createSession(sessionId, userId, role, expiresAt) {
 
     return true;
   } catch (error) {
-    console.error('Error creating session:', error);
     throw error;
   }
 }
@@ -1233,8 +1153,6 @@ export async function createSession(sessionId, userId, role, expiresAt) {
 export async function validateSession(sessionId) {
   try {
     await initializeDatabase();
-    
-    console.log('Validating session:', sessionId, 'at', new Date().toISOString());
     
     // Use NOW() without timezone comparison to avoid timezone issues
     const sessions = await sql`
@@ -1244,8 +1162,6 @@ export async function validateSession(sessionId) {
       WHERE s.id = ${sessionId} AND u.is_active = true
     `;
     
-    console.log('Found sessions:', sessions.length);
-    
     if (sessions.length > 0) {
       const session = sessions[0];
       const now = new Date();
@@ -1253,15 +1169,10 @@ export async function validateSession(sessionId) {
       
       // Validate date parsing
       if (isNaN(expiresAt.getTime())) {
-        console.error('Invalid session expiry date:', session.expires_at);
         // Clean up invalid session
         await sql`DELETE FROM admin_sessions WHERE id = ${sessionId}`;
         return { valid: false, reason: 'invalid_date' };
       }
-      
-      console.log('Session expires at:', expiresAt.toISOString());
-      console.log('Current time:', now.toISOString());
-      console.log('Session valid:', expiresAt > now);
       
       // Check if session is expired
       if (expiresAt > now) {
@@ -1274,17 +1185,14 @@ export async function validateSession(sessionId) {
           fullName: session.full_name
         };
       } else {
-        console.log('Session expired, cleaning up...');
         // Clean up expired session
         await sql`DELETE FROM admin_sessions WHERE id = ${sessionId}`;
         return { valid: false, reason: 'expired' };
       }
     }
     
-    console.log('No session found with ID:', sessionId);
     return { valid: false, reason: 'not_found' };
   } catch (error) {
-    console.error('Error validating session:', error);
     return { valid: false, reason: 'error', error: error.message };
   }
 }
@@ -1300,7 +1208,6 @@ export async function deleteSession(sessionId) {
 
     return true;
   } catch (error) {
-    console.error('Error deleting session:', error);
     throw error;
   }
 }
@@ -1387,10 +1294,7 @@ export const masterlistDb = {
 // Admin user management functions
 export async function authenticateUser(username, password) {
   try {
-    console.log('Authenticating user:', username);
-    
     await initializeDatabase();
-    console.log('Database initialized successfully');
     
     // Input validation
     if (!username || !password) {
@@ -1409,11 +1313,8 @@ export async function authenticateUser(username, password) {
       WHERE username = ${username} AND is_active = true
     `;
     
-    console.log('Query result:', users);
-    
     if (users.length > 0) {
       const user = users[0];
-      console.log('User found:', user.username, 'Role:', user.role);
       
       // Secure password verification using bcrypt
       let isPasswordValid = false;
@@ -1464,7 +1365,6 @@ export async function authenticateUser(username, password) {
     console.log('No user found with username:', username);
     return { success: false, message: 'Invalid username or password' };
   } catch (error) {
-    console.error('Error authenticating user:', error);
     return { success: false, message: 'Authentication error: ' + error.message };
   }
 }
@@ -1489,7 +1389,6 @@ export async function getAdminUsers() {
       createdAt: user.created_at
     }));
   } catch (error) {
-    console.error('Error getting admin users:', error);
     throw error;
   }
 }
@@ -1519,7 +1418,6 @@ export async function createAdminUser(userData) {
     
     return { success: true, userId };
   } catch (error) {
-    console.error('Error creating admin user:', error);
     if (error.message.includes('duplicate key')) {
       return { success: false, message: 'Username already exists' };
     }
@@ -1586,7 +1484,6 @@ export async function updateAdminUser(userId, updates) {
     
     return { success: true };
   } catch (error) {
-    console.error('Error updating admin user:', error);
     if (error.message.includes('duplicate key')) {
       return { success: false, message: 'Username already exists' };
     }
@@ -1623,7 +1520,6 @@ export async function deleteAdminUser(userId) {
     
     return { success: true };
   } catch (error) {
-    console.error('Error deleting admin user:', error);
     return { success: false, message: 'Error deleting user' };
   }
 }
@@ -1631,8 +1527,6 @@ export async function deleteAdminUser(userId) {
 // Teams management operations
 export async function saveTeamConfiguration(adminUserId, adminUsername, teamData) {
   try {
-    console.log(`[DB] Saving team config for admin: ${adminUserId} (${adminUsername})`);
-    
     await initializeDatabase();
     
     const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -1650,19 +1544,14 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
       )
     `;
     
-    console.log(`[DB] Team config saved successfully with ID: ${teamSetId}`);
     return { success: true, teamSetId };
   } catch (error) {
-    console.error('[DB] Error saving team configuration:', error);
-    
     // If it's a table not found error, try to reinitialize the database
     if (error.message && (error.message.includes('relation "teams" does not exist') || 
                          error.message.includes('table') || 
                          error.message.includes('does not exist'))) {
-      console.log('[DB] Teams table does not exist - reinitializing');
       try {
         await initializeDatabase();
-        console.log('[DB] Reinitialized - retrying save');
         
         const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         await sql`
@@ -1678,10 +1567,8 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
           )
         `;
         
-        console.log(`[DB] Team config saved successfully on retry with ID: ${teamSetId}`);
         return { success: true, teamSetId };
       } catch (retryError) {
-        console.error('[DB] Error on retry:', retryError);
         return { success: false, message: 'Database initialization failed' };
       }
     }
@@ -1696,22 +1583,18 @@ export async function getTeamConfigurations(adminUserId = null) {
     
     let teams;
     if (adminUserId) {
-      console.log(`[DB] Getting team configs for admin_user_id: ${adminUserId}`);
       teams = await sql`
         SELECT DISTINCT ON (team_set_id) * FROM teams 
         WHERE admin_user_id = ${adminUserId} AND is_active = true
         ORDER BY team_set_id, created_at DESC
       `;
     } else {
-      console.log(`[DB] Getting all active team configs (no admin_user_id provided)`);
       teams = await sql`
         SELECT DISTINCT ON (team_set_id) * FROM teams 
         WHERE is_active = true
         ORDER BY team_set_id, created_at DESC
       `;
     }
-    
-    console.log(`[DB] Found ${teams.length} unique team configurations matching query.`);
     
     const mappedTeams = teams.map(team => {
       let parsedTeams = [];
@@ -1720,7 +1603,7 @@ export async function getTeamConfigurations(adminUserId = null) {
           try {
             parsedTeams = JSON.parse(team.teams_data);
           } catch (e) {
-            console.error(`[DB] Failed to parse teams_data string for teamSetId ${team.team_set_id}:`, e);
+            // Ignore if parsing fails
           }
         } else if (typeof team.teams_data === 'object') {
           parsedTeams = team.teams_data;
@@ -1750,7 +1633,6 @@ export async function getTeamConfigurations(adminUserId = null) {
 
     return mappedTeams;
   } catch (error) {
-    console.error('[DB] CRITICAL: Error getting team configurations:', error);
     return []; // Return empty on error to prevent frontend crash
   }
 }
@@ -1776,7 +1658,7 @@ export async function getTeamConfigurationById(teamSetId) {
         try {
           parsedTeams = JSON.parse(team.teams_data);
         } catch (e) {
-          console.error(`[DB] Failed to parse teams_data string for teamSetId ${team.team_set_id}:`, e);
+          // Ignore if parsing fails
         }
       } else if (typeof team.teams_data === 'object') {
         parsedTeams = team.teams_data;
@@ -1800,7 +1682,6 @@ export async function getTeamConfigurationById(teamSetId) {
       updatedAt: team.updated_at
     };
   } catch (error) {
-    console.error('Error getting team configuration:', error);
     return null;
   }
 }
@@ -1835,7 +1716,6 @@ export async function updateTeamConfiguration(teamSetId, updates) {
     
     return { success: true };
   } catch (error) {
-    console.error('Error updating team configuration:', error);
     return { success: false, message: 'Error updating team configuration' };
   }
 }
@@ -1852,7 +1732,6 @@ export async function deleteTeamConfiguration(teamSetId) {
     
     return { success: true };
   } catch (error) {
-    console.error('Error deleting team configuration:', error);
     return { success: false, message: 'Error deleting team configuration' };
   }
 }
@@ -1860,15 +1739,12 @@ export async function deleteTeamConfiguration(teamSetId) {
 // Tournament Bracket operations
 export async function saveTournament(tournamentData) {
   try {
-    console.log('[DB] Starting saveTournament with data:', JSON.stringify(tournamentData, null, 2));
-    
     await initializeDatabase();
     
     const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
 
     // Validate input
     if (!id || !tournament_data) {
-      console.error('[DB] Missing required fields:', { id, hasTournamentData: !!tournament_data });
       return { success: false, message: 'Tournament ID and data are required.' };
     }
 
@@ -1879,12 +1755,9 @@ export async function saveTournament(tournamentData) {
     } else if (typeof tournament_data === 'string') {
       tournamentDataString = tournament_data;
     } else {
-      console.error('[DB] Invalid tournament_data type:', typeof tournament_data);
       return { success: false, message: 'Tournament data must be an object or string.' };
     }
 
-
-    console.log('[DB] Tournament data string length:', tournamentDataString.length);
 
     const result = await sql`
       INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
@@ -1896,19 +1769,14 @@ export async function saveTournament(tournamentData) {
         updated_at = NOW()
     `;
 
-    console.log('[DB] Tournament saved successfully:', result);
     return { success: true, id };
   } catch (error) {
-    console.error('[DB] Error saving tournament:', error);
-    
     // Check if it's a table not found error
     if (error.message && (error.message.includes('relation "tournaments" does not exist') || 
                          error.message.includes('table') || 
                          error.message.includes('does not exist'))) {
-      console.log('[DB] Tournaments table does not exist - reinitializing');
       try {
         await initializeDatabase();
-        console.log('[DB] Reinitialized - retrying save');
         
         const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
         let tournamentDataString = typeof tournament_data === 'object' ? JSON.stringify(tournament_data) : tournament_data;
@@ -1923,10 +1791,8 @@ export async function saveTournament(tournamentData) {
             updated_at = NOW()
         `;
         
-        console.log('[DB] Tournament saved successfully on retry:', result);
         return { success: true, id };
       } catch (retryError) {
-        console.error('[DB] Error on retry:', retryError);
         return { success: false, message: 'Database initialization failed: ' + retryError.message };
       }
     }
@@ -1944,7 +1810,6 @@ export async function deleteTournament(tournamentId) {
     `;
     return { success: true };
   } catch (error) {
-    console.error('Error deleting tournament:', error);
     return { success: false, message: 'Error deleting tournament' };
   }
 }
@@ -1968,7 +1833,6 @@ export async function getTournament(tournamentId) {
     `;
     return result.length > 0 ? result[0] : null;
   } catch (error) {
-    console.error(`Error fetching tournament ${tournamentId}:`, error);
     // Return null instead of throwing to prevent 500 errors
     return null;
   }
@@ -1999,25 +1863,19 @@ export async function getTournaments(adminUserId = null) {
     if (error.message && (error.message.includes('relation "tournaments" does not exist') || 
                          error.message.includes('table') || 
                          error.message.includes('does not exist'))) {
-      console.warn('Tournaments table does not exist, returning empty array.');
       return [];
     }
-    console.error('Error fetching tournaments:', error);
-    // Return empty array instead of throwing to prevent 500 errors
     return [];
   }
 }
 
 // Discord Webhooks CRUD
 export async function getDiscordWebhooks(adminUserId) {
-  await initializeDatabase();
   return await sql`SELECT type, url, template FROM discord_webhooks WHERE admin_user_id = ${adminUserId}`;
 }
 
 export async function setDiscordWebhook(adminUserId, type, url, template = null) {
-  await initializeDatabase();
-  
-  const result = await sql`
+  await sql`
     INSERT INTO discord_webhooks (admin_user_id, type, url, template, created_at, updated_at)
     VALUES (${adminUserId}, ${type}, ${url}, ${template}, NOW(), NOW())
     ON CONFLICT (admin_user_id, type)
@@ -2028,7 +1886,6 @@ export async function setDiscordWebhook(adminUserId, type, url, template = null)
 }
 
 export async function deleteDiscordWebhook(adminUserId, type) {
-  await initializeDatabase();
   await sql`DELETE FROM discord_webhooks WHERE admin_user_id = ${adminUserId} AND type = ${type}`;
   return true;
 }
@@ -2042,7 +1899,6 @@ export async function deleteAllPlayersForSession(sessionId) {
     await sql`DELETE FROM players WHERE registration_session_id = ${sessionId}`;
     return { success: true, message: 'All players deleted for session', sessionId };
   } catch (error) {
-    console.error('Error deleting all players for session:', error);
     throw error;
   }
 }
@@ -2067,7 +1923,6 @@ export async function getPlayerById(playerId) {
     
     return players.length > 0 ? players[0] : null;
   } catch (error) {
-    console.error('Error getting player by ID:', error);
     throw error;
   }
 }

@@ -43,18 +43,14 @@ function fetchWithAuth(url, options = {}) {
  */
 async function initTeamBalancer() {
     try {
-        console.log('🚀 Team Balancer: Starting initialization...');
-        
         // Set up event listeners
         setupTeamBalancerEventListeners();
         
         // Load initial data
         await loadTeamBalancerData();
         
-        console.log('✅ Team Balancer: Initialization complete');
         return true;
     } catch (error) {
-        console.error('❌ Team Balancer: Error in initTeamBalancer:', error);
         window.showNotification('Error initializing team balancer', 'error');
         return false;
     }
@@ -68,8 +64,6 @@ async function loadTeamBalancerData() {
     window.isTeamBalancerLoading = true;
     
     try {
-        console.log('🔄 Team Balancer: Loading data...');
-        
         // Load registration sessions
         await loadRegistrationSessions();
         
@@ -78,9 +72,7 @@ async function loadTeamBalancerData() {
             await loadPlayersForBalancer();
         }
         
-        console.log('✅ Team Balancer: Data loaded successfully');
     } catch (error) {
-        console.error('❌ Team Balancer: Error loading data:', error);
         window.showNotification('Error loading team balancer data', 'error');
     } finally {
         window.isTeamBalancerLoading = false;
@@ -91,12 +83,8 @@ async function loadTeamBalancerData() {
  * Cleanup function for team balancer when switching tabs - Simplified
  */
 function cleanupTeamBalancer() {
-    console.log('Team Balancer: Starting cleanup...');
-    
     // Simple cleanup - just reset loading flag
     window.isTeamBalancerLoading = false;
-    
-    console.log('Team Balancer: Cleanup completed');
 }
 
 /**
@@ -298,11 +286,9 @@ async function loadRegistrationSessions() {
             window.teamBalancerData.registrationSessions = data.sessions;
             updateSessionSelector();
         } else {
-            console.error('Team Balancer: Failed to process sessions. Data received:', data);
             window.showNotification(data.message || 'Failed to load registration sessions', 'error');
         }
     } catch (error) {
-        console.error('Error loading registration sessions in Team Balancer:', error);
         window.showNotification('An error occurred while loading tournaments.', 'error');
     }
 }
@@ -475,10 +461,8 @@ async function loadPlayersForBalancer() {
                 }
                 
                 if (window.teamBalancerData.availablePlayers.length === 0) {
-                    window.showNotification('No players found in selected tournament', 'info');
                     window.lastLoadedTeamBalancerCount = 0;
                 } else if (window.teamBalancerData.availablePlayers.length !== window.lastLoadedTeamBalancerCount) {
-                    window.showNotification(`Loaded ${window.teamBalancerData.availablePlayers.length} players from tournament`, 'success');
                     window.lastLoadedTeamBalancerCount = window.teamBalancerData.availablePlayers.length;
                 }
                 
@@ -487,7 +471,6 @@ async function loadPlayersForBalancer() {
                     window.enableOnlyNavigationTab('team-balancer-tab', 'bi bi-people-fill me-2');
                 }
             } else {
-                console.error('Failed to load players:', data.message || 'Unknown error');
                 window.showNotification(data.message || 'Failed to load players', 'error');
                 window.teamBalancerData.availablePlayers = [];
                 displayPlayersForBalancer([]);
@@ -498,7 +481,6 @@ async function loadPlayersForBalancer() {
                 }
             }
         } catch (fetchError) {
-            console.error('Network error loading players:', fetchError);
             window.showNotification('Network error loading players', 'error');
             
             // Enable the tab even if network error occurred
@@ -512,7 +494,6 @@ async function loadPlayersForBalancer() {
         }
 
     } catch (error) {
-        console.error('Error in loadPlayersForBalancer:', error);
         window.showNotification('Error loading players', 'error');
         
         // Enable the tab even if there was a general error
@@ -530,14 +511,11 @@ function displayPlayersForBalancer(players) {
     const playerCountElement = document.getElementById('player-count');
     
     if (!playersList) {
-        console.warn('Players list container not found - DOM may not be fully loaded yet');
         // Try again after a short delay if DOM isn't ready
         setTimeout(() => {
             const retryPlayersList = document.getElementById('player-list');
             if (retryPlayersList) {
                 displayPlayersForBalancer(players);
-            } else {
-                console.error('Players list container still not found after retry');
             }
         }, 100);
         return;
@@ -655,7 +633,6 @@ function autoBalance() {
         // Auto-correct the input field if capped
         if (capped && numTeamsInput) {
             numTeamsInput.value = numTeams;
-            window.showNotification(`Number of teams adjusted to ${numTeams} based on available players and team size.`, 'info');
         }
 
         // Calculate how many players are needed for the requested number of teams
@@ -699,13 +676,6 @@ function autoBalance() {
             const existingReserveIds = new Set((window.teamBalancerData.reservedPlayers || []).map(p => p.id));
             const newReserves = allReserves.filter(p => !existingReserveIds.has(p.id));
             window.teamBalancerData.reservedPlayers = [...(window.teamBalancerData.reservedPlayers || []), ...newReserves];
-            window.showNotification(`${allReserves.length} player(s) moved to reserved list`, 'info');
-        } else {
-            // No reserve players, all players are in teams
-            const playersUsedInTeams = window.teamBalancerData.balancedTeams.flatMap(team => team.players);
-            const playerIdsInTeams = new Set(playersUsedInTeams.map(p => p.id));
-            window.teamBalancerData.availablePlayers = allPlayers.filter(p => playerIdsInTeams.has(p.id));
-            // reservedPlayers remain unchanged
         }
 
         // Update all displays at once (much more efficient)
@@ -721,22 +691,7 @@ function autoBalance() {
         };
 
         const methodName = methodNames[balanceMethod] || balanceMethod;
-        window.showNotification(`Created ${numTeams} balanced teams using ${methodName}!`, 'success');
-        
-        // Update the teams display header to show the method used
-        const teamsContainer = document.getElementById('teams-display');
-        if (teamsContainer && teamsContainer.firstElementChild) {
-            const headerElement = teamsContainer.querySelector('.col-12 h5, .col-12 .h5');
-            if (headerElement) {
-                headerElement.innerHTML = `
-                    <i class="bi bi-people-fill me-2"></i>
-                    Balanced Teams (${numTeams}) - ${methodName}
-                `;
-            }
-        }
-
     } catch (error) {
-        console.error('Error in auto balance:', error);
         window.showNotification('Error creating balanced teams', 'error');
     } finally {
         // Reset execution guard and ensure button is re-enabled
@@ -1275,7 +1230,6 @@ async function saveTeams() {
             throw new Error(result.message || 'Failed to save teams');
         }
     } catch (error) {
-        console.error('Error saving teams:', error);
         window.showNotification(`Error: ${error.message}`, 'error');
     } finally {
         window.isTeamBalancerLoading = false;
@@ -1407,7 +1361,6 @@ async function deleteTournamentSession(sessionId, buttonElement) {
         }
 
     } catch (error) {
-        console.error('Error deleting tournament session:', error);
         window.showNotification(error.message, 'error');
         buttonElement.disabled = false;
         buttonElement.innerHTML = '<i class="bi bi-trash"></i>';
@@ -1488,7 +1441,6 @@ async function loadTeams() {
             bsModal.hide();
         };
     } catch (error) {
-        console.error('Error loading teams:', error);
         window.showNotification('Error loading saved teams.', 'error');
     } finally {
         window.isTeamBalancerLoading = false;
@@ -1503,7 +1455,6 @@ function formatDateWithTimezone(dateString) {
     try {
         const date = new Date(dateString);
         if (isNaN(date.getTime())) {
-            console.warn('Invalid date string in formatDateWithTimezone:', dateString);
             return 'Invalid date';
         }
         
@@ -1519,7 +1470,6 @@ function formatDateWithTimezone(dateString) {
         
         return date.toLocaleString(undefined, options);
     } catch (error) {
-        console.error('Error formatting date with timezone:', error, dateString);
         return 'Invalid date';
     }
 }

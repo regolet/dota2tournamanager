@@ -14,20 +14,16 @@
     // Simple session validation with caching
     async function validateCurrentSession() {
         try {
-            console.log('🔐 SessionManager: Starting validateCurrentSession...');
-            
             // Check cache first
             const now = Date.now();
             if (sessionCache.sessionId && 
                 sessionCache.userData && 
                 (now - sessionCache.lastValidation) < sessionCache.cacheExpiry) {
-                console.log('✅ SessionManager: Using cached session data');
                 return true;
             }
 
             // Prevent concurrent validation
             if (sessionCache.validationInProgress) {
-                console.log('⏳ SessionManager: Validation already in progress, waiting...');
                 while (sessionCache.validationInProgress) {
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
@@ -42,19 +38,13 @@
             
             // Reduced wait time for login redirect
             if (fromLogin) {
-                console.log('🔐 SessionManager: Coming from login redirect, waiting 500ms...');
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
             
             // Get session ID with single attempt (localStorage is usually immediate)
             const sessionId = localStorage.getItem("adminSessionId");
-            console.log('🔐 SessionManager: Session ID check:', {
-                hasSessionId: !!sessionId,
-                sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'null'
-            });
             
             if (!sessionId) {
-                console.error('❌ SessionManager: No session ID found');
                 if (!fromLogin) {
                     redirectToLogin();
                 }
@@ -67,13 +57,11 @@
             const isRecentLogin = loginTimestamp && (now - parseInt(loginTimestamp)) < 5000; // 5 second grace period
             
             if (isRecentLogin) {
-                console.log('🔐 SessionManager: Recent login detected, waiting 300ms...');
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
 
             // Single validation attempt with shorter timeout
             try {
-                console.log('🔐 SessionManager: Validating session...');
                 const response = await fetch("/.netlify/functions/check-session", {
                     headers: {
                         "x-session-id": sessionId
@@ -93,34 +81,29 @@
                         try {
                             localStorage.setItem("adminUser", JSON.stringify(data.user));
                             localStorage.removeItem("adminLoginTimestamp");
-                            console.log('✅ SessionManager: Session validated and cached');
                         } catch (e) {
-                            console.error('❌ SessionManager: Error storing user info:', e);
+                            // Silent fail
                         }
                         
                         sessionCache.validationInProgress = false;
                         return true;
                     } else {
-                        console.warn('⚠️ SessionManager: Session validation failed:', data);
                         redirectToLogin();
                         sessionCache.validationInProgress = false;
                         return false;
                     }
                 } else {
-                    console.warn('⚠️ SessionManager: HTTP error:', response.status, response.statusText);
                     redirectToLogin();
                     sessionCache.validationInProgress = false;
                     return false;
                 }
             } catch (fetchError) {
-                console.error('❌ SessionManager: Fetch error:', fetchError);
                 redirectToLogin();
                 sessionCache.validationInProgress = false;
                 return false;
             }
             
         } catch (error) {
-            console.error('❌ SessionManager: Critical error in validateCurrentSession:', error);
             sessionCache.validationInProgress = false;
             redirectToLogin();
             return false;
@@ -179,7 +162,6 @@
                 }
                 return sessionId;
             } catch (e) {
-                console.error('❌ SessionManager: Error in getSessionId:', e);
                 return null;
             }
         },
@@ -196,7 +178,6 @@
                 }
                 return userData;
             } catch (error) {
-                console.error('❌ SessionManager: Error in getUser:', error);
                 return {};
             }
         },
@@ -206,8 +187,6 @@
         },
         logout: () => {
             try {
-                console.log('🔐 SessionManager: Logging out user...');
-                
                 // Clear cache
                 sessionCache.sessionId = null;
                 sessionCache.userData = null;
@@ -220,12 +199,9 @@
                 localStorage.removeItem("adminSessionExpires");
                 localStorage.removeItem("adminLoginTimestamp");
                 
-                console.log('✅ SessionManager: Logout completed, redirecting to login...');
-                
                 // Redirect to login page
                 window.location.href = "/admin/login.html";
             } catch (e) {
-                console.error('❌ SessionManager: Error during logout:', e);
                 // Fallback redirect
                 window.location.href = "/admin/login.html";
             }

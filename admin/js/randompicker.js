@@ -1,4 +1,3 @@
-console.log('=== RANDOM PICKER DEBUG VERSION 1 ===');
 // Random Picker with Registration Session Support
 (function() {
     'use strict';
@@ -176,8 +175,6 @@ let pickerHistory = [];
  */
 async function initRandomPicker() {
     try {
-        console.log('🎲 Random Picker: Starting initialization...');
-        
         // Always re-initialize when called (for tab switching)
         // Reset state to ensure fresh start
         state.currentSessionId = null;
@@ -194,8 +191,6 @@ async function initRandomPicker() {
         await loadRegistrationSessions();
         setupRandomPickerEventListeners();
         setupRandomPickerRegistrationListener();
-        
-        console.log('✅ Random Picker: Initialization complete');
     } catch (error) {
         console.error('❌ Random Picker: Error initializing:', error);
         window.showNotification('Failed to initialize random picker', 'error');
@@ -211,7 +206,6 @@ async function createRandomPickerSessionSelector() {
     const sessionSelector = document.getElementById('picker-session-selector');
     if (sessionSelector) {
         sessionSelector.innerHTML = '<option value="">Choose a tournament...</option>';
-        console.log('Random Picker session selector found and ready');
     } else {
         console.error('Random Picker session selector not found in HTML');
     }
@@ -236,7 +230,6 @@ async function loadRegistrationSessions() {
         }
         
         const data = await apiResponse.json();
-        console.log('API data received in Random Picker:', data);
 
         if (data && data.success && Array.isArray(data.sessions)) {
             registrationSessions = data.sessions;
@@ -255,7 +248,6 @@ async function loadRegistrationSessions() {
  * Update the session selector dropdown
  */
 function updateSessionSelector() {
-    console.log('updateSessionSelector called. registrationSessions:', registrationSessions);
     const selector = document.getElementById('picker-session-selector');
     if (!selector) {
         console.error('Random Picker session selector not found');
@@ -279,15 +271,11 @@ function updateSessionSelector() {
         selector.appendChild(option);
     });
 
-    console.log('updateSessionSelector finished. Selector options:', selector.innerHTML);
-
     // Auto-select the latest (most recent) tournament if available
     if (sortedSessions.length > 0) {
         const latestSession = sortedSessions[0];
         selector.value = latestSession.sessionId;
         currentSessionId = latestSession.sessionId;
-        console.log('Auto-selected tournament for Random Picker:', latestSession.title, 'ID:', latestSession.sessionId);
-        // Trigger change event so handler runs
         selector.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
         console.log('No tournaments available for Random Picker');
@@ -519,15 +507,12 @@ async function loadPlayersForPicker() {
         }
 
         const data = await response.json();
-        console.log('Random Picker API Response:', data); // Debug logging
 
         if (data.success && Array.isArray(data.players)) {
             availablePlayers = data.players.filter(player => 
                 player.name && 
                 player.name.trim() !== ''
             );
-
-            console.log('Filtered players for Random Picker:', availablePlayers); // Debug logging
 
             displayPlayersForPicker(availablePlayers);
     
@@ -1439,8 +1424,6 @@ window.showExcludedPlayersModal = showExcludedPlayersModal;
  * Cleanup function for random picker when switching tabs
  */
 function cleanupRandomPicker() {
-    console.log('🧹 Random Picker: Starting cleanup...');
-    
     // Clear any ongoing operations
     if (state.pickerTimer) {
         clearTimeout(state.pickerTimer);
@@ -1498,8 +1481,6 @@ function cleanupRandomPicker() {
     if (existingModal) {
         existingModal.remove();
     }
-    
-    console.log('🧹 Random Picker: Cleanup complete');
 }
 
 /**
