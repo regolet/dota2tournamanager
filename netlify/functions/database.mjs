@@ -199,7 +199,7 @@ export async function initializeDatabase() {
       )
     `;
 
-    // Create banned_players table for player banning system
+    // Create banned_players table for player banning system (consolidated)
     await sql`
       CREATE TABLE IF NOT EXISTS banned_players (
         id SERIAL PRIMARY KEY,
@@ -208,13 +208,19 @@ export async function initializeDatabase() {
         reason TEXT NOT NULL,
         banned_by VARCHAR(255) NOT NULL,
         banned_by_username VARCHAR(255) NOT NULL,
-        ban_type VARCHAR(50) DEFAULT 'permanent',
+        ban_type VARCHAR(50) NOT NULL DEFAULT 'permanent',
         expires_at TIMESTAMP,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(dota2id)
       )
     `;
+    
+    // Create indexes for banned_players table
+    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_dota2id ON banned_players(dota2id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_active ON banned_players(is_active)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_expires ON banned_players(expires_at)`;
 
     // Add admin_user_id column to tournaments table if it doesn't exist (for backward compatibility)
     try {
@@ -290,29 +296,6 @@ export async function initializeDatabase() {
       // Ignore if already exists
     }
     
-    // Create banned_players table for player banning system
-    await sql`
-      CREATE TABLE IF NOT EXISTS banned_players (
-        id SERIAL PRIMARY KEY,
-        dota2id VARCHAR(255) NOT NULL,
-        player_name VARCHAR(255) NOT NULL,
-        reason TEXT NOT NULL,
-        banned_by VARCHAR(255) NOT NULL,
-        banned_by_username VARCHAR(255) NOT NULL,
-        ban_type VARCHAR(50) NOT NULL DEFAULT 'permanent',
-        expires_at TIMESTAMP,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(dota2id)
-      )
-    `;
-    
-    // Create indexes for banned_players table
-    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_dota2id ON banned_players(dota2id)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_active ON banned_players(is_active)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_banned_players_expires ON banned_players(expires_at)`;
-    
   } catch (error) {
     throw error;
   }
@@ -352,10 +335,6 @@ async function createBasicIndexes() {
 // Tournament-scoped player operations
 export async function getPlayers(registrationSessionId = null, presentOnly = false, limit = 1000) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
     let players;
     if (registrationSessionId) {
       // Get players for specific registration session
@@ -419,88 +398,70 @@ export async function getPlayers(registrationSessionId = null, presentOnly = fal
   }
 }
 
+// Helper function for player validation
+async function validatePlayerRegistration(player, registrationSessionId) {
+  const sessionId = registrationSessionId || player.registrationSessionId;
+  
+  // Check if player is banned
+  if (player.dota2id) {
+    const isBanned = await isPlayerBanned(player.dota2id, player.adminUserId);
+    if (isBanned) {
+      throw new Error('This player is banned and cannot register for tournaments');
+    }
+  }
+  
+  // Check for duplicates in the same session
+  const whereClause = sessionId ? 
+    `WHERE registration_session_id = ${sessionId}` : 
+    `WHERE registration_session_id IS NULL`;
+  
+  // Check for name duplicates
+  const nameExisting = await sql`
+    SELECT id, name FROM players 
+    WHERE name = ${player.name} 
+    AND registration_session_id = ${sessionId || null}
+  `;
+  
+  if (nameExisting.length > 0) {
+    throw new Error(`A player with the name "${player.name}" is already registered${sessionId ? ' in this tournament' : ''}`);
+  }
+  
+  // Check for Dota 2 ID duplicates
+  const dota2idExisting = await sql`
+    SELECT id, dota2id FROM players 
+    WHERE dota2id = ${player.dota2id} 
+    AND registration_session_id = ${sessionId || null}
+  `;
+  
+  if (dota2idExisting.length > 0) {
+    throw new Error(`A player with the Dota 2 ID "${player.dota2id}" is already registered${sessionId ? ' in this tournament' : ''}`);
+  }
+  
+  // Check for Discord ID duplicates
+  if (player.discordId) {
+    const discordExisting = await sql`
+      SELECT id FROM players 
+      WHERE discordid = ${player.discordId} 
+      AND registration_session_id = ${sessionId || null}
+    `;
+    if (discordExisting.length > 0) {
+      throw new Error(`A player with the Discord account "${player.discordId}" is already registered${sessionId ? ' in this tournament' : ''}`);
+    }
+  }
+}
+
 export async function addPlayer(player) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
     if (!player.name) {
       throw new Error('Player must have a name');
     }
     
-    // Check if player is banned
-    if (player.dota2id) {
-      const isBanned = await isPlayerBanned(player.dota2id, player.adminUserId);
-      if (isBanned) {
-        throw new Error('This player is banned and cannot register for tournaments');
-      }
-    }
+    // Validate player registration
+    await validatePlayerRegistration(player, player.registrationSessionId);
     
     // Generate ID if not provided
     if (!player.id) {
       player.id = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    }
-    
-    // Check if player already exists in the same registration session
-    if (player.registrationSessionId) {
-      // Check for name duplicates first
-      const nameExisting = await sql`
-        SELECT id, name FROM players 
-        WHERE name = ${player.name} 
-        AND registration_session_id = ${player.registrationSessionId}
-      `;
-      
-      if (nameExisting.length > 0) {
-        throw new Error(`A player with the name "${player.name}" is already registered in this tournament`);
-      }
-      
-      // Check for Dota 2 ID duplicates
-      const dota2idExisting = await sql`
-        SELECT id, dota2id FROM players 
-        WHERE dota2id = ${player.dota2id} 
-        AND registration_session_id = ${player.registrationSessionId}
-      `;
-      
-      if (dota2idExisting.length > 0) {
-        throw new Error(`A player with the Dota 2 ID "${player.dota2id}" is already registered in this tournament`);
-      }
-      
-    } else {
-      // Legacy check for players without session (global scope)
-      // Check for name duplicates first
-      const nameExisting = await sql`
-        SELECT id, name FROM players 
-        WHERE name = ${player.name} 
-        AND registration_session_id IS NULL
-      `;
-      
-      if (nameExisting.length > 0) {
-        throw new Error(`A player with the name "${player.name}" is already registered`);
-      }
-      
-      // Check for Dota 2 ID duplicates
-      const dota2idExisting = await sql`
-        SELECT id, dota2id FROM players 
-        WHERE dota2id = ${player.dota2id} 
-        AND registration_session_id IS NULL
-      `;
-      
-      if (dota2idExisting.length > 0) {
-        throw new Error(`A player with the Dota 2 ID "${player.dota2id}" is already registered`);
-      }
-    }
-    
-    // Check if player with same discordId is already registered in this session
-    if (player.discordId) {
-      const discordExisting = await sql`
-        SELECT id FROM players 
-        WHERE discordid = ${player.discordId} 
-        AND registration_session_id = ${player.registrationSessionId || null}
-      `;
-      if (discordExisting.length > 0) {
-        throw new Error(`A player with the Discord account "${player.discordId}" is already registered in this tournament`);
-      }
     }
     
     await sql`
@@ -525,10 +486,6 @@ export async function addPlayer(player) {
 
 export async function updatePlayer(playerId, updates) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
     if (!playerId) {
       throw new Error('Player ID is required');
     }
@@ -575,10 +532,6 @@ export async function updatePlayer(playerId, updates) {
 
 export async function deletePlayer(playerId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
     if (!playerId) {
       throw new Error('Player ID is required');
     }
@@ -598,10 +551,6 @@ export async function deletePlayer(playerId) {
 // Legacy function for backward compatibility
 export async function savePlayers(players) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
     if (!Array.isArray(players)) {
       throw new Error('Players must be an array');
     }
@@ -637,10 +586,6 @@ export async function savePlayers(players) {
 // Helper function to get players for a specific admin's sessions
 export async function getPlayersForAdmin(adminUserId, includeSessionInfo = false, limit = 1000) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
     if (includeSessionInfo) {
       const players = await sql`
         SELECT 
@@ -686,11 +631,6 @@ export async function getPlayersForAdmin(adminUserId, includeSessionInfo = false
 // Masterlist operations
 export async function getMasterlist() {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
-    
     const masterlist = await sql`
       SELECT id, name, dota2id, mmr, team, achievements, notes, created_at, updated_at
       FROM masterlist 
@@ -706,11 +646,6 @@ export async function getMasterlist() {
 
 export async function saveMasterlist(masterlist) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
-    
     if (!Array.isArray(masterlist)) {
       throw new Error('Masterlist must be an array');
     }
@@ -736,36 +671,38 @@ export async function saveMasterlist(masterlist) {
   }
 }
 
+// Helper function for masterlist player validation
+function validateMasterlistPlayer(player, isUpdate = false, playerId = null) {
+  const trimmedName = player.name ? player.name.trim() : '';
+  if (!trimmedName || trimmedName.length < 2) {
+    throw new Error('Player must have a valid name (at least 2 characters)');
+  }
+  
+  if (trimmedName.length > 50) {
+    throw new Error('Player name too long (max 50 characters)');
+  }
+  
+  const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
+  if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
+    throw new Error('Player must have a valid Dota 2 ID (6-20 digits)');
+  }
+  
+  // MMR validation
+  if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
+    throw new Error('Player must have a valid MMR (0-20000)');
+  }
+  
+  // Notes validation
+  if (player.notes && player.notes.length > 500) {
+    throw new Error('Player notes too long (max 500 characters)');
+  }
+  
+  return { trimmedName, trimmedDota2Id };
+}
+
 export async function addMasterlistPlayer(player) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
-    // Enhanced validation - consistent with bulk import
-    const trimmedName = player.name ? player.name.trim() : '';
-    if (!trimmedName || trimmedName.length < 2) {
-      throw new Error('Player must have a valid name (at least 2 characters)');
-    }
-    
-    if (trimmedName.length > 50) {
-      throw new Error('Player name too long (max 50 characters)');
-    }
-    
-    const trimmedDota2Id = player.dota2id ? player.dota2id.trim() : '';
-    if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
-      throw new Error('Player must have a valid Dota 2 ID (6-20 digits)');
-    }
-    
-    // MMR validation
-    if (typeof player.mmr !== 'number' || isNaN(player.mmr) || player.mmr < 0 || player.mmr > 20000) {
-      throw new Error('Player must have a valid MMR (0-20000)');
-    }
-    
-    // Notes validation
-    if (player.notes && player.notes.length > 500) {
-      throw new Error('Player notes too long (max 500 characters)');
-    }
+    const { trimmedName, trimmedDota2Id } = validateMasterlistPlayer(player);
     
     // Check if player already exists
     const existingPlayer = await sql`
@@ -823,37 +760,7 @@ export async function addMasterlistPlayer(player) {
 
 export async function updateMasterlistPlayer(playerId, updates) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
-    // Get default values from current record if not provided
-    const { name, dota2id, mmr, team, achievements, notes, discordid } = updates;
-    
-    // Enhanced validation - consistent with bulk import
-    const trimmedName = name ? name.trim() : '';
-    if (!trimmedName || trimmedName.length < 2) {
-      throw new Error('Player must have a valid name (at least 2 characters)');
-    }
-    
-    if (trimmedName.length > 50) {
-      throw new Error('Player name too long (max 50 characters)');
-    }
-    
-    const trimmedDota2Id = dota2id ? dota2id.trim() : '';
-    if (!trimmedDota2Id || !/^\d{6,20}$/.test(trimmedDota2Id)) {
-      throw new Error('Player must have a valid Dota 2 ID (6-20 digits)');
-    }
-    
-    // MMR validation
-    if (typeof mmr !== 'number' || isNaN(mmr) || mmr < 0 || mmr > 20000) {
-      throw new Error('Player must have a valid MMR (0-20000)');
-    }
-    
-    // Notes validation
-    if (notes && notes.length > 500) {
-      throw new Error('Player notes too long (max 500 characters)');
-    }
+    const { trimmedName, trimmedDota2Id } = validateMasterlistPlayer(updates, true, playerId);
     
     // Check if another player already exists with same dota2id or name
     const existingPlayer = await sql`
@@ -877,11 +784,11 @@ export async function updateMasterlistPlayer(playerId, updates) {
       SET 
         name = ${trimmedName},
         dota2id = ${trimmedDota2Id},
-        mmr = ${mmr || 0},
-        team = ${team || ''},
-        achievements = ${achievements || ''},
-        notes = ${notes || ''},
-        discordid = ${discordid || null},
+        mmr = ${updates.mmr || 0},
+        team = ${updates.team || ''},
+        achievements = ${updates.achievements || ''},
+        notes = ${updates.notes || ''},
+        discordid = ${updates.discordid || null},
         updated_at = NOW()
       WHERE id = ${parseInt(playerId)}
     `;
@@ -895,9 +802,9 @@ export async function updateMasterlistPlayer(playerId, updates) {
     // Handle database constraint errors
     if (error.message && error.message.includes('unique constraint')) {
       if (error.message.includes('dota2id')) {
-        throw new Error(`A player with Dota 2 ID "${dota2id}" already exists in the masterlist.`);
+        throw new Error(`A player with Dota 2 ID "${updates.dota2id}" already exists in the masterlist.`);
       } else if (error.message.includes('name')) {
-        throw new Error(`A player with name "${name}" already exists in the masterlist.`);
+        throw new Error(`A player with name "${updates.name}" already exists in the masterlist.`);
       } else {
         throw new Error('A player with this information already exists in the masterlist.');
       }
@@ -909,11 +816,6 @@ export async function updateMasterlistPlayer(playerId, updates) {
 
 export async function deleteMasterlistPlayer(playerId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
-    
     const result = await sql`
       DELETE FROM masterlist WHERE id = ${parseInt(playerId)}
     `;
@@ -932,11 +834,6 @@ export async function deleteMasterlistPlayer(playerId) {
 // Registration settings operations
 export async function getRegistrationSettings() {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
-    
     const settings = await sql`
       SELECT is_open, tournament_name, tournament_date, max_players, expiry, closed_at, auto_close, created_at, updated_at
       FROM registration_settings 
@@ -979,11 +876,6 @@ export async function getRegistrationSettings() {
 
 export async function saveRegistrationSettings(settings) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-
-    
     // Delete existing settings and insert new ones
     await sql`DELETE FROM registration_settings`;
     
@@ -1010,10 +902,6 @@ export async function saveRegistrationSettings(settings) {
 // Registration session operations (for multi-admin registration links)
 export async function createRegistrationSession(adminUserId, adminUsername, sessionData) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     const sessionId = `reg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     await sql`
@@ -1042,10 +930,6 @@ export async function createRegistrationSession(adminUserId, adminUsername, sess
 
 export async function getRegistrationSessions(adminUserId = null) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     let sessions;
     if (adminUserId) {
       // Get sessions with actual player count from players table
@@ -1100,10 +984,6 @@ export async function getRegistrationSessions(adminUserId = null) {
 
 export async function getRegistrationSessionBySessionId(sessionId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     // Get session with actual player count from players table
     const sessions = await sql`
       SELECT rs.*, 
@@ -1145,10 +1025,6 @@ export async function getRegistrationSessionBySessionId(sessionId) {
 
 export async function updateRegistrationSession(sessionId, updates) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     const updateFields = {};
     if (updates.title !== undefined) updateFields.title = updates.title;
     if (updates.description !== undefined) updateFields.description = updates.description;
@@ -1189,10 +1065,6 @@ export async function updateRegistrationSession(sessionId, updates) {
 
 export async function deleteRegistrationSession(sessionId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     // Hard delete for superadmin
     await sql`
       DELETE FROM registration_sessions 
@@ -1207,10 +1079,6 @@ export async function deleteRegistrationSession(sessionId) {
 
 export async function incrementRegistrationPlayerCount(sessionId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     await sql`
       UPDATE registration_sessions 
       SET player_count = player_count + 1, updated_at = NOW() 
@@ -1226,10 +1094,6 @@ export async function incrementRegistrationPlayerCount(sessionId) {
 // Session management operations
 export async function createSession(sessionId, userId, role, expiresAt) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     await sql`
       INSERT INTO admin_sessions (id, user_id, role, expires_at)
       VALUES (${sessionId}, ${userId}, ${role}, ${expiresAt})
@@ -1245,10 +1109,6 @@ export async function createSession(sessionId, userId, role, expiresAt) {
 
 export async function validateSession(sessionId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     // Use NOW() without timezone comparison to avoid timezone issues
     const sessions = await sql`
       SELECT s.id, s.user_id, s.role, s.expires_at, u.username, u.full_name, u.is_active
@@ -1294,10 +1154,6 @@ export async function validateSession(sessionId) {
 
 export async function deleteSession(sessionId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     await sql`
       DELETE FROM admin_sessions WHERE id = ${sessionId}
     `;
@@ -1391,10 +1247,6 @@ export const masterlistDb = {
 // Admin user management functions
 export async function authenticateUser(username, password) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     // Input validation
     if (!username || !password) {
       return {
@@ -1470,10 +1322,6 @@ export async function authenticateUser(username, password) {
 
 export async function getAdminUsers() {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     const users = await sql`
       SELECT id, username, role, full_name, email, is_active, created_at
       FROM admin_users 
@@ -1494,20 +1342,32 @@ export async function getAdminUsers() {
   }
 }
 
-export async function createAdminUser(userData) {
-  try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
-    // Validate password strength
+// Helper function for admin user validation
+async function validateAdminUser(userData, isUpdate = false) {
+  // Validate password strength for new users or password updates
+  if (!isUpdate || userData.password) {
     const passwordValidation = validatePasswordStrength(userData.password);
     if (!passwordValidation.isValid) {
-      return { 
-        success: false, 
-        message: 'Password does not meet security requirements: ' + passwordValidation.messages.join(', ')
-      };
+      throw new Error('Password does not meet security requirements: ' + passwordValidation.messages.join(', '));
     }
+  }
+  
+  // Validate username
+  if (!userData.username || userData.username.length < 3 || userData.username.length > 50) {
+    throw new Error('Username must be between 3 and 50 characters');
+  }
+  
+  // Validate role
+  if (!userData.role || !['admin', 'superadmin'].includes(userData.role)) {
+    throw new Error('Role must be either "admin" or "superadmin"');
+  }
+  
+  return userData;
+}
+
+export async function createAdminUser(userData) {
+  try {
+    await validateAdminUser(userData);
     
     // Hash the password securely
     const hashedPassword = await hashPassword(userData.password);
@@ -1524,16 +1384,12 @@ export async function createAdminUser(userData) {
     if (error.message.includes('duplicate key')) {
       return { success: false, message: 'Username already exists' };
     }
-    return { success: false, message: 'Error creating user' };
+    return { success: false, message: error.message || 'Error creating user' };
   }
 }
 
 export async function updateAdminUser(userId, updates) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     // Check if user exists first
     const existingUser = await sql`
       SELECT id FROM admin_users WHERE id = ${userId}
@@ -1543,19 +1399,15 @@ export async function updateAdminUser(userId, updates) {
       return { success: false, message: 'User not found' };
     }
     
+    // Validate updates if password is being changed
+    if (updates.password) {
+      await validateAdminUser(updates, true);
+    }
+    
     // Build update query dynamically
     const updateFields = {};
     if (updates.username) updateFields.username = updates.username;
     if (updates.password) {
-      // Validate password strength
-      const passwordValidation = validatePasswordStrength(updates.password);
-      if (!passwordValidation.isValid) {
-        return { 
-          success: false, 
-          message: 'Password does not meet security requirements: ' + passwordValidation.messages.join(', ')
-        };
-      }
-      // Hash the new password
       updateFields.password_hash = await hashPassword(updates.password);
     }
     if (updates.role) updateFields.role = updates.role;
@@ -1592,16 +1444,12 @@ export async function updateAdminUser(userId, updates) {
     if (error.message.includes('duplicate key')) {
       return { success: false, message: 'Username already exists' };
     }
-    return { success: false, message: 'Error updating user' };
+    return { success: false, message: error.message || 'Error updating user' };
   }
 }
 
 export async function deleteAdminUser(userId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     // Don't allow deleting the last super admin
     const superAdmins = await sql`
       SELECT COUNT(*) as count FROM admin_users WHERE role = 'superadmin' AND is_active = true
@@ -1634,9 +1482,7 @@ export async function deleteAdminUser(userId) {
 // Teams management operations
 export async function saveTeamConfiguration(adminUserId, adminUsername, teamData) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
+    const validatedData = validateTeamData(teamData);
     
     const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -1646,10 +1492,10 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
         balance_method, total_teams, total_players, average_mmr, 
         registration_session_id, teams_data
       ) VALUES (
-        ${teamSetId}, ${adminUserId}, ${adminUsername}, ${teamData.title}, 
-        ${teamData.description || ''}, ${teamData.balanceMethod}, 
-        ${teamData.totalTeams}, ${teamData.totalPlayers}, ${teamData.averageMmr},
-        ${teamData.registrationSessionId || null}, ${JSON.stringify(teamData.teams)}
+        ${teamSetId}, ${adminUserId}, ${adminUsername}, ${validatedData.title}, 
+        ${validatedData.description || ''}, ${validatedData.balanceMethod}, 
+        ${validatedData.totalTeams}, ${validatedData.totalPlayers}, ${validatedData.averageMmr},
+        ${validatedData.registrationSessionId || null}, ${JSON.stringify(validatedData.teams)}
       )
     `;
     
@@ -1662,17 +1508,19 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
       try {
         await initializeDatabase();
         
+        const validatedData = validateTeamData(teamData);
         const teamSetId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
         await sql`
           INSERT INTO teams (
             team_set_id, admin_user_id, admin_username, title, description, 
             balance_method, total_teams, total_players, average_mmr, 
             registration_session_id, teams_data
           ) VALUES (
-            ${teamSetId}, ${adminUserId}, ${adminUsername}, ${teamData.title}, 
-            ${teamData.description || ''}, ${teamData.balanceMethod}, 
-            ${teamData.totalTeams}, ${teamData.totalPlayers}, ${teamData.averageMmr},
-            ${teamData.registrationSessionId || null}, ${JSON.stringify(teamData.teams)}
+            ${teamSetId}, ${adminUserId}, ${adminUsername}, ${validatedData.title}, 
+            ${validatedData.description || ''}, ${validatedData.balanceMethod}, 
+            ${validatedData.totalTeams}, ${validatedData.totalPlayers}, ${validatedData.averageMmr},
+            ${validatedData.registrationSessionId || null}, ${JSON.stringify(validatedData.teams)}
           )
         `;
         
@@ -1688,10 +1536,6 @@ export async function saveTeamConfiguration(adminUserId, adminUsername, teamData
 
 export async function getTeamConfigurations(adminUserId = null) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     let teams;
     if (adminUserId) {
       teams = await sql`
@@ -1750,10 +1594,6 @@ export async function getTeamConfigurations(adminUserId = null) {
 
 export async function getTeamConfigurationById(teamSetId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     const teams = await sql`
       SELECT * FROM teams 
       WHERE team_set_id = ${teamSetId} AND is_active = true
@@ -1801,10 +1641,6 @@ export async function getTeamConfigurationById(teamSetId) {
 
 export async function updateTeamConfiguration(teamSetId, updates) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     const updateFields = {};
     if (updates.title !== undefined) updateFields.title = updates.title;
     if (updates.description !== undefined) updateFields.description = updates.description;
@@ -1837,10 +1673,6 @@ export async function updateTeamConfiguration(teamSetId, updates) {
 
 export async function deleteTeamConfiguration(teamSetId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     // Hard delete for superadmin
     await sql`
       DELETE FROM teams 
@@ -1856,31 +1688,12 @@ export async function deleteTeamConfiguration(teamSetId) {
 // Tournament Bracket operations
 export async function saveTournament(tournamentData) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
-    const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
-
-    // Validate input
-    if (!id || !tournament_data) {
-      return { success: false, message: 'Tournament ID and data are required.' };
-    }
-
-    // Ensure tournament_data is properly stringified if it's an object
-    let tournamentDataString;
-    if (typeof tournament_data === 'object') {
-      tournamentDataString = JSON.stringify(tournament_data);
-    } else if (typeof tournament_data === 'string') {
-      tournamentDataString = tournament_data;
-    } else {
-      return { success: false, message: 'Tournament data must be an object or string.' };
-    }
-
+    const validatedData = validateTournamentData(tournamentData);
+    const { id, team_set_id, tournament_data, admin_user_id } = validatedData;
 
     const result = await sql`
       INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
-      VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournamentDataString}, NOW(), NOW())
+      VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournament_data}, NOW(), NOW())
       ON CONFLICT (id) 
       DO UPDATE SET
         tournament_data = EXCLUDED.tournament_data,
@@ -1897,12 +1710,12 @@ export async function saveTournament(tournamentData) {
       try {
         await initializeDatabase();
         
-        const { id, team_set_id, tournament_data, admin_user_id } = tournamentData;
-        let tournamentDataString = typeof tournament_data === 'object' ? JSON.stringify(tournament_data) : tournament_data;
+        const validatedData = validateTournamentData(tournamentData);
+        const { id, team_set_id, tournament_data, admin_user_id } = validatedData;
         
         const result = await sql`
           INSERT INTO tournaments (id, admin_user_id, team_set_id, tournament_data, created_at, updated_at)
-          VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournamentDataString}, NOW(), NOW())
+          VALUES (${id}, ${admin_user_id}, ${team_set_id}, ${tournament_data}, NOW(), NOW())
           ON CONFLICT (id) 
           DO UPDATE SET
             tournament_data = EXCLUDED.tournament_data,
@@ -1922,9 +1735,6 @@ export async function saveTournament(tournamentData) {
 
 export async function deleteTournament(tournamentId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
     await sql`
       DELETE FROM tournaments 
       WHERE id = ${tournamentId}
@@ -1937,10 +1747,6 @@ export async function deleteTournament(tournamentId) {
 
 export async function getTournament(tournamentId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     const result = await sql`
       SELECT 
         t.id, 
@@ -1963,10 +1769,6 @@ export async function getTournament(tournamentId) {
 
 export async function getTournaments(adminUserId = null) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     let result;
     if (adminUserId) {
       result = await sql`
@@ -2017,9 +1819,6 @@ export async function deleteDiscordWebhook(adminUserId, type) {
 
 export async function deleteAllPlayersForSession(sessionId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
     if (!sessionId) {
       throw new Error('Session ID is required');
     }
@@ -2033,10 +1832,6 @@ export async function deleteAllPlayersForSession(sessionId) {
 // Helper function to get a single player by ID
 export async function getPlayerById(playerId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
     const players = await sql`
       SELECT 
         p.id, 
@@ -2057,17 +1852,38 @@ export async function getPlayerById(playerId) {
 }
 
 // Banning System Functions
+// Helper function for ban data validation
+function validateBanData(banData) {
+  const { dota2id, playerName, reason, bannedBy, bannedByUsername, banType = 'permanent', expiresAt = null } = banData;
+  
+  if (!dota2id || !playerName || !reason || !bannedBy || !bannedByUsername) {
+    throw new Error('Missing required fields for banning player');
+  }
+  
+  // Validate ban type
+  if (!['permanent', 'temporary'].includes(banType)) {
+    throw new Error('Ban type must be either "permanent" or "temporary"');
+  }
+  
+  // Validate expires_at for temporary bans
+  if (banType === 'temporary' && !expiresAt) {
+    throw new Error('Temporary bans must have an expiration date');
+  }
+  
+  if (banType === 'temporary' && expiresAt) {
+    const expiryDate = new Date(expiresAt);
+    if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+      throw new Error('Temporary ban expiration must be a valid future date');
+    }
+  }
+  
+  return banData;
+}
+
 export async function banPlayer(banData) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
-    
-    const { dota2id, playerName, reason, bannedBy, bannedByUsername, banType = 'permanent', expiresAt = null } = banData;
-    
-    if (!dota2id || !playerName || !reason || !bannedBy || !bannedByUsername) {
-      throw new Error('Missing required fields for banning player');
-    }
+    const validatedData = validateBanData(banData);
+    const { dota2id, playerName, reason, bannedBy, bannedByUsername, banType, expiresAt } = validatedData;
     
     // Check if player is already banned
     const existingBan = await sql`
@@ -2104,9 +1920,6 @@ export async function banPlayer(banData) {
 
 export async function unbanPlayer(dota2id, adminUserId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
     if (!dota2id || !adminUserId) {
       throw new Error('Dota2 ID and adminUserId are required');
     }
@@ -2126,9 +1939,6 @@ export async function unbanPlayer(dota2id, adminUserId) {
 
 export async function getBannedPlayers(adminUserId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
     // Return all currently banned players, not just those banned by the current admin
     const bannedPlayers = await sql`
       SELECT 
@@ -2146,9 +1956,6 @@ export async function getBannedPlayers(adminUserId) {
 
 export async function isPlayerBanned(dota2id, adminUserId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
     if (!dota2id || !adminUserId) return false;
     const ban = await sql`
       SELECT id, ban_type, expires_at 
@@ -2181,9 +1988,6 @@ export async function isPlayerBanned(dota2id, adminUserId) {
 
 export async function getBanHistory(dota2id = null, adminUserId) {
   try {
-    // Comment out all calls to await initializeDatabase() except in the initializeDatabase function itself
-    // (This disables redundant schema checks on every function call)
-    // await initializeDatabase();
     if (!adminUserId) throw new Error('adminUserId required');
     let query;
     if (dota2id) {
@@ -2210,4 +2014,40 @@ export async function getBanHistory(dota2id = null, adminUserId) {
   } catch (error) {
     throw error;
   }
+}
+
+// Helper function for team data validation
+function validateTeamData(teamData) {
+  if (!teamData.title || teamData.title.trim().length === 0) {
+    throw new Error('Team configuration must have a title');
+  }
+  
+  if (!teamData.teams || !Array.isArray(teamData.teams)) {
+    throw new Error('Team configuration must have valid teams data');
+  }
+  
+  if (!teamData.balanceMethod) {
+    throw new Error('Team configuration must specify a balance method');
+  }
+  
+  return teamData;
+}
+
+// Helper function for tournament data validation
+function validateTournamentData(tournamentData) {
+  if (!tournamentData.id || !tournamentData.tournament_data) {
+    throw new Error('Tournament ID and data are required.');
+  }
+  
+  // Ensure tournament_data is properly stringified if it's an object
+  let tournamentDataString;
+  if (typeof tournamentData.tournament_data === 'object') {
+    tournamentDataString = JSON.stringify(tournamentData.tournament_data);
+  } else if (typeof tournamentData.tournament_data === 'string') {
+    tournamentDataString = tournamentData.tournament_data;
+  } else {
+    throw new Error('Tournament data must be an object or string.');
+  }
+  
+  return { ...tournamentData, tournament_data: tournamentDataString };
 }

@@ -178,4 +178,12 @@
 /* Mobile responsive adjustments for ban management */
 @media (max-width: 767.98px) {
     /* Ban management mobile styles removed */
+}
+
+/* Add for bracket centering */
+.bracket-spacer {
+  height: 32px; /* Adjust as needed for your design */
+  background: transparent;
+  border: none;
+  pointer-events: none;
 } 

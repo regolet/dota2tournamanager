@@ -8,11 +8,39 @@ if (!window.playerListState) {
 
 // Player List Management with Registration Session Support
 
-let currentUser = null;
-let currentSessionId = null;
-let registrationSessions = [];
-let allPlayers = [];
-let lastLoadedPlayerCount = null;
+// Guard against redeclaration for SPA navigation
+if (typeof window.playerListCurrentUser === 'undefined') {
+    window.playerListCurrentUser = null;
+}
+if (typeof window.playerListCurrentSessionId === 'undefined') {
+    window.playerListCurrentSessionId = null;
+}
+if (typeof window.playerListRegistrationSessions === 'undefined') {
+    window.playerListRegistrationSessions = [];
+}
+if (typeof window.playerListAllPlayers === 'undefined') {
+    window.playerListAllPlayers = [];
+}
+if (typeof window.playerListLastLoadedPlayerCount === 'undefined') {
+    window.playerListLastLoadedPlayerCount = null;
+}
+
+// Use the global variables to avoid redeclaration
+if (typeof currentUser === 'undefined') {
+    var currentUser = window.playerListCurrentUser;
+}
+if (typeof currentSessionId === 'undefined') {
+    var currentSessionId = window.playerListCurrentSessionId;
+}
+if (typeof registrationSessions === 'undefined') {
+    var registrationSessions = window.playerListRegistrationSessions;
+}
+if (typeof allPlayers === 'undefined') {
+    var allPlayers = window.playerListAllPlayers;
+}
+if (typeof lastLoadedPlayerCount === 'undefined') {
+    var lastLoadedPlayerCount = window.playerListLastLoadedPlayerCount;
+}
 
 // Add fetchWithAuth function if not already available
 if (typeof fetchWithAuth === 'undefined') {
@@ -93,13 +121,17 @@ async function initPlayerList() {
     try {
         // Always re-initialize when called (for tab switching)
         // Reset state to ensure fresh start
-        currentSessionId = null;
-        registrationSessions = [];
-        allPlayers = [];
-        lastLoadedPlayerCount = null;
+        window.playerListCurrentSessionId = null;
+        window.playerListRegistrationSessions = [];
+        window.playerListAllPlayers = [];
+        window.playerListLastLoadedPlayerCount = null;
+        
+        // Sync local variables with global ones
+        syncLocalVariables();
         
         // Get current user info from session manager
         currentUser = window.sessionManager?.getUserInfo();
+        window.playerListCurrentUser = currentUser;
         
         // Create session selector UI
         await createSessionSelector();
@@ -115,6 +147,44 @@ async function initPlayerList() {
     } catch (error) {
         console.error('❌ Player List: Error initializing:', error);
         window.showNotification('Failed to initialize player list module', 'error');
+    }
+}
+
+/**
+ * Sync local variables with global ones
+ */
+function syncLocalVariables() {
+    currentSessionId = window.playerListCurrentSessionId;
+    registrationSessions = window.playerListRegistrationSessions;
+    allPlayers = window.playerListAllPlayers;
+    lastLoadedPlayerCount = window.playerListLastLoadedPlayerCount;
+}
+
+/**
+ * Update both local and global variables
+ */
+function updateVariable(name, value) {
+    switch(name) {
+        case 'currentSessionId':
+            currentSessionId = value;
+            window.playerListCurrentSessionId = value;
+            break;
+        case 'registrationSessions':
+            registrationSessions = value;
+            window.playerListRegistrationSessions = value;
+            break;
+        case 'allPlayers':
+            allPlayers = value;
+            window.playerListAllPlayers = value;
+            break;
+        case 'lastLoadedPlayerCount':
+            lastLoadedPlayerCount = value;
+            window.playerListLastLoadedPlayerCount = value;
+            break;
+        case 'currentUser':
+            currentUser = value;
+            window.playerListCurrentUser = value;
+            break;
     }
 }
 
@@ -265,7 +335,7 @@ async function loadRegistrationSessions() {
         const data = await fetchWithAuth('/.netlify/functions/registration-sessions');
 
         if (data && data.success && data.sessions) {
-            registrationSessions = data.sessions;
+            updateVariable('registrationSessions', data.sessions);
             updateSessionSelector();
         } else {
             window.showNotification(data.message || 'Failed to load registration sessions', 'error');
@@ -305,7 +375,7 @@ function updateSessionSelector() {
     if (sortedSessions.length > 0) {
         const latestSession = sortedSessions[0];
         selector.value = latestSession.sessionId;
-        currentSessionId = latestSession.sessionId;
+        updateVariable('currentSessionId', latestSession.sessionId);
         // Trigger change event so handler runs
         selector.dispatchEvent(new Event('change', { bubbles: true }));
     }
@@ -319,7 +389,7 @@ function setupEventListeners() {
     const sessionSelector = document.getElementById('session-selector');
     if (sessionSelector) {
         sessionSelector.addEventListener('change', async (e) => {
-            currentSessionId = e.target.value || null;
+            updateVariable('currentSessionId', e.target.value || null);
             await loadPlayers();
         });
     }
@@ -414,7 +484,7 @@ async function loadPlayers(forceRefresh = false) {
         const data = await fetchWithAuth(apiUrl);
 
         if (data.success && Array.isArray(data.players)) {
-            allPlayers = data.players;
+            updateVariable('allPlayers', data.players);
             displayPlayers(allPlayers);
             
             // Update player count badge
@@ -423,10 +493,10 @@ async function loadPlayers(forceRefresh = false) {
             }
             if (allPlayers.length !== lastLoadedPlayerCount) {
                 window.showNotification(`Loaded ${allPlayers.length} players`, 'success');
-                lastLoadedPlayerCount = allPlayers.length;
+                updateVariable('lastLoadedPlayerCount', allPlayers.length);
             }
         } else {
-            allPlayers = [];
+            updateVariable('allPlayers', []);
             displayPlayers([]);
             
             if (sessionPlayerCount) {
@@ -1121,11 +1191,11 @@ window.cleanupPlayerList = cleanupPlayerList;
  * Cleanup function for player list when switching tabs
  */
 function cleanupPlayerList() {
-    // Reset state variables
-    currentSessionId = null;
-    registrationSessions = [];
-    allPlayers = [];
-    lastLoadedPlayerCount = null;
+    // Reset state variables using the update function
+    updateVariable('currentSessionId', null);
+    updateVariable('registrationSessions', []);
+    updateVariable('allPlayers', []);
+    updateVariable('lastLoadedPlayerCount', null);
     
     // Clear DOM content
     const playersTableBody = document.getElementById('players-table-body');
