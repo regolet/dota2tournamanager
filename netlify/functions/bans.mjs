@@ -85,6 +85,14 @@ async function handleGet(queryParams, userId) {
           body: JSON.stringify({ success: true, banned })
         };
       }
+    } else if (history === 'true') {
+      // Get full ban history for all players
+      const banHistory = await getBanHistory(null, userId);
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: true, data: banHistory })
+      };
     } else {
       // Get all currently banned players for this admin
       const bannedPlayers = await getBannedPlayers(userId);
