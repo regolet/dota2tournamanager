@@ -202,4 +202,13 @@ The system integrates with Dota 2 player data:
 
 **Live Demo**: [maplescurse.netlify.app](https://maplescurse.netlify.app)
 
-**Admin Panel**: [maplescurse.netlify.app/admin](https://maplescurse.netlify.app/admin) 
+**Admin Panel**: [maplescurse.netlify.app/admin](https://maplescurse.netlify.app/admin)
+
+## Database Schema Initialization
+
+After deploying or when making schema changes, run the Netlify function `/init-db` (or use the `init-db.mjs` script) to set up or migrate the database schema. This avoids unnecessary schema checks on every API call and improves performance.
+
+- In development, you can call this endpoint manually or via a browser/curl.
+- In production, only run this when you deploy new features that require schema changes.
+
+**Do NOT call `initializeDatabase()` on every function invocation in production.** 

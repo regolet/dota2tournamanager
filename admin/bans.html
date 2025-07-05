@@ -1,79 +1,124 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player Ban Management - Tournament Admin</title>
-    <link rel="stylesheet" href="css/mobile.css">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Player Ban Management</h1>
-            <nav id="mainNav">
-                <button onclick="loadModule('registration')">Registration</button>
-                <button onclick="loadModule('player-list')">Player List</button>
-                <button onclick="loadModule('team-balancer')">Team Balancer</button>
-                <button onclick="loadModule('tournament-bracket')">Tournament</button>
-                <button onclick="loadModule('attendance')">Attendance</button>
-                <button onclick="loadModule('discord')">Discord</button>
-                <button onclick="loadModule('bans')" class="active">Bans</button>
-                <button onclick="logout()">Logout</button>
-            </nav>
-        </header>
+<!-- Bans Management for Dota 2 Tournament Manager -->
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+          <i class="bi bi-slash-circle me-2"></i>Banned Players
+        </h2>
+        <button class="btn btn-danger d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#banModal">
+          <i class="bi bi-plus-circle me-2"></i>Add Ban
+        </button>
+      </div>
 
-        <main id="mainContent">
-            <div class="ban-management">
-                <div class="ban-section">
-                    <h2>Ban a Player</h2>
-                    <form id="banForm" class="ban-form">
-                        <div class="form-group">
-                            <label for="banDota2Id">Dota 2 ID:</label>
-                            <input type="text" id="banDota2Id" name="dota2id" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="banPlayerName">Player Name:</label>
-                            <input type="text" id="banPlayerName" name="playerName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="banReason">Reason:</label>
-                            <textarea id="banReason" name="reason" required rows="3"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="banType">Ban Type:</label>
-                            <select id="banType" name="banType">
-                                <option value="permanent">Permanent</option>
-                                <option value="temporary">Temporary</option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="expiresAtGroup" style="display: none;">
-                            <label for="banExpiresAt">Expires At:</label>
-                            <input type="datetime-local" id="banExpiresAt" name="expiresAt">
-                        </div>
-                        <button type="submit" class="btn btn-danger">Ban Player</button>
-                    </form>
-                </div>
-
-                <div class="ban-section">
-                    <h2>Currently Banned Players</h2>
-                    <div id="bannedPlayersList" class="banned-players">
-                        <div class="loading">Loading banned players...</div>
-                    </div>
-                </div>
-
-                <div class="ban-section">
-                    <h2>Ban History</h2>
-                    <div id="banHistoryList" class="ban-history">
-                        <div class="loading">Loading ban history...</div>
-                    </div>
-                </div>
-            </div>
-        </main>
+      <!-- Banned Players Table -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-slash-circle me-2"></i>Banned Players List
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="bannedPlayersTable">
+              <thead>
+                <tr>
+                  <th><i class="bi bi-person-badge me-1"></i>Dota 2 ID</th>
+                  <th><i class="bi bi-person me-1"></i>Player Name</th>
+                  <th><i class="bi bi-exclamation-circle me-1"></i>Reason</th>
+                  <th><i class="bi bi-shield-x me-1"></i>Ban Type</th>
+                  <th><i class="bi bi-clock-history me-1"></i>Expires</th>
+                  <th><i class="bi bi-person-lock me-1"></i>Banned By</th>
+                  <th><i class="bi bi-calendar-event me-1"></i>Banned On</th>
+                  <th><i class="bi bi-gear me-1"></i>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bannedPlayersList">
+                <tr>
+                  <td colspan="8" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Loading banned players...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <script src="js/navigation.js"></script>
-    <script src="js/security.js"></script>
-    <script src="js/bans.js"></script>
-</body>
-</html> 
+<!-- Ban Modal -->
+<div class="modal fade" id="banModal" tabindex="-1" aria-labelledby="banModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="banModalLabel">
+          <i class="bi bi-slash-circle me-2"></i>Add Player Ban
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="p-3 border-bottom bg-light">
+        <div class="mb-2 d-flex flex-column flex-md-row align-items-md-center gap-2">
+          <input type="text" class="form-control" id="playerSearchInput" placeholder="Search player by name or Dota 2 ID...">
+        </div>
+        <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle mb-0" id="playerSearchTable">
+            <thead>
+              <tr>
+                <th>Dota 2 ID</th>
+                <th>Player Name</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="playerSearchTableBody">
+              <tr><td colspan="3" class="text-center text-muted">Type to search for a player...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Pagination Controls -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <nav aria-label="Player search pagination">
+              <ul class="pagination justify-content-center mb-0" id="playerPagination">
+                <!-- Pagination will be populated by JavaScript -->
+              </ul>
+            </nav>
+          </div>
+        </div>
+        <hr class="my-4">
+      </div>
+      <form id="banForm" class="row g-3 p-3">
+        <div class="col-md-6">
+          <label for="banDota2Id" class="form-label">Dota 2 ID</label>
+          <input type="text" class="form-control" id="banDota2Id" name="dota2id" required>
+        </div>
+        <div class="col-md-6">
+          <label for="banPlayerName" class="form-label">Player Name</label>
+          <input type="text" class="form-control" id="banPlayerName" name="playerName" required>
+        </div>
+        <div class="col-12">
+          <label for="banReason" class="form-label">Reason</label>
+          <textarea class="form-control" id="banReason" name="reason" required rows="2"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label for="banType" class="form-label">Ban Type</label>
+          <select class="form-select" id="banType" name="banType">
+            <option value="permanent">Permanent</option>
+            <option value="temporary">Temporary</option>
+          </select>
+        </div>
+        <div class="col-md-6" id="expiresAtGroup" style="display: none;">
+          <label for="banExpiresAt" class="form-label">Expires At</label>
+          <input type="datetime-local" class="form-control" id="banExpiresAt" name="expiresAt">
+        </div>
+        <div class="col-12 d-grid">
+          <button type="submit" class="btn btn-primary btn-lg d-flex align-items-center justify-content-center w-100">
+            <i class="bi bi-slash-circle me-2"></i>Ban Player
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> 

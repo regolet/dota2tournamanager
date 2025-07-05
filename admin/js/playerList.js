@@ -406,7 +406,7 @@ async function loadPlayers(forceRefresh = false) {
         }
 
         // Build API URL with session filter
-        let apiUrl = '/.netlify/functions/api-players?includeSessionInfo=true';
+        let apiUrl = '/.netlify/functions/api-players?includeSessionInfo=true&limit=500';
         if (currentSessionId) {
             apiUrl += `&sessionId=${currentSessionId}`;
         }

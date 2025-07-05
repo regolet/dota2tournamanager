@@ -1,25 +1,45 @@
-import { banPlayer, unbanPlayer, getBannedPlayers, getBanHistory, isPlayerBanned } from './database.mjs';
-import { validateAdminSession } from './security-utils.mjs';
+import { banPlayer, unbanPlayer, getBannedPlayers, getBanHistory, isPlayerBanned, validateSession } from './database.mjs';
 
 export async function handler(event, context) {
   try {
     const { httpMethod, headers, queryStringParameters, body } = event;
     
+    // Log incoming request
+    console.log('--- BAN FUNCTION REQUEST ---');
+    console.log('Headers:', headers);
+    console.log('Query:', queryStringParameters);
+    console.log('Action:', httpMethod);
+
     // Validate admin session for all operations
-    const sessionValidation = await validateAdminSession(headers);
-    if (!sessionValidation.valid) {
+    const sessionId = headers['x-session-id'];
+    console.log('Extracted sessionId:', sessionId);
+    if (!sessionId) {
+      console.log('401: No session ID provided');
       return {
         statusCode: 401,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Unauthorized - Invalid or expired session' })
+        body: JSON.stringify({ error: 'Unauthorized - No session ID provided' })
+      };
+    }
+    
+    const sessionValidation = await validateSession(sessionId);
+    console.log('Session validation result:', sessionValidation);
+    
+    if (!sessionValidation.valid) {
+      console.log('401: Invalid or expired session', sessionValidation);
+      return {
+        statusCode: 401,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Unauthorized - Invalid or expired session', reason: sessionValidation.reason })
       };
     }
 
     const { userId, username } = sessionValidation;
+    console.log('Using admin userId for bans:', userId);
 
     switch (httpMethod) {
       case 'GET':
-        return await handleGet(queryStringParameters);
+        return await handleGet(queryStringParameters, userId);
       
       case 'POST':
         return await handlePost(JSON.parse(body || '{}'), userId, username);
@@ -43,14 +63,14 @@ export async function handler(event, context) {
   }
 }
 
-async function handleGet(queryParams) {
+async function handleGet(queryParams, userId) {
   try {
     const { dota2id, history } = queryParams;
     
     if (dota2id) {
       if (history === 'true') {
         // Get ban history for specific player
-        const banHistory = await getBanHistory(dota2id);
+        const banHistory = await getBanHistory(dota2id, userId);
         return {
           statusCode: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -58,7 +78,7 @@ async function handleGet(queryParams) {
         };
       } else {
         // Check if specific player is banned
-        const banned = await isPlayerBanned(dota2id);
+        const banned = await isPlayerBanned(dota2id, userId);
         return {
           statusCode: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -66,12 +86,12 @@ async function handleGet(queryParams) {
         };
       }
     } else {
-      // Get all currently banned players
-      const bannedPlayers = await getBannedPlayers();
+      // Get all currently banned players for this admin
+      const bannedPlayers = await getBannedPlayers(userId);
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ success: true, data: bannedPlayers })
+        body: JSON.stringify({ success: true, bannedPlayers })
       };
     }
   } catch (error) {
@@ -131,7 +151,7 @@ async function handleDelete(queryParams, userId, username) {
       };
     }
     
-    const unbanResult = await unbanPlayer(dota2id);
+    const unbanResult = await unbanPlayer(dota2id, userId);
     
     return {
       statusCode: 200,

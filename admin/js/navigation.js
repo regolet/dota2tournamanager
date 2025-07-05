@@ -637,6 +637,7 @@ function initNavigation() {
     const masterlistTab = document.getElementById('masterlist-tab');
     const discordTab = document.getElementById('discord-tab');
     const attendanceTab = document.getElementById('attendance-tab');
+    const bansTab = document.getElementById('bans-tab');
     
     if (teamBalancerTab) {
         teamBalancerTab.addEventListener('click', async function(e) {
@@ -719,6 +720,15 @@ function initNavigation() {
             } catch (error) {
                 // Silent error handling
             }
+        });
+    }
+    
+    if (bansTab) {
+        bansTab.addEventListener('click', async function(e) {
+            e.preventDefault();
+            navigationState.userHasInteracted = true;
+            await loadBans();
+            showWelcomeNotificationOnce();
         });
     }
 }
@@ -942,6 +952,21 @@ async function initializeModule(moduleFileName) {
                     console.log('✅ Navigation: Discord initialized');
                 } else {
                     console.error('❌ Navigation: initDiscord function not found');
+                }
+                break;
+                
+            case 'bans':
+                // Match Team Balancer: always cleanup, then init, no isInitialized logic
+                if (typeof window.cleanupBans === 'function') {
+                    console.log('🧹 Navigation: Cleaning up Bans module...');
+                    window.cleanupBans();
+                }
+                if (typeof window.initBans === 'function') {
+                    console.log('🚀 Navigation: Calling initBans...');
+                    await window.initBans();
+                    console.log('✅ Navigation: Bans initialized');
+                } else {
+                    console.error('❌ Navigation: initBans function not found');
                 }
                 break;
                 
@@ -1578,3 +1603,18 @@ async function loadBans() {
     });
     return result;
 }
+
+// Ensure all admin navigation links include sessionId if present
+(function updateAdminNavLinks() {
+  const sessionId = localStorage.getItem('sessionId') || sessionStorage.getItem('sessionId');
+  if (!sessionId) return;
+  const navLinks = document.querySelectorAll('nav a, .sidebar a, .admin-nav a');
+  navLinks.forEach(link => {
+    const href = link.getAttribute('href');
+    if (href && href.startsWith('/admin/') && !href.includes('sessionId=')) {
+      const url = new URL(href, window.location.origin);
+      url.searchParams.set('sessionId', sessionId);
+      link.setAttribute('href', url.pathname + url.search);
+    }
+  });
+})();

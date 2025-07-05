@@ -434,6 +434,8 @@ async function loadPlayersForBalancer() {
             }
             // Only show present players in Team Balancer
             apiUrl += '&presentOnly=true';
+            // Add limit to prevent timeout
+            apiUrl += '&limit=500';
 
             const response = await fetch(apiUrl, {
                 headers: {

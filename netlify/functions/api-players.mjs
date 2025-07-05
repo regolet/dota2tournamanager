@@ -13,9 +13,15 @@ import {
 } from './database.mjs';
 
 export const handler = async (event, context) => {
+  // Set a timeout for the function
+  const timeout = setTimeout(() => {
+    console.error('API Players function timed out');
+  }, 25000); // 25 second timeout
+
   try {
     // Handle CORS
     if (event.httpMethod === 'OPTIONS') {
+      clearTimeout(timeout);
       return {
         statusCode: 200,
         headers: {
@@ -35,6 +41,7 @@ export const handler = async (event, context) => {
       try {
         sessionValidation = await validateSession(sessionId);
         if (!sessionValidation.valid) {
+          clearTimeout(timeout);
           return {
             statusCode: 401,
             headers: {
@@ -49,6 +56,7 @@ export const handler = async (event, context) => {
         }
       } catch (error) {
         console.error('Session validation error:', error);
+        clearTimeout(timeout);
         return {
           statusCode: 401,
           headers: {
@@ -64,17 +72,22 @@ export const handler = async (event, context) => {
     }
 
     // Handle different HTTP methods
+    let result;
     switch (event.httpMethod) {
       case 'GET':
-        return await handleGetPlayers(event, sessionValidation);
+        result = await handleGetPlayers(event, sessionValidation);
+        break;
       case 'POST':
-        return await handleAddPlayer(event, sessionValidation);
+        result = await handleAddPlayer(event, sessionValidation);
+        break;
       case 'PUT':
-        return await handleUpdatePlayer(event, sessionValidation);
+        result = await handleUpdatePlayer(event, sessionValidation);
+        break;
       case 'DELETE':
-        return await handleDeletePlayer(event, sessionValidation);
+        result = await handleDeletePlayer(event, sessionValidation);
+        break;
       default:
-        return {
+        result = {
           statusCode: 405,
           headers: {
             'Content-Type': 'application/json',
@@ -87,7 +100,11 @@ export const handler = async (event, context) => {
         };
     }
 
+    clearTimeout(timeout);
+    return result;
+
   } catch (error) {
+    clearTimeout(timeout);
     console.error('Players API error:', error);
     return {
       statusCode: 500,
@@ -110,6 +127,7 @@ async function handleGetPlayers(event, sessionValidation) {
     const registrationSessionId = urlParams.get('sessionId');
     const includeSessionInfo = urlParams.get('includeSessionInfo') === 'true';
     const presentOnly = urlParams.get('presentOnly') === 'true';
+    const limit = parseInt(urlParams.get('limit')) || 1000; // Add limit parameter
 
     let players;
 
@@ -135,18 +153,18 @@ async function handleGetPlayers(event, sessionValidation) {
           }
         }
         // Get players for specific session
-        players = await getPlayers(registrationSessionId, presentOnly);
+        players = await getPlayers(registrationSessionId, presentOnly, limit);
       } else if (sessionValidation.role === 'superadmin') {
         // Super admin can see all players
-        players = await getPlayers();
+        players = await getPlayers(null, false, limit);
       } else {
         // Regular admin sees only their tournament players
-        players = await getPlayersForAdmin(sessionValidation.userId, includeSessionInfo);
+        players = await getPlayersForAdmin(sessionValidation.userId, includeSessionInfo, limit);
       }
     } else {
       // Public access - only allow specific session queries
       if (registrationSessionId) {
-        players = await getPlayers(registrationSessionId, presentOnly);
+        players = await getPlayers(registrationSessionId, presentOnly, limit);
       } else {
         return {
           statusCode: 401,
@@ -162,6 +180,11 @@ async function handleGetPlayers(event, sessionValidation) {
       }
     }
 
+    // Apply limit if specified
+    if (limit && players && players.length > limit) {
+      players = players.slice(0, limit);
+    }
+
     return {
       statusCode: 200,
       headers: {
@@ -170,7 +193,8 @@ async function handleGetPlayers(event, sessionValidation) {
       },
       body: JSON.stringify({
         success: true,
-        players: players || []
+        players: players || [],
+        totalCount: players ? players.length : 0
       })
     };
 
