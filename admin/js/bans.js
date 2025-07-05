@@ -163,30 +163,25 @@ class BanManager {
 
     renderBanHistory(banHistory, container) {
         if (!banHistory || banHistory.length === 0) {
-            container.innerHTML = '<div class="no-data">No ban history available</div>';
+            container.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No ban history available</td></tr>`;
             return;
         }
 
         const html = banHistory.map(ban => `
-            <div class="ban-history-card ${ban.is_active ? 'active-ban' : 'inactive-ban'}">
-                <div class="ban-info">
-                    <h3>${this.escapeHtml(ban.player_name)}</h3>
-                    <p><strong>Dota 2 ID:</strong> ${this.escapeHtml(ban.dota2id)}</p>
-                    <p><strong>Reason:</strong> ${this.escapeHtml(ban.reason)}</p>
-                    <p><strong>Ban Type:</strong> ${ban.ban_type}</p>
-                    ${ban.expires_at ? `<p><strong>Expires:</strong> ${new Date(ban.expires_at).toLocaleString()}</p>` : ''}
-                    <p><strong>Banned by:</strong> ${this.escapeHtml(ban.banned_by_username)}</p>
-                    <p><strong>Status:</strong> ${ban.is_active ? 'Active' : 'Inactive'}</p>
-                    <p><strong>Date:</strong> ${new Date(ban.created_at).toLocaleString()}</p>
-                </div>
-                ${ban.is_active ? `
-                    <div class="ban-actions">
-                        <button onclick="banManager.unbanPlayer('${ban.dota2id}')" class="btn btn-success">
-                            Unban Player
-                        </button>
-                    </div>
-                ` : ''}
-            </div>
+            <tr class="${ban.is_active ? 'table-danger' : 'table-secondary'}">
+                <td>${this.escapeHtml(ban.dota2id)}</td>
+                <td>${this.escapeHtml(ban.player_name)}</td>
+                <td>${this.escapeHtml(ban.reason)}</td>
+                <td>${this.escapeHtml(ban.ban_type)}</td>
+                <td>${ban.expires_at ? new Date(ban.expires_at).toLocaleString() : '-'}</td>
+                <td>${this.escapeHtml(ban.banned_by_username)}</td>
+                <td>
+                    <span class="badge ${ban.is_active ? 'bg-danger' : 'bg-secondary'}">
+                        ${ban.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>${new Date(ban.created_at).toLocaleString()}</td>
+            </tr>
         `).join('');
 
         container.innerHTML = html;

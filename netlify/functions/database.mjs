@@ -2113,7 +2113,7 @@ export async function unbanPlayer(dota2id, adminUserId) {
     const result = await sql`
       UPDATE banned_players 
       SET is_active = false, updated_at = NOW()
-      WHERE dota2id = ${dota2id} AND banned_by = ${adminUserId} AND is_active = true
+      WHERE dota2id = ${dota2id} AND is_active = true
     `;
     if (result.count === 0) {
       throw new Error('Player is not currently banned');
@@ -2187,21 +2187,22 @@ export async function getBanHistory(dota2id = null, adminUserId) {
     if (!adminUserId) throw new Error('adminUserId required');
     let query;
     if (dota2id) {
+      // Return all ban history for a specific player, regardless of who banned them
       query = sql`
         SELECT 
           id, dota2id, player_name, reason, banned_by, banned_by_username,
           ban_type, expires_at, is_active, created_at, updated_at
         FROM banned_players 
-        WHERE dota2id = ${dota2id} AND banned_by = ${adminUserId}
+        WHERE dota2id = ${dota2id}
         ORDER BY created_at DESC
       `;
     } else {
+      // Return all ban history for all players, regardless of who banned them
       query = sql`
         SELECT 
           id, dota2id, player_name, reason, banned_by, banned_by_username,
           ban_type, expires_at, is_active, created_at, updated_at
         FROM banned_players 
-        WHERE banned_by = ${adminUserId}
         ORDER BY created_at DESC
       `;
     }
