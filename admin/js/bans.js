@@ -60,7 +60,7 @@ class BanManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-session-id': getSessionId()
+                    'x-session-id': window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId')
                 },
                 body: JSON.stringify(banData)
             });
@@ -87,7 +87,7 @@ class BanManager {
         try {
             const response = await fetch('/.netlify/functions/bans', {
                 headers: {
-                    'x-session-id': getSessionId()
+                    'x-session-id': window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId')
                 }
             });
 
@@ -110,7 +110,7 @@ class BanManager {
         try {
             const response = await fetch('/.netlify/functions/bans?history=true', {
                 headers: {
-                    'x-session-id': getSessionId()
+                    'x-session-id': window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId')
                 }
             });
 
@@ -194,7 +194,7 @@ class BanManager {
             const response = await fetch(`/.netlify/functions/bans?dota2id=${encodeURIComponent(dota2id)}`, {
                 method: 'DELETE',
                 headers: {
-                    'x-session-id': getSessionId()
+                    'x-session-id': window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId')
                 }
             });
 
@@ -213,20 +213,15 @@ class BanManager {
     }
 
     showMessage(message, type = 'info') {
-        // Create a simple message display
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message message-${type}`;
-        messageDiv.textContent = message;
-        
-        // Add to page
-        document.body.appendChild(messageDiv);
-        
-        // Remove after 3 seconds
-        setTimeout(() => {
-            if (messageDiv.parentNode) {
-                messageDiv.parentNode.removeChild(messageDiv);
-            }
-        }, 3000);
+        const alertContainer = document.getElementById('banAlert');
+        if (alertContainer) {
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            alertContainer.style.display = 'block';
+            
+            setTimeout(() => {
+                alertContainer.style.display = 'none';
+            }, 5000);
+        }
     }
 
     escapeHtml(text) {
@@ -236,8 +231,307 @@ class BanManager {
     }
 }
 
-// Initialize ban manager when page loads
-let banManager;
-document.addEventListener('DOMContentLoaded', () => {
-    banManager = new BanManager();
-}); 
+// Initialize bans module
+window.initBans = function initBans() {
+    console.log('🚀 Bans: Starting initialization...');
+    
+    // Create global ban manager instance
+    window.banManager = new BanManager();
+    
+    // Set up additional event listeners for the ban modal
+    const banForm = document.getElementById('banForm');
+    const banType = document.getElementById('banType');
+    
+    if (banForm) {
+        banForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(banForm);
+            const banData = {
+                dota2id: formData.get('dota2id'),
+                playerName: formData.get('playerName'),
+                reason: formData.get('reason'),
+                banType: formData.get('banType'),
+                expiresAt: formData.get('expiresAt') || null
+            };
+
+            try {
+                const res = await fetch('/.netlify/functions/bans', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-session-id': window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId')
+                    },
+                    body: JSON.stringify(banData)
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Player banned successfully!');
+                    banForm.reset();
+                    loadBannedPlayers();
+                } else {
+                    alert(data.message || 'Failed to ban player.');
+                }
+            } catch (err) {
+                console.error('Error banning player:', err);
+                alert('Error banning player.');
+            }
+        });
+    }
+
+    if (banType) {
+        banType.addEventListener('change', (e) => {
+            const expiresAtGroup = document.getElementById('expiresAtGroup');
+            const expiresAtInput = document.getElementById('banExpiresAt');
+            
+            if (e.target.value === 'temporary') {
+                expiresAtGroup.style.display = 'block';
+                expiresAtInput.required = true;
+                
+                // Set default expiration to 24 hours from now
+                const tomorrow = new Date();
+                tomorrow.setHours(tomorrow.getHours() + 24);
+                expiresAtInput.value = tomorrow.toISOString().slice(0, 16);
+            } else {
+                expiresAtGroup.style.display = 'none';
+                expiresAtInput.required = false;
+                expiresAtInput.value = '';
+            }
+        });
+    }
+
+    // Set up unban functionality
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('unban-btn')) {
+            const dota2id = e.target.dataset.dota2id;
+            if (dota2id && confirm('Are you sure you want to unban this player?')) {
+                unbanPlayer(dota2id);
+            }
+        }
+    });
+
+    async function unbanPlayer(dota2id) {
+        try {
+            const res = await fetch('/.netlify/functions/bans', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId')
+                },
+                body: JSON.stringify({ action: 'unban', dota2id })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                if (window.banManager) {
+                    window.banManager.loadBannedPlayers();
+                }
+            } else {
+                alert(data.message || 'Failed to unban player.');
+            }
+        } catch (err) {
+            console.error('Error unbanning player:', err);
+            alert('Error unbanning player.');
+        }
+    }
+
+    // Reset form and modal on open
+    const banModalElement = document.getElementById('banModal');
+    if (banModalElement) {
+        banModalElement.addEventListener('show.bs.modal', () => {
+            if (banForm) banForm.reset();
+            if (banType) banType.dispatchEvent(new Event('change'));
+        });
+    }
+
+    // Initial load
+    if (window.banManager) {
+        window.banManager.loadBannedPlayers();
+    }
+    
+    // Initialize player search functionality
+    if (typeof window.initPlayerSearch === 'function') {
+        window.initPlayerSearch();
+    }
+    
+    console.log('✅ Bans: Initialization complete');
+};
+
+window.cleanupBans = function cleanupBans() {
+    console.log('🧹 Bans: Starting cleanup...');
+    // Clean up the global banManager instance
+    delete window.banManager;
+    console.log('🧹 Bans: Cleanup complete');
+};
+
+// --- Player Search Table for Ban Modal ---
+// Use a module pattern to avoid variable redeclaration
+(function() {
+    // Check if variables already exist to prevent redeclaration
+    if (typeof window.bansModule === 'undefined') {
+        window.bansModule = {
+            allPlayers: [],
+            currentPage: 1,
+            itemsPerPage: 10,
+            filteredPlayers: []
+        };
+    }
+
+    function initPlayerSearch() {
+        // Initialize player search when bans module loads
+        fetchAllPlayers();
+        // Wire up search input to filterPlayers
+        const playerSearchInput = document.getElementById('playerSearchInput');
+        if (playerSearchInput) {
+            playerSearchInput.addEventListener('input', function (e) {
+                window.filterPlayers(e.target.value);
+            });
+        }
+    }
+
+    async function fetchAllPlayers() {
+        try {
+            const res = await fetch('/.netlify/functions/api-players?limit=500', {
+                method: 'GET',
+                headers: {
+                    'x-session-id': window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId')
+                }
+            });
+            const data = await res.json();
+            
+            if (data.success && Array.isArray(data.players)) {
+                window.bansModule.allPlayers = data.players;
+                window.bansModule.filteredPlayers = [...window.bansModule.allPlayers];
+                window.bansModule.currentPage = 1;
+                renderPlayerSearchTable();
+            } else {
+                window.bansModule.allPlayers = [];
+                window.bansModule.filteredPlayers = [];
+                window.bansModule.currentPage = 1;
+                renderPlayerSearchTable();
+            }
+        } catch (err) {
+            console.error('Error fetching players:', err);
+            window.bansModule.allPlayers = [];
+            window.bansModule.filteredPlayers = [];
+            window.bansModule.currentPage = 1;
+            renderPlayerSearchTable();
+        }
+    }
+
+    function renderPlayerSearchTable() {
+        const tableBody = document.getElementById('playerSearchTableBody');
+        const pagination = document.getElementById('playerPagination');
+        
+        if (!tableBody) return;
+        
+        if (!window.bansModule.filteredPlayers || window.bansModule.filteredPlayers.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No players found.</td></tr>';
+            if (pagination) pagination.innerHTML = '';
+            return;
+        }
+        
+        // Calculate pagination
+        const totalPages = Math.ceil(window.bansModule.filteredPlayers.length / window.bansModule.itemsPerPage);
+        const startIndex = (window.bansModule.currentPage - 1) * window.bansModule.itemsPerPage;
+        const endIndex = startIndex + window.bansModule.itemsPerPage;
+        const currentPlayers = window.bansModule.filteredPlayers.slice(startIndex, endIndex);
+        
+        // Render table
+        tableBody.innerHTML = currentPlayers.map(player => `
+            <tr>
+                <td>${player.dota2id}</td>
+                <td>${player.name || ''}</td>
+                <td>${player.email || ''}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="selectPlayer('${player.dota2id}', '${player.name || ''}')">
+                        Select
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        // Render pagination
+        if (pagination) {
+            renderPagination(totalPages);
+        }
+    }
+
+    function renderPagination(totalPages) {
+        const pagination = document.getElementById('playerPagination');
+        if (!pagination || totalPages <= 1) {
+            if (pagination) pagination.innerHTML = '';
+            return;
+        }
+        
+        let paginationHTML = '';
+        
+        // Previous button
+        if (window.bansModule.currentPage > 1) {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${window.bansModule.currentPage - 1})">Previous</a></li>`;
+        }
+        
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === window.bansModule.currentPage) {
+                paginationHTML += `<li class="page-item active"><a class="page-link" href="#">${i}</a></li>`;
+            } else {
+                paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
+            }
+        }
+        
+        // Next button
+        if (window.bansModule.currentPage < totalPages) {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${window.bansModule.currentPage + 1})">Next</a></li>`;
+        }
+        
+        pagination.innerHTML = paginationHTML;
+    }
+
+    function changePage(page) {
+        window.bansModule.currentPage = page;
+        renderPlayerSearchTable();
+    }
+
+    function filterPlayers(searchTerm) {
+        if (!searchTerm) {
+            window.bansModule.filteredPlayers = [...window.bansModule.allPlayers];
+        } else {
+            window.bansModule.filteredPlayers = window.bansModule.allPlayers.filter(player => 
+                (player.name && player.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (player.dota2id && player.dota2id.toString().includes(searchTerm)) ||
+                (player.email && player.email.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+        }
+        window.bansModule.currentPage = 1;
+        renderPlayerSearchTable();
+    }
+
+    function selectPlayer(dota2id, name) {
+        // Fill the ban form with selected player data
+        const dota2idInput = document.getElementById('banDota2Id');
+        const playerNameInput = document.getElementById('banPlayerName');
+        
+        if (dota2idInput) dota2idInput.value = dota2id;
+        if (playerNameInput) playerNameInput.value = name;
+        
+        // Close the player search modal if it exists
+        const playerSearchModal = document.getElementById('playerSearchModal');
+        if (playerSearchModal) {
+            const modal = bootstrap.Modal.getInstance(playerSearchModal);
+            if (modal) modal.hide();
+        }
+    }
+
+    // Helper function to get session ID
+    function getSessionId() {
+        return window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
+    }
+
+    // Make functions globally available for onclick handlers
+    window.changePage = changePage;
+    window.filterPlayers = filterPlayers;
+    window.selectPlayer = selectPlayer;
+    window.initPlayerSearch = initPlayerSearch;
+})(); 
