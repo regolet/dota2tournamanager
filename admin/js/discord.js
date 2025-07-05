@@ -1,3 +1,8 @@
+// Prevent redeclaration in SPA reloads
+if (!window.discordModuleInitialized) {
+  window.discordModuleInitialized = true;
+}
+
 // Discord Webhooks Management UI
 const webhookTypes = [
   { type: 'registration', input: 'webhook-registration', save: 'save-webhook-registration', del: 'delete-webhook-registration', test: 'test-webhook-registration' },
