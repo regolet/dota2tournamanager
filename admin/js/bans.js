@@ -1,6 +1,11 @@
 // Ban Management System
 class BanManager {
     constructor() {
+        this.bannedPlayers = [];
+        this.filteredPlayers = [];
+        this.sortColumn = null;
+        this.sortDirection = 'asc';
+        this.searchTerm = '';
         this.init();
     }
 
@@ -94,7 +99,11 @@ class BanManager {
             const result = await response.json();
 
             if (result.success) {
-                this.renderBannedPlayers(result.bannedPlayers, container);
+                this.bannedPlayers = result.bannedPlayers || [];
+                this.filteredPlayers = this.bannedPlayers;
+                this.renderBannedPlayers(this.filteredPlayers, container);
+                this.setupSorting();
+                this.setupSearch();
             } else {
                 container.innerHTML = '<div class="error">Error loading banned players</div>';
             }
@@ -128,27 +137,25 @@ class BanManager {
 
     renderBannedPlayers(bannedPlayers, container) {
         if (!bannedPlayers || bannedPlayers.length === 0) {
-            container.innerHTML = '<div class="no-data">No currently banned players</div>';
+            container.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No currently banned players</td></tr>`;
             return;
         }
 
         const html = bannedPlayers.map(player => `
-            <div class="banned-player-card">
-                <div class="player-info">
-                    <h3>${this.escapeHtml(player.player_name)}</h3>
-                    <p><strong>Dota 2 ID:</strong> ${this.escapeHtml(player.dota2id)}</p>
-                    <p><strong>Reason:</strong> ${this.escapeHtml(player.reason)}</p>
-                    <p><strong>Ban Type:</strong> ${player.ban_type}</p>
-                    ${player.expires_at ? `<p><strong>Expires:</strong> ${new Date(player.expires_at).toLocaleString()}</p>` : ''}
-                    <p><strong>Banned by:</strong> ${this.escapeHtml(player.banned_by_username)}</p>
-                    <p><strong>Banned on:</strong> ${new Date(player.created_at).toLocaleString()}</p>
-                </div>
-                <div class="player-actions">
-                    <button onclick="banManager.unbanPlayer('${player.dota2id}')" class="btn btn-success">
+            <tr>
+                <td>${this.escapeHtml(player.dota2id)}</td>
+                <td>${this.escapeHtml(player.player_name)}</td>
+                <td>${this.escapeHtml(player.reason)}</td>
+                <td>${this.escapeHtml(player.ban_type)}</td>
+                <td>${player.expires_at ? new Date(player.expires_at).toLocaleString() : '-'}</td>
+                <td>${this.escapeHtml(player.banned_by_username)}</td>
+                <td>${new Date(player.created_at).toLocaleString()}</td>
+                <td>
+                    <button onclick="banManager.unbanPlayer('${player.dota2id}')" class="btn btn-success btn-sm">
                         Unban Player
                     </button>
-                </div>
-            </div>
+                </td>
+            </tr>
         `).join('');
 
         container.innerHTML = html;
@@ -228,6 +235,118 @@ class BanManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    setupSorting() {
+        const table = document.getElementById('bannedPlayersTable');
+        if (!table) return;
+        const headers = table.querySelectorAll('th');
+        const columns = [
+            'dota2id',
+            'player_name',
+            'reason',
+            'ban_type',
+            'expires_at',
+            'banned_by_username',
+            'created_at',
+            'actions'
+        ];
+        headers.forEach((th, idx) => {
+            if (columns[idx] === 'actions') return; // Skip actions column
+            th.style.cursor = 'pointer';
+            th.onclick = () => {
+                this.handleSort(columns[idx]);
+            };
+        });
+        this.updateSortIndicators();
+    }
+
+    handleSort(column) {
+        if (this.sortColumn === column) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortColumn = column;
+            this.sortDirection = 'asc';
+        }
+        this.sortAndRender();
+    }
+
+    sortAndRender() {
+        const sorted = [...this.filteredPlayers];
+        const col = this.sortColumn;
+        const dir = this.sortDirection;
+        if (col) {
+            sorted.sort((a, b) => {
+                let valA = a[col];
+                let valB = b[col];
+                // Handle null/undefined
+                if (valA == null) valA = '';
+                if (valB == null) valB = '';
+                // For dates, sort as dates
+                if (col === 'expires_at' || col === 'created_at') {
+                    valA = valA ? new Date(valA) : new Date(0);
+                    valB = valB ? new Date(valB) : new Date(0);
+                }
+                if (valA < valB) return dir === 'asc' ? -1 : 1;
+                if (valA > valB) return dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        const container = document.getElementById('bannedPlayersList');
+        this.renderBannedPlayers(sorted, container);
+        this.updateSortIndicators();
+    }
+
+    updateSortIndicators() {
+        const table = document.getElementById('bannedPlayersTable');
+        if (!table) return;
+        const headers = table.querySelectorAll('th');
+        const columns = [
+            'dota2id',
+            'player_name',
+            'reason',
+            'ban_type',
+            'expires_at',
+            'banned_by_username',
+            'created_at',
+            'actions'
+        ];
+        headers.forEach((th, idx) => {
+            th.innerHTML = th.textContent.replace(/[▲▼]/g, '').trim();
+            if (columns[idx] === this.sortColumn) {
+                th.innerHTML += this.sortDirection === 'asc' ? ' ▲' : ' ▼';
+            }
+        });
+    }
+
+    setupSearch() {
+        const searchInput = document.getElementById('bannedPlayersSearch');
+        if (!searchInput) return;
+        searchInput.value = this.searchTerm;
+        searchInput.oninput = (e) => {
+            this.searchTerm = e.target.value;
+            this.filterAndRender();
+        };
+    }
+
+    filterAndRender() {
+        const term = this.searchTerm.trim().toLowerCase();
+        if (!term) {
+            this.filteredPlayers = this.bannedPlayers;
+        } else {
+            this.filteredPlayers = this.bannedPlayers.filter(player => {
+                return (
+                    (player.dota2id && player.dota2id.toLowerCase().includes(term)) ||
+                    (player.player_name && player.player_name.toLowerCase().includes(term)) ||
+                    (player.reason && player.reason.toLowerCase().includes(term)) ||
+                    (player.ban_type && player.ban_type.toLowerCase().includes(term)) ||
+                    (player.banned_by_username && player.banned_by_username.toLowerCase().includes(term)) ||
+                    (player.created_at && new Date(player.created_at).toLocaleString().toLowerCase().includes(term)) ||
+                    (player.expires_at && new Date(player.expires_at).toLocaleString().toLowerCase().includes(term))
+                );
+            });
+        }
+        this.sortAndRender();
     }
 }
 
