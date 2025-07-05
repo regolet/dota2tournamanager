@@ -11,13 +11,16 @@
         </button>
       </div>
 
+      <!-- Notification for ban actions -->
+      <div id="banAlert" style="display:none;"></div>
+
       <!-- Search box for banned players -->
       <div class="mb-3">
         <input type="text" class="form-control" id="bannedPlayersSearch" placeholder="Search banned players by any field...">
       </div>
 
       <!-- Banned Players Table -->
-      <div class="card">
+      <div class="card mb-4">
         <div class="card-header">
           <h5 class="mb-0">
             <i class="bi bi-slash-circle me-2"></i>Banned Players List
@@ -44,6 +47,38 @@
                     <div class="spinner-border spinner-border-sm me-2" role="status"></div>
                     Loading banned players...
                   </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ban History Section -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-clock-history me-2"></i>Ban History
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="banHistoryTable">
+              <thead>
+                <tr>
+                  <th>Dota 2 ID</th>
+                  <th>Player Name</th>
+                  <th>Reason</th>
+                  <th>Ban Type</th>
+                  <th>Expires</th>
+                  <th>Banned By</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="banHistoryList">
+                <tr>
+                  <td colspan="8" class="text-center py-4 text-muted">Loading ban history...</td>
                 </tr>
               </tbody>
             </table>
