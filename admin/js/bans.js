@@ -94,7 +94,7 @@ class BanManager {
             const result = await response.json();
 
             if (result.success) {
-                this.renderBannedPlayers(result.data, container);
+                this.renderBannedPlayers(result.bannedPlayers, container);
             } else {
                 container.innerHTML = '<div class="error">Error loading banned players</div>';
             }
