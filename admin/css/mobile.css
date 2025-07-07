@@ -186,4 +186,11 @@
   background: transparent;
   border: none;
   pointer-events: none;
+}
+
+.navbar-nav .nav-link:hover, .navbar-nav .nav-link.active {
+  background-color: #495057 !important;
+  color: #fff !important;
+  border-radius: 0.25rem;
+  transition: background 0.2s;
 } 
