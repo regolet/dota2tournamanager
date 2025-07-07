@@ -114,6 +114,34 @@ if (typeof fetchWithAuth === 'undefined') {
     }
 }
 
+// Add to module state:
+if (!window.playerListSortState) {
+    window.playerListSortState = { field: 'name', direction: 'asc' };
+}
+
+function getSortValue(player, field) {
+    switch (field) {
+        case 'name': return (player.name || '').toLowerCase();
+        case 'peakmmr': return Number(player.peakmmr) || 0;
+        case 'dota2id': return player.dota2id || '';
+        case 'tournament': return (player.sessionTitle || '').toLowerCase();
+        case 'id': return player.id || '';
+        case 'registered': return player.registrationDate || '';
+        case 'status': return player.present ? 1 : 0;
+        default: return '';
+    }
+}
+
+function sortPlayers(players, field, direction) {
+    return players.slice().sort((a, b) => {
+        const vA = getSortValue(a, field);
+        const vB = getSortValue(b, field);
+        if (vA < vB) return direction === 'asc' ? -1 : 1;
+        if (vA > vB) return direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+}
+
 /**
  * Initialize the Player List module
  */
@@ -526,6 +554,8 @@ async function loadPlayers(forceRefresh = false) {
  * Display players in the table
  */
 function displayPlayers(players) {
+    const sortState = window.playerListSortState;
+    players = sortPlayers(players, sortState.field, sortState.direction);
     const playerTableBody = document.getElementById('player-table-body');
     
     if (!playerTableBody) return;
@@ -607,6 +637,10 @@ function displayPlayers(players) {
     
     // Set up action buttons after all rows are added
     setupPlayerActionButtons();
+    
+    // Call setupPlayerTableSort and updateSortIcons after table render
+    setupPlayerTableSort();
+    updateSortIcons();
 }
 
 /**
@@ -1112,6 +1146,8 @@ function addRefreshAnimationCSS() {
  * This allows the player list to refresh when registration settings change
  */
 function setupRegistrationUpdateListener() {
+    if (window.playerListRegistrationListenerAdded) return;
+    window.playerListRegistrationListenerAdded = true;
     addRefreshAnimationCSS();
     window.addEventListener('registrationUpdated', function(event) {
         const refreshBtn = document.getElementById('refresh-player-list');
@@ -1128,14 +1164,11 @@ function setupRegistrationUpdateListener() {
             }, 2000);
         }
         loadRegistrationSessions().then(() => {
-            // Only reload players if the dropdown triggers it
-            // No direct call to loadPlayers here
             window.showNotification(`Player list updated - registration ${event.detail.action}`, 'success');
         });
     });
     window.refreshPlayerListData = function() {
         loadRegistrationSessions().then(() => {
-            // Only trigger the session selector change event if a session is selected
             const selector = document.getElementById('session-selector');
             if (selector && selector.value) {
                 selector.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1233,5 +1266,40 @@ function cleanupPlayerList() {
     
     // Clear any custom event listeners
     window.removeEventListener('registrationUpdated', window.playerListRegistrationListener);
+}
+
+// Add event listeners to table headers after DOMContentLoaded or table render
+function setupPlayerTableSort() {
+    document.querySelectorAll('th[data-sort] .sortable').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.onclick = function() {
+            const th = this.closest('th');
+            const field = th.getAttribute('data-sort');
+            const sortState = window.playerListSortState;
+            if (sortState.field === field) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.field = field;
+                sortState.direction = 'asc';
+            }
+            // Update sort icons
+            updateSortIcons();
+            // Re-render
+            displayPlayers(allPlayers);
+        };
+    });
+}
+
+function updateSortIcons() {
+    const sortState = window.playerListSortState;
+    document.querySelectorAll('th[data-sort] .sortable i').forEach(icon => {
+        const th = icon.closest('th');
+        const field = th.getAttribute('data-sort');
+        if (field === sortState.field) {
+            icon.className = sortState.direction === 'asc' ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+        } else {
+            icon.className = 'bi bi-chevron-expand';
+        }
+    });
 }
 

@@ -83,13 +83,13 @@
                 <table class="table table-striped table-hover align-middle mb-0">
                     <thead class="table-dark">
                         <tr>
-                            <th class="ps-3">Player</th>
-                            <th class="text-center">MMR</th>
-                            <th>Dota 2 ID</th>
-                            <th>Tournament</th>
-                            <th>ID</th>
-                            <th>Registered</th>
-                            <th>Status</th>
+                            <th class="ps-3" data-sort="name"><span class="sortable">Player <i class="bi bi-chevron-expand"></i></span></th>
+                            <th class="text-center" data-sort="peakmmr"><span class="sortable">MMR <i class="bi bi-chevron-expand"></i></span></th>
+                            <th data-sort="dota2id"><span class="sortable">Dota 2 ID <i class="bi bi-chevron-expand"></i></span></th>
+                            <th data-sort="tournament"><span class="sortable">Tournament <i class="bi bi-chevron-expand"></i></span></th>
+                            <th data-sort="id"><span class="sortable">ID <i class="bi bi-chevron-expand"></i></span></th>
+                            <th data-sort="registered"><span class="sortable">Registered <i class="bi bi-chevron-expand"></i></span></th>
+                            <th data-sort="status"><span class="sortable">Status <i class="bi bi-chevron-expand"></i></span></th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
@@ -288,22 +288,3 @@
 <script src="/admin/js/playerList.js"></script>
 
 <link href="/admin/css/mobile.css" rel="stylesheet">
-
-<!-- Add Bans tab navigation at the top for admin consistency -->
-<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
-  <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="/admin/index.html">
-      <i class="bi bi-joystick me-2"></i>Dota 2 Tournament
-    </a>
-    <div class="collapse navbar-collapse">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item"><a class="nav-link" href="/admin/index.html">Team Balancer</a></li>
-        <li class="nav-item"><a class="nav-link active" href="/admin/player-list.html">Player List</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/masterlist.html">Masterlist</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/discord.html">Discord</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/attendance.html">Attendance</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/bans.html" id="bans-tab"><i class="bi bi-slash-circle me-2"></i>Bans</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>

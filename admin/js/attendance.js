@@ -29,7 +29,7 @@
     let attendanceInitAttempts = 0;
     const MAX_ATTENDANCE_INIT_ATTEMPTS = 10;
 
-    // Add a variable to track the last loaded session
+    // At the top, with other state variables:
     let lastLoadedAttendanceSessionId = null;
 
     // Attendance session management functions
@@ -111,6 +111,8 @@
 
     async function editAttendanceSession(sessionId) {
         try {
+            // Always load all registration sessions (active + inactive) before editing
+            await loadRegistrationSessions(true);
             const session = state.attendanceSessions.find(s => s.sessionId === sessionId);
             if (!session) {
                 window.utils.showNotification('Attendance session not found', 'error');
@@ -125,7 +127,6 @@
                         console.warn('Invalid date string:', dateString);
                         return '';
                     }
-                    
                     // Use a more reliable method to get PH time
                     const phDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Manila"}));
                     const year = phDate.getFullYear();
@@ -133,7 +134,6 @@
                     const day = String(phDate.getDate()).padStart(2, '0');
                     const hours = String(phDate.getHours()).padStart(2, '0');
                     const minutes = String(phDate.getMinutes()).padStart(2, '0');
-                    
                     return `${year}-${month}-${day}T${hours}:${minutes}`;
                 } catch (error) {
                     console.error('Error converting date to PH local:', error, dateString);
@@ -373,28 +373,32 @@
         }
     }
 
-    async function loadRegistrationSessions() {
+    async function loadRegistrationSessions(includeInactive = false) {
         try {
             const data = await window.utils.loadRegistrationSessionsWithRetry(3, 1000);
             if (data.success && data.sessions) {
-                state.registrationSessions = data.sessions;
-                updateRegistrationSessionDropdown();
+                if (includeInactive) {
+                    state.registrationSessions = data.sessions;
+                } else {
+                    state.registrationSessions = data.sessions.filter(s => s.isActive);
+                }
+                updateRegistrationSessionDropdown(includeInactive);
             }
         } catch (error) {
             console.error('Error loading registration sessions:', error);
         }
     }
 
-    function updateRegistrationSessionDropdown() {
+    function updateRegistrationSessionDropdown(includeInactive = false) {
         const dropdown = document.getElementById('attendance-registration-session');
         if (!dropdown) return;
-        
         dropdown.innerHTML = '<option value="">Select Registration Session</option>';
         state.registrationSessions.forEach(session => {
-            if (session.isActive) {
+            if (includeInactive || session.isActive) {
                 const option = document.createElement('option');
                 option.value = session.sessionId;
-                option.textContent = `${session.title} (${session.playerCount}/${session.maxPlayers})`;
+                option.textContent = `${session.title} (${session.playerCount}/${session.maxPlayers})${session.isActive ? '' : ' [Inactive]'}`;
+                if (!session.isActive) option.classList.add('text-muted');
                 dropdown.appendChild(option);
             }
         });
@@ -554,8 +558,13 @@
             }
             
             // Find registration session
+            let regSessionTitle = 'Unknown';
             const regSession = state.registrationSessions.find(s => s.sessionId === session.registrationSessionId);
-            const regSessionTitle = regSession ? regSession.title : 'Unknown';
+            if (regSession) {
+                regSessionTitle = regSession.title;
+            } else if (session.registrationSessionTitle) {
+                regSessionTitle = session.registrationSessionTitle;
+            }
             
             row.innerHTML = `
                 <td>
@@ -1111,9 +1120,14 @@
         if (!dropdown) return;
         dropdown.innerHTML = '<option value="">-- Select Session --</option>';
         state.attendanceSessions.forEach(session => {
-            // Find registration session title
+            // Find registration session title (use fallback logic)
+            let regSessionTitle = 'Unknown';
             const regSession = state.registrationSessions.find(s => s.sessionId === session.registrationSessionId);
-            const regSessionTitle = regSession ? regSession.title : 'Unknown';
+            if (regSession) {
+                regSessionTitle = regSession.title;
+            } else if (session.registrationSessionTitle) {
+                regSessionTitle = session.registrationSessionTitle;
+            }
             // Format created and expires
             const created = session.createdAt ? formatDate(session.createdAt) : '-';
             const expires = session.endTime ? formatDate(session.endTime) : 'Never';
@@ -1121,12 +1135,17 @@
             const label = `${session.name} (ID: ${session.sessionId}) - ${regSessionTitle} - ${created} - ${expires}`;
             dropdown.innerHTML += `<option value="${session.sessionId}">${label}</option>`;
         });
-        // Auto-select the latest session only if not already selected, but do NOT call loadPlayersForAttendanceSession here
+        // Ensure change event is always wired up to fetch player data (set before value assignment)
+        dropdown.onchange = function() {
+            const sessionId = dropdown.value;
+            loadPlayersForAttendanceSession(sessionId);
+        };
+        // Auto-select the latest session only if not already selected (i.e., only if value is empty)
         if (state.attendanceSessions.length > 0) {
             const latestSession = state.attendanceSessions.slice().sort((a, b) =>
                 new Date(b.createdAt) - new Date(a.createdAt)
             )[0];
-            if (dropdown.value !== latestSession.sessionId) {
+            if (!dropdown.value) {
                 dropdown.value = latestSession.sessionId;
                 // Instead of calling loadPlayersForAttendanceSession, trigger the change event
                 dropdown.dispatchEvent(new Event('change'));
@@ -1138,7 +1157,7 @@
         }
     }
 
-    // Fetch and display players for a selected attendance session
+    // Track last loaded session to prevent duplicate loads
     async function loadPlayersForAttendanceSession(attendanceSessionId) {
         if (!attendanceSessionId) {
             // If no session selected, show no players
@@ -1146,6 +1165,11 @@
             displayPlayersWithAttendance();
             return;
         }
+        if (attendanceSessionId === lastLoadedAttendanceSessionId) {
+            // Prevent duplicate loads for the same session
+            return;
+        }
+        lastLoadedAttendanceSessionId = attendanceSessionId;
         try {
             const sessionId = window.sessionManager?.getSessionId() || localStorage.getItem('adminSessionId');
             // Debug logging for sessionId and attendanceSessionId
@@ -1165,8 +1189,6 @@
                 if (session) {
                     session.presentCount = presentCount;
                     session.totalCount = totalCount;
-                    // Re-render the sessions table to update the Present/Absent column
-                    displayAttendanceSessions();
                 }
                 displayPlayersWithAttendance();
             } else {
@@ -1176,7 +1198,6 @@
                 if (session) {
                     session.presentCount = 0;
                     session.totalCount = 0;
-                    displayAttendanceSessions();
                 }
                 displayPlayersWithAttendance();
             }
@@ -1188,7 +1209,6 @@
             if (session) {
                 session.presentCount = 0;
                 session.totalCount = 0;
-                displayAttendanceSessions();
             }
             displayPlayersWithAttendance();
         }

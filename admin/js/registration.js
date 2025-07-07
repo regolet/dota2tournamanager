@@ -755,10 +755,8 @@ async function initRegistration() {
                 timestamp: new Date().toISOString()
             }
         });
-        
         // Dispatch the event globally
         window.dispatchEvent(refreshEvent);
-        
         // Also try direct function calls for immediate refresh
         setTimeout(() => {
             // Refresh Player List if loaded and DOM elements exist
@@ -767,39 +765,8 @@ async function initRegistration() {
             } else if (window.playerListModule && typeof window.playerListModule.loadPlayers === 'function' && document.getElementById('players-table-body')) {
                 window.playerListModule.loadPlayers(true);
             }
-            
-            // Refresh Team Balancer if loaded and DOM elements exist
-            if (typeof window.loadPlayersForBalancer === 'function' && document.getElementById('available-players-list')) {
-                window.loadPlayersForBalancer();
-            } else if (window.teamBalancerModule && typeof window.teamBalancerModule.loadPlayersForBalancer === 'function' && document.getElementById('available-players-list')) {
-                window.teamBalancerModule.loadPlayersForBalancer();
-            }
-            
-            // Refresh Random Picker if loaded and DOM elements exist
-            if (typeof window.loadPlayersForPicker === 'function' && document.getElementById('random-picker-players')) {
-                window.loadPlayersForPicker();
-            } else if (window.randomPickerModule && typeof window.randomPickerModule.loadPlayersForPicker === 'function' && document.getElementById('random-picker-players')) {
-                window.randomPickerModule.loadPlayersForPicker();
-            }
-            
-            // Refresh main tournament index page if it's open (for public users)
-            if (typeof window.loadTournaments === 'function') {
-                window.loadTournaments();
-            }
-            
-            // Refresh navigation tournament counter if available
-            if (typeof window.updateNavigationStats === 'function') {
-                window.updateNavigationStats();
-            }
-            
-            // Show success notification
-            if (window.showNotification) {
-                window.showNotification(
-                    `Registration ${actionType} - Player lists refreshed where available`, 
-                    'info'
-                );
-            }
-        }, 500); // Small delay to ensure registration changes are processed
+            // No notification here
+        }, 100);
     }
     
     // Expose functions globally that need to be called from HTML
