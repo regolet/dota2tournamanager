@@ -755,23 +755,54 @@ function showAddAdminUserModal() {
  */
 async function editAdminUser(userId) {
     try {
-        // For now, we'll just show the modal and let user edit
-        // In a real implementation, you'd fetch user details first
-        document.getElementById('admin-user-id').value = userId;
-        
+        // Fetch user details from the loaded users list in the table (if available)
+        let user = null;
+        const tableRows = document.querySelectorAll('#admin-users-table-body tr');
+        for (const row of tableRows) {
+            if (row.querySelector('.edit-admin-user') && row.querySelector('.edit-admin-user').getAttribute('data-user-id') === userId) {
+                // Extract data from table cells
+                const cells = row.querySelectorAll('td');
+                user = {
+                    userId: userId,
+                    username: cells[0]?.textContent.trim() || '',
+                    fullName: cells[1]?.textContent.trim() || '',
+                    email: cells[2]?.textContent.trim() || '',
+                    role: cells[3]?.textContent.trim().toLowerCase() || '',
+                    isActive: (cells[4]?.textContent.trim() || '').toLowerCase() === 'active'
+                };
+                break;
+            }
+        }
+        // If not found in table, fetch from backend
+        if (!user) {
+            const data = await fetchWithAuth(`/.netlify/functions/admin-users?userId=${encodeURIComponent(userId)}`);
+            if (data.success && data.user) {
+                user = data.user;
+            }
+        }
+        if (!user) {
+            window.showNotification('User data not found', 'error');
+            return;
+        }
+        // Populate form fields
+        document.getElementById('admin-user-id').value = user.userId || user.id || '';
+        document.getElementById('admin-username').value = user.username || '';
+        document.getElementById('admin-full-name').value = user.fullName || '';
+        document.getElementById('admin-email').value = user.email || '';
+        document.getElementById('admin-role').value = user.role || '';
+        document.getElementById('admin-active').checked = !!user.isActive;
+        // Clear password field
+        const passwordField = document.getElementById('admin-password');
+        if (passwordField) {
+            passwordField.value = '';
+            passwordField.removeAttribute('required');
+            passwordField.placeholder = 'Leave blank to keep current password';
+        }
         // Update modal title
         const modalTitle = document.getElementById('addEditAdminModalTitle');
         if (modalTitle) {
             modalTitle.innerHTML = '<i class="bi bi-pencil-fill me-2"></i>Edit Admin User';
         }
-
-        // Make password optional for editing
-        const passwordField = document.getElementById('admin-password');
-        if (passwordField) {
-            passwordField.removeAttribute('required');
-            passwordField.placeholder = 'Leave blank to keep current password';
-        }
-
         // Show the modal
         const modal = document.getElementById('addEditAdminModal');
         if (modal) {
