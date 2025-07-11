@@ -882,9 +882,11 @@ async function saveAdminUser() {
     }
 
     // For editing, password is optional
-    if (isEdit && !userData.password) {
-        delete userData.password;
+    if (isEdit) {
         userData.userId = userId;
+        if (!userData.password) {
+            delete userData.password;
+        }
     }
 
     const saveButton = document.getElementById('save-admin-user-btn');
