@@ -195,6 +195,9 @@ function updateProfileUI() {
 
     // Update account info modal
     updateAccountInfoModal();
+    
+    // Update admin tools visibility based on role
+    updateAdminToolsVisibility();
 }
 
 /**
@@ -238,6 +241,33 @@ function updateAccountInfoModal() {
             element.textContent = value;
         }
     });
+}
+
+/**
+ * Update admin tools visibility based on user role
+ */
+function updateAdminToolsVisibility() {
+    const adminUsersBtn = document.getElementById('admin-users-btn');
+    const systemLogsBtn = document.getElementById('system-logs-btn');
+    
+    if (adminUsersBtn) {
+        if (currentUser && currentUser.role === 'superadmin') {
+            adminUsersBtn.style.display = 'block';
+            adminUsersBtn.disabled = false;
+        } else {
+            adminUsersBtn.style.display = 'none';
+        }
+    }
+    
+    // System logs can be accessed by admins and superadmins
+    if (systemLogsBtn) {
+        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin')) {
+            systemLogsBtn.style.display = 'block';
+            systemLogsBtn.disabled = false;
+        } else {
+            systemLogsBtn.style.display = 'none';
+        }
+    }
 }
 
 /**
@@ -423,6 +453,12 @@ function viewActiveSessions() {
  */
 async function manageAdminUsers() {
     try {
+        // Check if user has superadmin privileges
+        if (!currentUser || currentUser.role !== 'superadmin') {
+            window.showNotification('Access denied. Only superadmins can manage admin users.', 'error');
+            return;
+        }
+
         // Show the admin users modal
         const modal = document.getElementById('adminUsersModal');
         if (modal) {
@@ -443,6 +479,12 @@ async function manageAdminUsers() {
  */
 async function viewSystemLogs() {
     try {
+        // Check if user has admin or superadmin privileges
+        if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
+            window.showNotification('Access denied. Only administrators can view system logs.', 'error');
+            return;
+        }
+
         // Show the system logs modal
         const modal = document.getElementById('systemLogsModal');
         if (modal) {
