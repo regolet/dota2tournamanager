@@ -506,16 +506,39 @@ async function viewSystemLogs() {
 async function logoutAllSessions() {
     const confirmed = confirm('Are you sure you want to logout from all sessions? This will end your current session as well.');
     if (!confirmed) return;
+    
     try {
-        if (window.sessionManager && typeof window.sessionManager.logout === 'function') {
-            window.sessionManager.logout();
+        // Try multiple session manager references
+        let logoutFunction = null;
+        
+        if (window.simpleSessionManager && typeof window.simpleSessionManager.logout === 'function') {
+            logoutFunction = window.simpleSessionManager.logout;
+        } else if (window.sessionManager && typeof window.sessionManager.logout === 'function') {
+            logoutFunction = window.sessionManager.logout;
+        }
+        
+        if (logoutFunction) {
+            logoutFunction();
         } else {
-            // Fallback redirect
+            // Manual logout if session manager is not available
+            try {
+                localStorage.removeItem("adminSessionId");
+                localStorage.removeItem("adminUser");
+                localStorage.removeItem("adminSessionExpires");
+                localStorage.removeItem("adminLoginTimestamp");
+            } catch (e) {
+                console.warn('Error clearing localStorage:', e);
+            }
+            
+            // Redirect to login page
             window.location.href = '/admin/login.html';
         }
     } catch (error) {
         console.error('Error during logout:', error);
         window.showNotification('Error during logout: ' + error.message, 'error');
+        
+        // Fallback redirect
+        window.location.href = '/admin/login.html';
     }
 }
 
