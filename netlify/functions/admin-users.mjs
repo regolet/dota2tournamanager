@@ -46,8 +46,8 @@ export const handler = async (event, context) => {
       };
     }
 
-    // Only super admins can manage users
-    if (sessionValidation.role !== 'superadmin') {
+    // Only admins and super admins can manage users
+    if (!['admin', 'superadmin'].includes(sessionValidation.role)) {
       return {
         statusCode: 403,
         headers: {
@@ -56,7 +56,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          message: 'Access denied. Super admin privileges required.'
+          message: 'Access denied. Admin privileges required.'
         })
       };
     }
@@ -209,7 +209,7 @@ async function handleCreateUser(event) {
     }
 
     // Validate role
-    if (!['admin', 'superadmin'].includes(userData.role)) {
+    if (!['admin', 'superadmin', 'moderator', 'viewer'].includes(userData.role)) {
       return {
         statusCode: 400,
         headers: {
@@ -218,7 +218,7 @@ async function handleCreateUser(event) {
         },
         body: JSON.stringify({
           success: false,
-          message: 'Role must be either "admin" or "superadmin"'
+          message: 'Role must be one of: admin, superadmin, moderator, viewer'
         })
       };
     }
@@ -306,7 +306,7 @@ async function handleUpdateUser(event) {
     }
 
     // Validate role if provided
-    if (userData.role && !['admin', 'superadmin'].includes(userData.role)) {
+    if (userData.role && !['admin', 'superadmin', 'moderator', 'viewer'].includes(userData.role)) {
       return {
         statusCode: 400,
         headers: {
@@ -315,7 +315,7 @@ async function handleUpdateUser(event) {
         },
         body: JSON.stringify({
           success: false,
-          message: 'Role must be either "admin" or "superadmin"'
+          message: 'Role must be one of: admin, superadmin, moderator, viewer'
         })
       };
     }
