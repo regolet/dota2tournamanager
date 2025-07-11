@@ -53,7 +53,8 @@ function getOriginalIconForTab(tabId) {
         'registration-tab': 'bi bi-clipboard2-check me-1',
         'masterlist-tab': 'bi bi-shield-check me-1',
         'discord-tab': 'bi bi-discord me-2',
-        'attendance-tab': 'bi bi-person-check me-2'
+        'attendance-tab': 'bi bi-person-check me-2',
+        'profile-tab': 'bi bi-person-circle me-2'
     };
     return iconMap[tabId] || 'bi bi-circle me-2';
 }
@@ -133,6 +134,9 @@ async function enableActiveTabAfterInit() {
                     break;
                 case 'bans-tab':
                     loadResult = await loadBans();
+                    break;
+                case 'profile-tab':
+                    loadResult = await loadProfile();
                     break;
                 default:
                     // Unknown tab, fallback to team balancer
@@ -731,6 +735,17 @@ function initNavigation() {
             showWelcomeNotificationOnce();
         });
     }
+    
+    // Add profile tab
+    const profileTab = document.getElementById('profile-tab');
+    if (profileTab) {
+        profileTab.addEventListener('click', async function(e) {
+            e.preventDefault();
+            navigationState.userHasInteracted = true;
+            await loadProfile();
+            showWelcomeNotificationOnce();
+        });
+    }
 }
 
 /**
@@ -967,6 +982,24 @@ async function initializeModule(moduleFileName) {
                     console.log('✅ Navigation: Bans initialized');
                 } else {
                     console.error('❌ Navigation: initBans function not found');
+                }
+                break;
+                
+            case 'profile':
+                // Profile management with cleanup and initialization
+                if (typeof window.cleanupProfile === 'function') {
+                    console.log('🧹 Navigation: Cleaning up Profile module...');
+                    window.cleanupProfile();
+                }
+                if (typeof window.initProfile === 'function') {
+                    console.log('🚀 Navigation: Calling initProfile...');
+                    await window.initProfile();
+                    window[moduleKey].isInitialized = true;
+                    window[moduleKey].initFunction = 'initProfile';
+                    window[moduleKey].lastInitTime = now;
+                    console.log('✅ Navigation: Profile initialized');
+                } else {
+                    console.error('❌ Navigation: initProfile function not found');
                 }
                 break;
                 
@@ -1600,6 +1633,21 @@ async function loadBans() {
         contentContainer: 'main-content',
         initFunction: 'initBans',
         cleanupFunction: 'cleanupBans'
+    });
+    return result;
+}
+
+/**
+ * Load Profile content
+ */
+async function loadProfile() {
+    updateActiveTab('profile-tab');
+    const result = await window.adminApp.loadAndInitModule({
+        htmlFile: '/admin/profile.html',
+        jsFile: '/admin/js/profile.js',
+        contentContainer: 'main-content',
+        initFunction: 'initProfile',
+        cleanupFunction: 'cleanupProfile'
     });
     return result;
 }

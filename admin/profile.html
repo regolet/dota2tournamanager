@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Management - Tournament Admin</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <link href="css/mobile.css" rel="stylesheet">
+    
+    <style>
+        .profile-card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .setting-item {
+            border-bottom: 1px solid #f8f9fa;
+            transition: background-color 0.2s;
+        }
+        
+        .setting-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html">
+                                <i class="bi bi-house-door me-2"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="registration.html">
+                                <i class="bi bi-person-plus me-2"></i>Registration
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="player-list.html">
+                                <i class="bi bi-people me-2"></i>Player List
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="attendance.html">
+                                <i class="bi bi-clipboard-check me-2"></i>Attendance
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="team-balancer.html">
+                                <i class="bi bi-diagram-3 me-2"></i>Team Balancer
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="tournament-bracket.html">
+                                <i class="bi bi-trophy me-2"></i>Tournament Bracket
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="masterlist.html">
+                                <i class="bi bi-list-check me-2"></i>Master List
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="bans.html">
+                                <i class="bi bi-shield-x me-2"></i>Bans
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="discord.html">
+                                <i class="bi bi-discord me-2"></i>Discord
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="random-picker.html">
+                                <i class="bi bi-shuffle me-2"></i>Random Picker
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="profile.html">
+                                <i class="bi bi-person-circle me-2"></i>Profile
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
+                    <h1 class="h2">
+                        <i class="bi bi-person-circle me-2"></i>Profile Management
+                    </h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#profileHelpModal">
+                            <i class="bi bi-question-circle me-1"></i> Help
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Profile Section -->
+                <section id="profile-management" class="mb-4">
+                    <!-- User Profile Card -->
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card profile-card mb-4">
+                                <div class="profile-header p-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="profile-avatar rounded-circle d-flex align-items-center justify-content-center me-3">
+                                            <i class="bi bi-person-fill display-6"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="mb-1" id="current-username">Loading...</h4>
+                                            <p class="mb-0 opacity-75" id="current-role">Administrator</p>
+                                            <small class="opacity-75" id="last-login">Last login: Loading...</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-3 text-muted">
+                                        <i class="bi bi-gear me-2"></i>Account Settings
+                                    </h6>
+                                    
+                                    <!-- Change Password -->
+                                    <div class="setting-item p-3 rounded">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    <i class="bi bi-shield-lock me-2 text-primary"></i>Change Password
+                                                </h6>
+                                                <small class="text-muted">Update your account password</small>
+                                            </div>
+                                            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                                <i class="bi bi-pencil me-1"></i> Change
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Session Management -->
+                                    <div class="setting-item p-3 rounded">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    <i class="bi bi-clock-history me-2 text-success"></i>Active Sessions
+                                                </h6>
+                                                <small class="text-muted">Manage your login sessions</small>
+                                            </div>
+                                            <button class="btn btn-outline-success btn-sm" id="view-sessions-btn">
+                                                <i class="bi bi-list me-1"></i> View
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Account Info -->
+                                    <div class="setting-item p-3 rounded">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    <i class="bi bi-info-circle me-2 text-info"></i>Account Information
+                                                </h6>
+                                                <small class="text-muted">View account details and statistics</small>
+                                            </div>
+                                            <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#accountInfoModal">
+                                                <i class="bi bi-eye me-1"></i> View
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="col-lg-4">
+                            <div class="card profile-card mb-4">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-graph-up me-2"></i>Activity Summary
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-6 border-end">
+                                            <div class="h4 text-primary mb-1" id="total-logins">-</div>
+                                            <small class="text-muted">Total Logins</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="h4 text-success mb-1" id="active-sessions">-</div>
+                                            <small class="text-muted">Active Sessions</small>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row text-center">
+                                        <div class="col-6 border-end">
+                                            <div class="h4 text-info mb-1" id="tournaments-managed">-</div>
+                                            <small class="text-muted">Tournaments</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="h4 text-warning mb-1" id="players-managed">-</div>
+                                            <small class="text-muted">Players</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Admin Tools -->
+                            <div class="card profile-card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-tools me-2"></i>Admin Tools
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary btn-sm" id="admin-users-btn">
+                                            <i class="bi bi-people-fill me-2"></i>Manage Admin Users
+                                        </button>
+                                        <button class="btn btn-outline-warning btn-sm" id="system-logs-btn">
+                                            <i class="bi bi-journal-text me-2"></i>System Logs
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" id="logout-all-btn">
+                                            <i class="bi bi-box-arrow-right me-2"></i>Logout All Sessions
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-shield-lock me-2"></i>Change Password
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="change-password-form">
+                        <div class="mb-3">
+                            <label for="current-password" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="current-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new-password" required>
+                            <div class="form-text">Password must be at least 8 characters long</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm-password" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm-password" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-password-btn">
+                        <i class="bi bi-check-lg me-1"></i>Update Password
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Info Modal -->
+    <div class="modal fade" id="accountInfoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-info-circle me-2"></i>Account Information
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Account Details</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Username:</strong></td>
+                                    <td id="info-username">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Role:</strong></td>
+                                    <td id="info-role">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Created:</strong></td>
+                                    <td id="info-created">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Login:</strong></td>
+                                    <td id="info-last-login">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Session Information</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Session ID:</strong></td>
+                                    <td id="info-session-id">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>IP Address:</strong></td>
+                                    <td id="info-ip">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>User Agent:</strong></td>
+                                    <td id="info-user-agent" class="text-truncate">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal fade" id="profileHelpModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-question-circle me-2"></i>Profile Management Help
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Profile Features</h6>
+                    <ul>
+                        <li><strong>Change Password:</strong> Update your account password for security</li>
+                        <li><strong>Active Sessions:</strong> View and manage your login sessions</li>
+                        <li><strong>Account Info:</strong> View detailed account information and statistics</li>
+                        <li><strong>Admin Tools:</strong> Access additional administrative functions</li>
+                    </ul>
+                    
+                    <h6 class="mt-4">Security Tips</h6>
+                    <ul>
+                        <li>Use a strong password with at least 8 characters</li>
+                        <li>Regularly monitor your active sessions</li>
+                        <li>Logout when finished using the admin panel</li>
+                        <li>Report any suspicious activity immediately</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/sessionManager.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html> 
