@@ -463,27 +463,13 @@ async function viewSystemLogs() {
  */
 async function logoutAllSessions() {
     const confirmed = confirm('Are you sure you want to logout from all sessions? This will end your current session as well.');
-    
-    if (!confirmed) {
-        return;
-    }
-
+    if (!confirmed) return;
     try {
-        // For now, just logout current session
         if (window.sessionManager && typeof window.sessionManager.logout === 'function') {
-            await window.sessionManager.logout();
-            window.showNotification('Logged out successfully', 'success');
-            setTimeout(() => {
-                window.location.href = '/admin/login.html';
-            }, 1500);
+            window.sessionManager.logout();
         } else {
-            // Fallback logout
-            localStorage.removeItem('adminSessionId');
-            sessionStorage.clear();
-            window.showNotification('Logged out successfully', 'success');
-            setTimeout(() => {
-                window.location.href = '/admin/login.html';
-            }, 1500);
+            // Fallback redirect
+            window.location.href = '/admin/login.html';
         }
     } catch (error) {
         console.error('Error during logout:', error);
@@ -678,10 +664,10 @@ function displayAdminUsers(users) {
             </td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-primary edit-admin-user" data-user-id="${user.userId}">
+                    <button type="button" class="btn btn-outline-primary edit-admin-user" data-user-id="${user.id}">
                         <i class="bi bi-pencil"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-danger delete-admin-user" data-user-id="${user.userId}" data-username="${user.username}">
+                    <button type="button" class="btn btn-outline-danger delete-admin-user" data-user-id="${user.id}" data-username="${user.username}">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -722,6 +708,7 @@ function setupAdminUserActionButtons() {
 function getRoleBadgeColor(role) {
     switch (role) {
         case 'admin': return 'primary';
+        case 'superadmin': return 'danger';
         case 'moderator': return 'warning';
         case 'viewer': return 'info';
         default: return 'secondary';
@@ -762,12 +749,16 @@ async function editAdminUser(userId) {
             if (row.querySelector('.edit-admin-user') && row.querySelector('.edit-admin-user').getAttribute('data-user-id') === userId) {
                 // Extract data from table cells
                 const cells = row.querySelectorAll('td');
+                // Extract role from badge span
+                const roleBadge = cells[3]?.querySelector('.badge');
+                const role = roleBadge ? roleBadge.textContent.trim().toLowerCase() : '';
+                
                 user = {
-                    userId: userId,
+                    id: userId, // Use the actual database ID
                     username: cells[0]?.textContent.trim() || '',
                     fullName: cells[1]?.textContent.trim() || '',
                     email: cells[2]?.textContent.trim() || '',
-                    role: cells[3]?.textContent.trim().toLowerCase() || '',
+                    role: role,
                     isActive: (cells[4]?.textContent.trim() || '').toLowerCase() === 'active'
                 };
                 break;
@@ -785,7 +776,7 @@ async function editAdminUser(userId) {
             return;
         }
         // Populate form fields
-        document.getElementById('admin-user-id').value = user.userId || user.id || '';
+        document.getElementById('admin-user-id').value = user.id || user.userId || '';
         document.getElementById('admin-username').value = user.username || '';
         document.getElementById('admin-full-name').value = user.fullName || '';
         document.getElementById('admin-email').value = user.email || '';
@@ -883,7 +874,7 @@ async function saveAdminUser() {
 
     // For editing, password is optional
     if (isEdit) {
-        userData.userId = userId;
+        userData.userId = userId; // This should be the database ID
         if (!userData.password) {
             delete userData.password;
         }
